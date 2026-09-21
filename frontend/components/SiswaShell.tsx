@@ -1,0 +1,24 @@
+"use client";
+import { ReactNode, useState } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { usePathname, useRouter } from "next/navigation";
+import { LogOut } from "lucide-react";
+import { logout } from "@/lib/auth";
+import SiswaBottomNav from "./SiswaBottomNav";
+
+export default function SiswaShell({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const [leaving, setLeaving] = useState(false);
+  if (pathname.startsWith("/siswa/ujian/")) return <div className="min-h-screen bg-neutral">{children}</div>;
+  return <div className="student-shell">
+    <header className="student-header"><div className="student-header-inner">
+      <Link href="/siswa/dashboard" className="student-brand"><Image src="/quantum-research-logo.png" alt="" width={40} height={40} className="shrink-0 object-contain" priority /><span>QUANTUM<span className="student-brand-sub">RESEARCH · LEARNING SPACE</span></span></Link>
+      <nav className="student-desktop-nav" aria-label="Navigasi siswa">{[["dashboard", "Beranda"], ["jadwal-ujian", "Latihan & Tryout"], ["riwayat", "Riwayat"], ["profil", "Profil"]].map(([route, label]) => <Link key={route} href={`/siswa/${route}`} aria-current={pathname === `/siswa/${route}` ? "page" : undefined}>{label}</Link>)}</nav>
+      <button className="student-logout" disabled={leaving} onClick={async () => { setLeaving(true); await logout(); router.replace("/login"); }}><LogOut size={15} /><span>{leaving ? "Keluar…" : "Keluar"}</span></button>
+    </div></header>
+    {children}
+    <SiswaBottomNav />
+  </div>;
+}

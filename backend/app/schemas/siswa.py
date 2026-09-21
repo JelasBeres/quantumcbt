@@ -1,0 +1,128 @@
+from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+from typing import Any, Dict, List, Optional
+
+
+class PilihanJurusan(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+    jurusan: str = Field(min_length=1, max_length=200)
+    universitas: str = Field(min_length=1, max_length=200)
+
+
+class SiswaCreate(BaseModel):
+    pilihan_jurusan: List[PilihanJurusan] = Field(default_factory=list, max_length=3)
+    user_id: int
+    nama_lengkap: str
+    sekolah: Optional[str] = Field(default=None, max_length=200)
+    no_induk: Optional[str] = None
+    program_id: Optional[int] = None
+    kelas_id: Optional[int] = None
+
+
+class SiswaDenganAkun(BaseModel):
+    pilihan_jurusan: List[PilihanJurusan] = Field(default_factory=list, max_length=3)
+    nama_lengkap: str
+    sekolah: Optional[str] = Field(default=None, max_length=200)
+    username: str
+    password: str
+    no_induk: Optional[str] = None
+    program_id: Optional[int] = None
+    kelas_id: Optional[int] = None
+
+
+class SiswaOut(BaseModel):
+    pilihan_jurusan: Optional[List[PilihanJurusan]] = None
+    id: int
+    user_id: int
+    nama_lengkap: str
+    sekolah: Optional[str] = None
+    no_induk: Optional[str] = None
+    program_id: Optional[int] = None
+    kelas_id: Optional[int] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SiswaProfilUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    nama_lengkap: str = Field(min_length=1, max_length=200)
+    sekolah: Optional[str] = Field(default=None, max_length=200)
+    pilihan_jurusan: List[PilihanJurusan] = Field(default_factory=list, max_length=3)
+
+    @field_validator("sekolah")
+    @classmethod
+    def normalize_sekolah(cls, value):
+        return value or None
+
+
+class SiswaDashboardOut(BaseModel):
+    siswa: SiswaOut
+    jadwal_mendatang: int
+    ujian_aktif: int
+    riwayat_ujian: int
+    hasil_terakhir: Optional[float] = None
+    program_name: Optional[str] = None
+    kelas_name: Optional[str] = None
+
+
+class SiswaJadwalUjianOut(BaseModel):
+    jadwal_ujian_id: int
+    paket_ujian_id: int
+    nama_paket: str
+    mulai: datetime
+    selesai: datetime
+    is_published: bool
+    status: str
+    grup_tryout_id: Optional[int] = None
+    nama_grup_tryout: Optional[str] = None
+    durasi_menit: int = 0
+    jumlah_soal: int = 0
+    pelajaran: Optional[str] = None
+    tipe: str = "ujian"
+    kategori: Optional[str] = None
+    kategori_nama: Optional[str] = None
+    deskripsi_paket: Optional[str] = None
+
+
+class BagianTersediaOut(BaseModel):
+    bagian_id: int
+    nama: str
+    urutan: int
+    jumlah_soal: int = 0
+
+
+class SiswaJadwalTersediaOut(SiswaJadwalUjianOut):
+    bagian: List[BagianTersediaOut] = Field(default_factory=list)
+
+
+class SiswaRiwayatUjianOut(BaseModel):
+    ujian_siswa_id: int
+    paket_ujian_id: int
+    nama_paket: str
+    jadwal_ujian_id: Optional[int] = None
+    started_at: Optional[datetime] = None
+    finished_at: Optional[datetime] = None
+    is_submitted: bool
+    skor: Optional[float] = None
+    metode_penilaian: str = "biasa"
+    kohort_status: Optional[str] = None
+    skala: Optional[str] = None
+    skor_mentah: Optional[int] = None
+    metadata: Optional[Dict[str, Any]] = None
+    grup_tryout_id: Optional[int] = None
+    nama_grup_tryout: Optional[str] = None
+
+
+class SiswaDashboardDataOut(BaseModel):
+    siswa: SiswaOut
+    program_name: Optional[str] = None
+    kelas_name: Optional[str] = None
+    jadwal_mendatang: int
+    ujian_aktif: int
+    riwayat_ujian: int
+    hasil_terakhir: Optional[float] = None
+    rata_rata_nilai: Optional[float] = None
+    jadwal: List[SiswaJadwalTersediaOut] = []
+    riwayat: List[SiswaRiwayatUjianOut] = []

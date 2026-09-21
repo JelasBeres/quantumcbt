@@ -1,0 +1,74 @@
+from datetime import datetime
+from typing import Any, Dict, Optional
+
+from pydantic import BaseModel
+
+
+class DashboardStatistikOut(BaseModel):
+    total_siswa: int
+    total_paket_ujian: int
+    total_jadwal_published: int
+    ujian_berjalan: int
+    rata_rata_nilai: Optional[float] = None
+
+
+class DashboardAdminOut(BaseModel):
+    total_siswa: int
+    total_paket: int
+    total_jadwal: int
+    total_ujian_aktif: int
+    total_ujian_selesai: int
+
+
+class MonitoringUjianOut(BaseModel):
+    ujian_siswa_id: int
+    siswa_id: int
+    nama_siswa: str
+    paket_ujian_id: int
+    nama_paket: str
+    jadwal_ujian_id: Optional[int] = None
+    nama_grup_tryout: Optional[str] = None
+    started_at: Optional[datetime] = None
+    finished_at: Optional[datetime] = None
+    status: str
+    sisa_waktu_detik: int
+    jumlah_soal: int = 0
+    terjawab: int = 0
+    jumlah_ragu: int = 0
+    total_pelanggaran: int = 0
+
+
+class DashboardLogKecuranganOut(BaseModel):
+    id: int
+    ujian_siswa_id: int
+    siswa_id: Optional[int] = None
+    nama_siswa: Optional[str] = None
+    tipe_kecurangan: Optional[str] = None
+    deskripsi: Optional[str] = None
+    created_at: Optional[datetime] = None
+
+
+class DashboardHasilSiswaOut(BaseModel):
+    hasil_ujian_id: int
+    ujian_siswa_id: int
+    siswa_id: int
+    nama_siswa: str
+    no_induk: Optional[str] = None
+    paket_ujian_id: int
+    nama_paket: str
+    jadwal_ujian_id: Optional[int] = None
+    skor: Optional[float] = None
+    metode_penilaian: str = "biasa"
+    kohort_status: Optional[str] = None
+    skala: Optional[str] = None
+    skor_mentah: Optional[int] = None
+    metadata: Optional[Dict[str, Any]] = None
+    calculated_at: Optional[datetime] = None
+
+
+class HasilAnalyticsOut(BaseModel):
+    jumlah_hasil: int
+    rata_rata_nilai: Optional[float] = None
+    nilai_tertinggi: Optional[float] = None
+    nilai_terendah: Optional[float] = None
+    jumlah_lulus_75: int

@@ -1,0 +1,1212 @@
+{
+  "backend/alembic/env.py": {
+    "mtime": 1789840382.9662957,
+    "ast_hash": "b594ed39c9bfcae6c06d140b5db5fc4a",
+    "semantic_hash": ""
+  },
+  "backend/app/__init__.py": {
+    "mtime": 1789840383.2787964,
+    "ast_hash": "05173422472b9ad83827b8762b756e54",
+    "semantic_hash": ""
+  },
+  "backend/app/core/config.py": {
+    "mtime": 1789840383.2787964,
+    "ast_hash": "c467925b331f28b16b4e177cc6f71f7b",
+    "semantic_hash": ""
+  },
+  "backend/app/core/security.py": {
+    "mtime": 1789840383.29441,
+    "ast_hash": "a38fca31d7f899c9610b48e82381bba5",
+    "semantic_hash": ""
+  },
+  "backend/app/core/timeutils.py": {
+    "mtime": 1789840383.29441,
+    "ast_hash": "5a302e593a9142d12fb4d905061b9777",
+    "semantic_hash": ""
+  },
+  "backend/app/db/database.py": {
+    "mtime": 1789840383.3100414,
+    "ast_hash": "eecbf9c1151197e5b61907b120762387",
+    "semantic_hash": ""
+  },
+  "backend/app/main.py": {
+    "mtime": 1789984868.6887386,
+    "ast_hash": "2efcd92a2a659c802887fd69228e5b82",
+    "semantic_hash": ""
+  },
+  "backend/app/models/__init__.py": {
+    "mtime": 1789984868.5140646,
+    "ast_hash": "0c3fc2a72566ab74150003b3408157e3",
+    "semantic_hash": ""
+  },
+  "backend/app/models/auth_session.py": {
+    "mtime": 1789840383.325667,
+    "ast_hash": "89b4b622c329569342dbc67a058d7d09",
+    "semantic_hash": ""
+  },
+  "backend/app/models/bagian_paket.py": {
+    "mtime": 1789840383.3412886,
+    "ast_hash": "ed9b4015798bdd6ff4a90e389f144fe0",
+    "semantic_hash": ""
+  },
+  "backend/app/models/base.py": {
+    "mtime": 1789840383.3422768,
+    "ast_hash": "f9ce77713f2a3c4312568d2f1de24402",
+    "semantic_hash": ""
+  },
+  "backend/app/models/grup_tryout.py": {
+    "mtime": 1789840383.3422768,
+    "ast_hash": "6d41e788545a7902bf055ee17d49fd7c",
+    "semantic_hash": ""
+  },
+  "backend/app/models/guru.py": {
+    "mtime": 1789840383.3422768,
+    "ast_hash": "f5eed377d31c2d95fb4dbf3000a6744e",
+    "semantic_hash": ""
+  },
+  "backend/app/models/guru_scope.py": {
+    "mtime": 1789840383.3422768,
+    "ast_hash": "2803e01d195e5eb7f1e77b3d8037a6e5",
+    "semantic_hash": ""
+  },
+  "backend/app/models/hasil_ujian.py": {
+    "mtime": 1789840383.3572874,
+    "ast_hash": "4f552869216efc8b9ddb29ee8e68aa1a",
+    "semantic_hash": ""
+  },
+  "backend/app/models/jadwal_ujian.py": {
+    "mtime": 1789840383.3572874,
+    "ast_hash": "a170c9d49b4134bffa27a0a7647abfc0",
+    "semantic_hash": ""
+  },
+  "backend/app/models/jawaban_siswa.py": {
+    "mtime": 1789840383.3572874,
+    "ast_hash": "3b8ae0e0744f22a6c3fb3d52fdce665e",
+    "semantic_hash": ""
+  },
+  "backend/app/models/kelas.py": {
+    "mtime": 1789840383.3572874,
+    "ast_hash": "1c3e7588a862ed81dc668cc039477248",
+    "semantic_hash": ""
+  },
+  "backend/app/models/laporan_soal.py": {
+    "mtime": 1789840383.3572874,
+    "ast_hash": "4bed486f23a5729458ead5d1d5df3600",
+    "semantic_hash": ""
+  },
+  "backend/app/models/log_kecurangan.py": {
+    "mtime": 1789840383.3729396,
+    "ast_hash": "4137797f9b5516f5b91cf961b73a44bb",
+    "semantic_hash": ""
+  },
+  "backend/app/models/login_activity.py": {
+    "mtime": 1789840383.3729396,
+    "ast_hash": "80caf5aef57c1f869758f843d32a9bd4",
+    "semantic_hash": ""
+  },
+  "backend/app/models/login_attempt.py": {
+    "mtime": 1789840383.3729396,
+    "ast_hash": "bee21f880896eddb7718208edf0532f9",
+    "semantic_hash": ""
+  },
+  "backend/app/models/opsi_jawaban.py": {
+    "mtime": 1789840383.3729396,
+    "ast_hash": "204fad87bb21deb1ebc334faa15849e0",
+    "semantic_hash": ""
+  },
+  "backend/app/models/paket_soal.py": {
+    "mtime": 1789840383.3885486,
+    "ast_hash": "659c9d58085d7d9b8387b249d84ffd6b",
+    "semantic_hash": ""
+  },
+  "backend/app/models/paket_ujian.py": {
+    "mtime": 1790012099.307141,
+    "ast_hash": "228fa78a5c1c3e29658471e03715a39f",
+    "semantic_hash": ""
+  },
+  "backend/app/models/pelajaran.py": {
+    "mtime": 1790013797.4879453,
+    "ast_hash": "adf095eecded85e474db78e90953892c",
+    "semantic_hash": ""
+  },
+  "backend/app/models/pengaturan.py": {
+    "mtime": 1789840383.3885486,
+    "ast_hash": "6cc3dfbe1c2cf02f1bfe56d460e43f02",
+    "semantic_hash": ""
+  },
+  "backend/app/models/program.py": {
+    "mtime": 1789840383.3885486,
+    "ast_hash": "7dd36f80f7dabe12455fbdbaf16162a3",
+    "semantic_hash": ""
+  },
+  "backend/app/models/siswa.py": {
+    "mtime": 1789840383.4041786,
+    "ast_hash": "e3c383138a982d0d4fee219ed9c5c092",
+    "semantic_hash": ""
+  },
+  "backend/app/models/soal.py": {
+    "mtime": 1790012099.3141575,
+    "ast_hash": "f56552864ec51a0005c6c7b478a838cc",
+    "semantic_hash": ""
+  },
+  "backend/app/models/soal_review_history.py": {
+    "mtime": 1789840383.4198139,
+    "ast_hash": "559af7b2e55a87fbae551822bd080a78",
+    "semantic_hash": ""
+  },
+  "backend/app/models/topik.py": {
+    "mtime": 1789984687.5302837,
+    "ast_hash": "776fbcb4eed02c31bae704a8a9e26b4a",
+    "semantic_hash": ""
+  },
+  "backend/app/models/ujian_siswa.py": {
+    "mtime": 1789840383.4198139,
+    "ast_hash": "0f9d1d89cd752e462e7abaadddba1d75",
+    "semantic_hash": ""
+  },
+  "backend/app/models/user.py": {
+    "mtime": 1789840383.4354258,
+    "ast_hash": "a247cab080b61ef12350631e421334e4",
+    "semantic_hash": ""
+  },
+  "backend/app/routers/__init__.py": {
+    "mtime": 1789840383.6230052,
+    "ast_hash": "f44647312aaa8387bc1bf9180bfc3f02",
+    "semantic_hash": ""
+  },
+  "backend/app/routers/auth.py": {
+    "mtime": 1789840383.5448802,
+    "ast_hash": "1025613c3b31acccab5f13a8d926f0f8",
+    "semantic_hash": ""
+  },
+  "backend/app/routers/bagian_paket.py": {
+    "mtime": 1790013856.587006,
+    "ast_hash": "fd35acf16d47af0f94dbbf2e35dbe445",
+    "semantic_hash": ""
+  },
+  "backend/app/routers/dashboard.py": {
+    "mtime": 1790011008.6939354,
+    "ast_hash": "74d4bc3b04b61498b8c469951f5c9fbe",
+    "semantic_hash": ""
+  },
+  "backend/app/routers/grup_tryout.py": {
+    "mtime": 1789840383.5448802,
+    "ast_hash": "86326df601a98f1544e8844dee3cb54e",
+    "semantic_hash": ""
+  },
+  "backend/app/routers/guru_scope.py": {
+    "mtime": 1789840383.5605206,
+    "ast_hash": "5b73f71f3349661ab471e49c2de4d5c4",
+    "semantic_hash": ""
+  },
+  "backend/app/routers/hasil_ujian.py": {
+    "mtime": 1790012664.5099065,
+    "ast_hash": "4de5b3885a62f0a97fc1afd02c14bf29",
+    "semantic_hash": ""
+  },
+  "backend/app/routers/health.py": {
+    "mtime": 1789840383.5605206,
+    "ast_hash": "84b625dfb51dd62015d9f7305b0b1a38",
+    "semantic_hash": ""
+  },
+  "backend/app/routers/jadwal_ujian.py": {
+    "mtime": 1789979535.8532586,
+    "ast_hash": "b246171563ced4d47c3f0f47dcff87c0",
+    "semantic_hash": ""
+  },
+  "backend/app/routers/jawaban_siswa.py": {
+    "mtime": 1790010814.4963193,
+    "ast_hash": "5cfc70653f9fd5362ad4e7b8b58a4d2e",
+    "semantic_hash": ""
+  },
+  "backend/app/routers/kelas.py": {
+    "mtime": 1789840383.576132,
+    "ast_hash": "b417144697105c5db12a95ca35780943",
+    "semantic_hash": ""
+  },
+  "backend/app/routers/laporan_soal.py": {
+    "mtime": 1789840383.576132,
+    "ast_hash": "de0752dce6397a6301b96f38e636e55c",
+    "semantic_hash": ""
+  },
+  "backend/app/routers/log_kecurangan.py": {
+    "mtime": 1789840383.5917628,
+    "ast_hash": "6c96b6253e9b8682827ace0a5f29ac52",
+    "semantic_hash": ""
+  },
+  "backend/app/routers/login_activity.py": {
+    "mtime": 1789840383.576132,
+    "ast_hash": "102e0429adfb781469ae4b8884f0d559",
+    "semantic_hash": ""
+  },
+  "backend/app/routers/opsi_jawaban.py": {
+    "mtime": 1789840383.5917628,
+    "ast_hash": "76bb07e5a30be660aa65845c63c19896",
+    "semantic_hash": ""
+  },
+  "backend/app/routers/paket_ujian.py": {
+    "mtime": 1790011509.276704,
+    "ast_hash": "2cfc370426974daf37efd22fd3b0c353",
+    "semantic_hash": ""
+  },
+  "backend/app/routers/pelajaran.py": {
+    "mtime": 1790013847.6679676,
+    "ast_hash": "c6353319cb51fbb6490ece1265d3a9df",
+    "semantic_hash": ""
+  },
+  "backend/app/routers/pengaturan.py": {
+    "mtime": 1789840383.6073813,
+    "ast_hash": "4f3c1310238bbdb5a174574245c1f2f8",
+    "semantic_hash": ""
+  },
+  "backend/app/routers/program.py": {
+    "mtime": 1789840383.6073813,
+    "ast_hash": "46f79e3305221fd64708705e2e550d38",
+    "semantic_hash": ""
+  },
+  "backend/app/routers/siswa.py": {
+    "mtime": 1790011016.6312377,
+    "ast_hash": "5a3b9851d2899397f835a749adff7ce4",
+    "semantic_hash": ""
+  },
+  "backend/app/routers/soal.py": {
+    "mtime": 1790012906.1667075,
+    "ast_hash": "06099e037e708cde30328f2406c72c47",
+    "semantic_hash": ""
+  },
+  "backend/app/routers/topik.py": {
+    "mtime": 1789987466.4395163,
+    "ast_hash": "a28f8b187418fcafa4c128d223ed5161",
+    "semantic_hash": ""
+  },
+  "backend/app/routers/ujian_siswa.py": {
+    "mtime": 1790012664.4717662,
+    "ast_hash": "6cd5e2c9e95d4395843f7ddc47be58f5",
+    "semantic_hash": ""
+  },
+  "backend/app/routers/upload.py": {
+    "mtime": 1789840383.6230052,
+    "ast_hash": "9168c2bb784b0ace8fa00abe2c0dcd58",
+    "semantic_hash": ""
+  },
+  "backend/app/routers/users.py": {
+    "mtime": 1789840383.6230052,
+    "ast_hash": "d93a2a40a10a5ddc035409e59acbb5f1",
+    "semantic_hash": ""
+  },
+  "backend/app/schemas/auth.py": {
+    "mtime": 1789840383.7323866,
+    "ast_hash": "f0676cc8d675d02f0f26683dbec8f84d",
+    "semantic_hash": ""
+  },
+  "backend/app/schemas/bagian_paket.py": {
+    "mtime": 1789937716.9136643,
+    "ast_hash": "b1ef78519b77c72574e7a01d3a204909",
+    "semantic_hash": ""
+  },
+  "backend/app/schemas/dashboard.py": {
+    "mtime": 1790010623.3067682,
+    "ast_hash": "b5c7f187a736baf767b926d356cf0243",
+    "semantic_hash": ""
+  },
+  "backend/app/schemas/grup_tryout.py": {
+    "mtime": 1789840383.7480195,
+    "ast_hash": "eb537df5fcb82caf49bf71edf3443c1f",
+    "semantic_hash": ""
+  },
+  "backend/app/schemas/guru_scope.py": {
+    "mtime": 1789840383.7480195,
+    "ast_hash": "61b60e9f59f41da294fff68d7c6d73fe",
+    "semantic_hash": ""
+  },
+  "backend/app/schemas/hasil_ujian.py": {
+    "mtime": 1790012664.4491034,
+    "ast_hash": "cc80f850ac618a0c647267ba6433f447",
+    "semantic_hash": ""
+  },
+  "backend/app/schemas/jadwal_ujian.py": {
+    "mtime": 1789840383.7636516,
+    "ast_hash": "73328043eaf08b44df65d9efc2cd8b60",
+    "semantic_hash": ""
+  },
+  "backend/app/schemas/jawaban_siswa.py": {
+    "mtime": 1789840383.7636516,
+    "ast_hash": "826d45d935d045be475759518149c676",
+    "semantic_hash": ""
+  },
+  "backend/app/schemas/kelas.py": {
+    "mtime": 1789840383.7636516,
+    "ast_hash": "b9e26f746d5cc6aabc24960c091b6812",
+    "semantic_hash": ""
+  },
+  "backend/app/schemas/laporan_soal.py": {
+    "mtime": 1789840383.7636516,
+    "ast_hash": "fe710b7d6696a0cfc238a1a48cea08e4",
+    "semantic_hash": ""
+  },
+  "backend/app/schemas/log_kecurangan.py": {
+    "mtime": 1789840383.7792559,
+    "ast_hash": "eb6ede17f152f2e7b8855cb7d49f8e3a",
+    "semantic_hash": ""
+  },
+  "backend/app/schemas/login_activity.py": {
+    "mtime": 1789840383.7792559,
+    "ast_hash": "f7a721a0c725d21daaf92c7c9135a4b1",
+    "semantic_hash": ""
+  },
+  "backend/app/schemas/opsi_jawaban.py": {
+    "mtime": 1789840383.7792559,
+    "ast_hash": "f7b95556c0c455afbd8a265a10281afd",
+    "semantic_hash": ""
+  },
+  "backend/app/schemas/paket_ujian.py": {
+    "mtime": 1790010662.5571957,
+    "ast_hash": "934af80ab7c4cc743c71852b92c34bd2",
+    "semantic_hash": ""
+  },
+  "backend/app/schemas/pelajaran.py": {
+    "mtime": 1790013829.9377146,
+    "ast_hash": "8581e7a0fc1b336dfb2fc127471c672e",
+    "semantic_hash": ""
+  },
+  "backend/app/schemas/pengaturan.py": {
+    "mtime": 1789840383.794879,
+    "ast_hash": "ba2369ea753d685500549bba0465ccb1",
+    "semantic_hash": ""
+  },
+  "backend/app/schemas/program.py": {
+    "mtime": 1789840383.794879,
+    "ast_hash": "ab3af133d9e8892ccd22695738809894",
+    "semantic_hash": ""
+  },
+  "backend/app/schemas/siswa.py": {
+    "mtime": 1790010623.3310153,
+    "ast_hash": "f9f9663ed14ce4b52ed1cee048d170ee",
+    "semantic_hash": ""
+  },
+  "backend/app/schemas/soal.py": {
+    "mtime": 1790012895.4765918,
+    "ast_hash": "fdc35a01a1e69d859d9bc55f97dcabe2",
+    "semantic_hash": ""
+  },
+  "backend/app/schemas/topik.py": {
+    "mtime": 1789984770.313693,
+    "ast_hash": "95d05a6975e7ea201a72c41ff080f23e",
+    "semantic_hash": ""
+  },
+  "backend/app/schemas/ujian_siswa.py": {
+    "mtime": 1790012664.4601045,
+    "ast_hash": "a84f138d0352da0b39553a16c4dfd495",
+    "semantic_hash": ""
+  },
+  "backend/app/schemas/user.py": {
+    "mtime": 1789840383.8105085,
+    "ast_hash": "4c80aa8e7b68e3a475b8e742cbf7ea0d",
+    "semantic_hash": ""
+  },
+  "backend/app/scripts/__init__.py": {
+    "mtime": 1789840383.9198854,
+    "ast_hash": "9530eab1cbeea13fa2206548ed08da21",
+    "semantic_hash": ""
+  },
+  "backend/app/scripts/auto_submit_expired.py": {
+    "mtime": 1789840383.9042625,
+    "ast_hash": "4cd9b18b65790b5d06e36b0e75ce38d2",
+    "semantic_hash": ""
+  },
+  "backend/app/scripts/scheduler.py": {
+    "mtime": 1789840383.9042625,
+    "ast_hash": "f9040a9705d57ec2ece408a14c0b7f23",
+    "semantic_hash": ""
+  },
+  "backend/app/services/__init__.py": {
+    "mtime": 1789840383.9198854,
+    "ast_hash": "68b329da9893e34099c7d8ad5cb9c940",
+    "semantic_hash": ""
+  },
+  "backend/app/services/scoring.py": {
+    "mtime": 1790012308.9844499,
+    "ast_hash": "11cf7793e63a31df73f1e236720be97a",
+    "semantic_hash": ""
+  },
+  "backend/scripts/apply_local_client_update.py": {
+    "mtime": 1789840383.9667602,
+    "ast_hash": "7a0a48db8624cee2661ae06a5ff95494",
+    "semantic_hash": ""
+  },
+  "backend/scripts/debug_jadwal_fail.py": {
+    "mtime": 1789840383.9667602,
+    "ast_hash": "6b503338ad2fa091228d3b44717cf6dd",
+    "semantic_hash": ""
+  },
+  "backend/scripts/diag_ujian_start.py": {
+    "mtime": 1789840383.9667602,
+    "ast_hash": "05573e7b7f74c4f8b4722a9ccbb098a0",
+    "semantic_hash": ""
+  },
+  "backend/scripts/seed_local_demo.py": {
+    "mtime": 1789840383.9667602,
+    "ast_hash": "8614ee827ac231555f0d1032c635caaa",
+    "semantic_hash": ""
+  },
+  "backend/tests/conftest.py": {
+    "mtime": 1789840383.982392,
+    "ast_hash": "c654e4e290860db1861b556efd2b0c10",
+    "semantic_hash": ""
+  },
+  "backend/tests/support.py": {
+    "mtime": 1789840383.982392,
+    "ast_hash": "e841aac38474db7c5c8ea8417b06b8e8",
+    "semantic_hash": ""
+  },
+  "backend/tests/test_auth_sessions.py": {
+    "mtime": 1789840383.982392,
+    "ast_hash": "5abe7cc7c742caa11132000f52c0c791",
+    "semantic_hash": ""
+  },
+  "backend/tests/test_bagian_paket.py": {
+    "mtime": 1789933540.9801831,
+    "ast_hash": "6d7dc04f4d4ad566b6a3bf41941c9d64",
+    "semantic_hash": ""
+  },
+  "backend/tests/test_client_september17.py": {
+    "mtime": 1789929421.316442,
+    "ast_hash": "55c87d3920ea835eb761787f47c08feb",
+    "semantic_hash": ""
+  },
+  "backend/tests/test_client_september18.py": {
+    "mtime": 1789840383.998791,
+    "ast_hash": "3b3ac851723a1bba597865d913659a69",
+    "semantic_hash": ""
+  },
+  "backend/tests/test_generate_kandidat_soal.py": {
+    "mtime": 1790008700.1304035,
+    "ast_hash": "572677484773125ff1a8183c66a2f2ea",
+    "semantic_hash": ""
+  },
+  "backend/tests/test_grup_tryout.py": {
+    "mtime": 1789840383.998791,
+    "ast_hash": "d8d54f534e73141f71d0f79ba0f6ed0d",
+    "semantic_hash": ""
+  },
+  "backend/tests/test_guru_profile.py": {
+    "mtime": 1789840384.0138137,
+    "ast_hash": "63a402b1441f3c126fd59cc897c4911b",
+    "semantic_hash": ""
+  },
+  "backend/tests/test_guru_scope.py": {
+    "mtime": 1789840384.0138137,
+    "ast_hash": "0fcb7f6f8895945cc2b574a9fd3525df",
+    "semantic_hash": ""
+  },
+  "backend/tests/test_jadwal_workflow.py": {
+    "mtime": 1789840384.0138137,
+    "ast_hash": "b1e1d74f28c32f91973ee841fb82c9c3",
+    "semantic_hash": ""
+  },
+  "backend/tests/test_opsi_authorization.py": {
+    "mtime": 1789840384.0138137,
+    "ast_hash": "5afc44c4714a938875860d75dc077245",
+    "semantic_hash": ""
+  },
+  "backend/tests/test_paket_archive_safety.py": {
+    "mtime": 1789840384.0294566,
+    "ast_hash": "14b7e39b6038a09471732950cdf49257",
+    "semantic_hash": ""
+  },
+  "backend/tests/test_phase1.py": {
+    "mtime": 1789840384.0294566,
+    "ast_hash": "19cf23a0e56acfd69eba869b2df2bdc8",
+    "semantic_hash": ""
+  },
+  "backend/tests/test_phase3.py": {
+    "mtime": 1789840384.0294566,
+    "ast_hash": "7b21d50bb9f9e4d5ba99b16eb66ab440",
+    "semantic_hash": ""
+  },
+  "backend/tests/test_phase4.py": {
+    "mtime": 1789840384.0294566,
+    "ast_hash": "b3419eaf8336678f08eb2a7acd776a9a",
+    "semantic_hash": ""
+  },
+  "backend/tests/test_phase5.py": {
+    "mtime": 1789840384.045082,
+    "ast_hash": "86d343f970f85726d3e93cc92f503744",
+    "semantic_hash": ""
+  },
+  "backend/tests/test_phase6.py": {
+    "mtime": 1789840384.045082,
+    "ast_hash": "5ace54343e0b770b84eb567b316b8d2a",
+    "semantic_hash": ""
+  },
+  "backend/tests/test_phase7.py": {
+    "mtime": 1789840384.045082,
+    "ast_hash": "091f408d5e8863c6f28e33529ffb2bb8",
+    "semantic_hash": ""
+  },
+  "backend/tests/test_siswa_profile.py": {
+    "mtime": 1789929157.4842782,
+    "ast_hash": "78e52994cefc77a35bf2b04dcf61fc70",
+    "semantic_hash": ""
+  },
+  "backend/tests/test_soal_review_workflow.py": {
+    "mtime": 1789840384.0607128,
+    "ast_hash": "c911f91a165219840c95661d9a9eb1c8",
+    "semantic_hash": ""
+  },
+  "backend/tests/test_soal_subbab.py": {
+    "mtime": 1789840384.0607128,
+    "ast_hash": "49ce596bde90bfb0a4c630e512cc31dd",
+    "semantic_hash": ""
+  },
+  "backend/tests/test_student_content_leak.py": {
+    "mtime": 1789840384.0607128,
+    "ast_hash": "247d94b248aa1ba834f92ed9768d7399",
+    "semantic_hash": ""
+  },
+  "backend/tests/test_tipe_soal_options.py": {
+    "mtime": 1789840384.0607128,
+    "ast_hash": "266e500518a7d89c64db08d111575aea",
+    "semantic_hash": ""
+  },
+  "frontend/app/admin/dashboard/page.tsx": {
+    "mtime": 1789910156.4326959,
+    "ast_hash": "75fe8dc069cf4b9f2647375ef9619c44",
+    "semantic_hash": ""
+  },
+  "frontend/app/admin/jadwal-ujian/page.tsx": {
+    "mtime": 1790006969.5186408,
+    "ast_hash": "24bc92637aff7a9bfb22e5fdc0e77e39",
+    "semantic_hash": ""
+  },
+  "frontend/app/admin/kelas/page.tsx": {
+    "mtime": 1789840423.9828742,
+    "ast_hash": "f8f3923c858c693d74d6045e1995f0cf",
+    "semantic_hash": ""
+  },
+  "frontend/app/admin/koreksi-esai/page.tsx": {
+    "mtime": 1789840423.9984994,
+    "ast_hash": "36d5de8dcce75e0a28f1c1d1f70b491d",
+    "semantic_hash": ""
+  },
+  "frontend/app/admin/laporan-soal/page.tsx": {
+    "mtime": 1789840423.9984994,
+    "ast_hash": "163e6d5b8c8391c25be095f5c29bb949",
+    "semantic_hash": ""
+  },
+  "frontend/app/admin/layout.tsx": {
+    "mtime": 1789840423.9672506,
+    "ast_hash": "a20645ef65a42e1bf0916b3f72b0dc2d",
+    "semantic_hash": ""
+  },
+  "frontend/app/admin/login-activity/page.tsx": {
+    "mtime": 1789840424.0141244,
+    "ast_hash": "aebcf0f05a09395e4d11352c8132c120",
+    "semantic_hash": ""
+  },
+  "frontend/app/admin/monitoring-ujian/page.tsx": {
+    "mtime": 1789840424.0297513,
+    "ast_hash": "f5c535a5f799859f793bb8ed5667721e",
+    "semantic_hash": ""
+  },
+  "frontend/app/admin/paket-ujian/page.tsx": {
+    "mtime": 1790013872.6210217,
+    "ast_hash": "55b4b92dccd7588e2512d3d35892115e",
+    "semantic_hash": ""
+  },
+  "frontend/app/admin/pelajaran/page.tsx": {
+    "mtime": 1790014099.9538655,
+    "ast_hash": "831fbe124dc12c52dd64f428d1c242a8",
+    "semantic_hash": ""
+  },
+  "frontend/app/admin/pengaturan/page.tsx": {
+    "mtime": 1789840424.0453758,
+    "ast_hash": "7018349a2d91b91db61b96a0802070a3",
+    "semantic_hash": ""
+  },
+  "frontend/app/admin/program/page.tsx": {
+    "mtime": 1789840424.061,
+    "ast_hash": "e0ae0469c16a585295c961754c4c26c5",
+    "semantic_hash": ""
+  },
+  "frontend/app/admin/rekap-nilai/page.tsx": {
+    "mtime": 1790011249.5509417,
+    "ast_hash": "96894355d1fc309d4021899173db27c4",
+    "semantic_hash": ""
+  },
+  "frontend/app/admin/review-jadwal/page.tsx": {
+    "mtime": 1789840424.076626,
+    "ast_hash": "c2bbe48479667f7aa0d2c760c53e3229",
+    "semantic_hash": ""
+  },
+  "frontend/app/admin/review-soal/page.tsx": {
+    "mtime": 1789840424.076626,
+    "ast_hash": "d8d10fd6ac62d003dd8c4a9f1a4ca0ca",
+    "semantic_hash": ""
+  },
+  "frontend/app/admin/siswa/page.tsx": {
+    "mtime": 1789840424.0922503,
+    "ast_hash": "5a54952fa0d0cf580b14eace318a5bc2",
+    "semantic_hash": ""
+  },
+  "frontend/app/admin/soal/page.tsx": {
+    "mtime": 1789986050.5605428,
+    "ast_hash": "eb62c944dfb6b7427d1907f5c88fba2e",
+    "semantic_hash": ""
+  },
+  "frontend/app/admin/tambah-soal/page.tsx": {
+    "mtime": 1789911375.2325022,
+    "ast_hash": "a2ca72a4cc1a097c84b5f923afa43133",
+    "semantic_hash": ""
+  },
+  "frontend/app/admin/users/page.tsx": {
+    "mtime": 1789840424.1079416,
+    "ast_hash": "be550db78900b78e8a952fa46783080e",
+    "semantic_hash": ""
+  },
+  "frontend/app/change-password/page.tsx": {
+    "mtime": 1789840424.1079416,
+    "ast_hash": "df8a104ec67dd570d0a5e00e6051474f",
+    "semantic_hash": ""
+  },
+  "frontend/app/guru/dashboard/page.tsx": {
+    "mtime": 1789840424.123503,
+    "ast_hash": "975b6be5282428a5025c6097bf41d692",
+    "semantic_hash": ""
+  },
+  "frontend/app/guru/jadwal/page.tsx": {
+    "mtime": 1789840424.1391418,
+    "ast_hash": "8bf2837a1976bd32d5e71a17b4e36f18",
+    "semantic_hash": ""
+  },
+  "frontend/app/guru/koreksi-esai/page.tsx": {
+    "mtime": 1789840424.1391418,
+    "ast_hash": "420f25878b1db486cc428d202be1e51a",
+    "semantic_hash": ""
+  },
+  "frontend/app/guru/laporan-soal/page.tsx": {
+    "mtime": 1789840424.154762,
+    "ast_hash": "8715c91851d0810a1cc31efd8d7458b7",
+    "semantic_hash": ""
+  },
+  "frontend/app/guru/layout.tsx": {
+    "mtime": 1789840424.123503,
+    "ast_hash": "5b034761508e9807a0a3795341a28d05",
+    "semantic_hash": ""
+  },
+  "frontend/app/guru/monitoring-ujian/page.tsx": {
+    "mtime": 1789840424.1591365,
+    "ast_hash": "555b69590ed4f146bb0cf7ed43a29ad7",
+    "semantic_hash": ""
+  },
+  "frontend/app/guru/paket-ujian/page.tsx": {
+    "mtime": 1789840424.1706474,
+    "ast_hash": "81106a7f7d47bb027aeb89257c511dce",
+    "semantic_hash": ""
+  },
+  "frontend/app/guru/rekap-nilai/page.tsx": {
+    "mtime": 1789840424.1706474,
+    "ast_hash": "d580a6e6ae24e4ab5931899f2bbf62e2",
+    "semantic_hash": ""
+  },
+  "frontend/app/guru/soal/page.tsx": {
+    "mtime": 1789986143.615392,
+    "ast_hash": "67a4780a8d15db47714b67c63713fd56",
+    "semantic_hash": ""
+  },
+  "frontend/app/layout.tsx": {
+    "mtime": 1789840423.951627,
+    "ast_hash": "9ec7aaadadfc4792dbbcb9bffd728601",
+    "semantic_hash": ""
+  },
+  "frontend/app/login/page.tsx": {
+    "mtime": 1789840424.1862893,
+    "ast_hash": "d7d72cb80be8c9391614688c89913caa",
+    "semantic_hash": ""
+  },
+  "frontend/app/page.tsx": {
+    "mtime": 1789890991.5897963,
+    "ast_hash": "65443e31d0bcc2ecad3e6a416d85a51b",
+    "semantic_hash": ""
+  },
+  "frontend/app/siswa/dashboard/page.tsx": {
+    "mtime": 1789840424.2019057,
+    "ast_hash": "1e3f17e9c3ba9a213b45285594d94e10",
+    "semantic_hash": ""
+  },
+  "frontend/app/siswa/hasil/[ujianId]/page.tsx": {
+    "mtime": 1790012896.2584374,
+    "ast_hash": "d3151db3ed66dd4fca5f1c02ade6e770",
+    "semantic_hash": ""
+  },
+  "frontend/app/siswa/jadwal-ujian/page.tsx": {
+    "mtime": 1789980694.5309017,
+    "ast_hash": "d28baecc50793dc0afa642cdb315f8c9",
+    "semantic_hash": ""
+  },
+  "frontend/app/siswa/layout.tsx": {
+    "mtime": 1789840424.2019057,
+    "ast_hash": "b68a97cf1a22384b6f2e10ff4cc42f1f",
+    "semantic_hash": ""
+  },
+  "frontend/app/siswa/paket/[jadwalId]/page.tsx": {
+    "mtime": 1789840424.2331705,
+    "ast_hash": "7a35300d8890e187704e2cb457bce95c",
+    "semantic_hash": ""
+  },
+  "frontend/app/siswa/profil/page.tsx": {
+    "mtime": 1789929318.9261994,
+    "ast_hash": "c42c87b5e7c539eb2ed1dadcb5797725",
+    "semantic_hash": ""
+  },
+  "frontend/app/siswa/riwayat/page.tsx": {
+    "mtime": 1790012683.2170095,
+    "ast_hash": "cad6b987b955db64bdf291b4064b20b6",
+    "semantic_hash": ""
+  },
+  "frontend/app/siswa/ujian-aktif/page.tsx": {
+    "mtime": 1789840424.280043,
+    "ast_hash": "24d8a0d89ac852d911120c7bc6f41a2a",
+    "semantic_hash": ""
+  },
+  "frontend/app/siswa/ujian/[ujianId]/page.tsx": {
+    "mtime": 1789923967.0082896,
+    "ast_hash": "2134b6d00b7f47d926c8b54883793aad",
+    "semantic_hash": ""
+  },
+  "frontend/components/Badge.tsx": {
+    "mtime": 1789840424.280043,
+    "ast_hash": "f0fa463b7d33155b2a5b032bf1093795",
+    "semantic_hash": ""
+  },
+  "frontend/components/Button.tsx": {
+    "mtime": 1789840424.280043,
+    "ast_hash": "509644918c2100da6a8a4a264236ea3f",
+    "semantic_hash": ""
+  },
+  "frontend/components/Card.tsx": {
+    "mtime": 1789840424.280043,
+    "ast_hash": "048ed758d239504ffde562e1c293a0a0",
+    "semantic_hash": ""
+  },
+  "frontend/components/Dialog.tsx": {
+    "mtime": 1789840424.295658,
+    "ast_hash": "067f4348bbd636432003d62510892098",
+    "semantic_hash": ""
+  },
+  "frontend/components/EmptyState.tsx": {
+    "mtime": 1789840424.295658,
+    "ast_hash": "acda3b0eaeedfb361e6d6bbc9371f3b4",
+    "semantic_hash": ""
+  },
+  "frontend/components/EquationEditorDialog.tsx": {
+    "mtime": 1789840424.295658,
+    "ast_hash": "d6900b88c78d32d096d89068ef4b249c",
+    "semantic_hash": ""
+  },
+  "frontend/components/Header.tsx": {
+    "mtime": 1789985557.5939727,
+    "ast_hash": "4e8eb6b254f749ce406896db1976ab06",
+    "semantic_hash": ""
+  },
+  "frontend/components/Input.tsx": {
+    "mtime": 1789840424.311349,
+    "ast_hash": "a603b8ebb6b2dbb869d09e5e39550131",
+    "semantic_hash": ""
+  },
+  "frontend/components/LatihanList.tsx": {
+    "mtime": 1789980591.5944846,
+    "ast_hash": "b69e07af5b4e5e6b8057b3e3c3b7cbd1",
+    "semantic_hash": ""
+  },
+  "frontend/components/MathContent.tsx": {
+    "mtime": 1789840424.311349,
+    "ast_hash": "0b78146e5e13becedd0a8ba3294bfc52",
+    "semantic_hash": ""
+  },
+  "frontend/components/QuestionMetaFilters.tsx": {
+    "mtime": 1789840424.311349,
+    "ast_hash": "bbe7a956098dbc1d0ed007efb8de0367",
+    "semantic_hash": ""
+  },
+  "frontend/components/RichEditor.tsx": {
+    "mtime": 1789840424.3269238,
+    "ast_hash": "3ae713314c0713768cffbb0ba138a2ce",
+    "semantic_hash": ""
+  },
+  "frontend/components/RoleGuard.tsx": {
+    "mtime": 1789840424.3269238,
+    "ast_hash": "ab5f1c3ef7ba48553f3e0df503f47164",
+    "semantic_hash": ""
+  },
+  "frontend/components/Select.tsx": {
+    "mtime": 1789840424.3269238,
+    "ast_hash": "3d6ca0a3c8ab2c83f67e8ae2dc2dbec3",
+    "semantic_hash": ""
+  },
+  "frontend/components/SiswaBottomNav.tsx": {
+    "mtime": 1789840424.3269238,
+    "ast_hash": "8fffc4f55401c74ba611518bbbcb85fc",
+    "semantic_hash": ""
+  },
+  "frontend/components/SiswaShell.tsx": {
+    "mtime": 1789840424.3425348,
+    "ast_hash": "ec25a192fa26063d9f3e9be34e0ef7ea",
+    "semantic_hash": ""
+  },
+  "frontend/components/Skeleton.tsx": {
+    "mtime": 1789840424.3425348,
+    "ast_hash": "12c13436febb0e804bc60fd375e7ca72",
+    "semantic_hash": ""
+  },
+  "frontend/components/SoalFormModal.tsx": {
+    "mtime": 1790011176.2290528,
+    "ast_hash": "2e2accbe659770c7db6b17a382c75ebb",
+    "semantic_hash": ""
+  },
+  "frontend/components/StatCard.tsx": {
+    "mtime": 1789840424.3425348,
+    "ast_hash": "3271eb07952ef1c38a569fc018cdfa6b",
+    "semantic_hash": ""
+  },
+  "frontend/components/Table.tsx": {
+    "mtime": 1789840424.3581576,
+    "ast_hash": "f5074d521d175a1671827da207d29d84",
+    "semantic_hash": ""
+  },
+  "frontend/components/Textarea.tsx": {
+    "mtime": 1789840424.3581576,
+    "ast_hash": "d0ac40f9e7b68ff40d2c6ab4a8bf95f7",
+    "semantic_hash": ""
+  },
+  "frontend/lib/api.ts": {
+    "mtime": 1789840424.3581576,
+    "ast_hash": "f927b120d9f0cda631c7bc2fa8afd0a0",
+    "semantic_hash": ""
+  },
+  "frontend/lib/auth.ts": {
+    "mtime": 1789840424.3737833,
+    "ast_hash": "1f85cf1b6c796e6f8cd99565dff92725",
+    "semantic_hash": ""
+  },
+  "frontend/lib/sanitize.ts": {
+    "mtime": 1789840424.3737833,
+    "ast_hash": "e86874bb0e6428c9ff460a59ac74a7a8",
+    "semantic_hash": ""
+  },
+  "frontend/lib/tipe-soal.ts": {
+    "mtime": 1789840424.3737833,
+    "ast_hash": "0531911395d4c7f8edaaa4c5c7cece23",
+    "semantic_hash": ""
+  },
+  "frontend/lib/types/index.ts": {
+    "mtime": 1790013865.7279315,
+    "ast_hash": "efc5c2b5aaf41b25ba036c28125c88ff",
+    "semantic_hash": ""
+  },
+  "frontend/next-env.d.ts": {
+    "mtime": 1789840420.1458356,
+    "ast_hash": "3cf36e94213e85dc306ec5f3f3760ecc",
+    "semantic_hash": ""
+  },
+  "frontend/next.config.mjs": {
+    "mtime": 1789987745.7185829,
+    "ast_hash": "3404c61038946f8750bd83f15e11284b",
+    "semantic_hash": ""
+  },
+  "frontend/package.json": {
+    "mtime": 1789840420.161464,
+    "ast_hash": "96769e227376130ec716f9a90ad99594",
+    "semantic_hash": ""
+  },
+  "frontend/postcss.config.js": {
+    "mtime": 1789840420.1770868,
+    "ast_hash": "86e9e20e4c60281535291ad9a3b993f6",
+    "semantic_hash": ""
+  },
+  "frontend/scripts/check-api-proxy.mjs": {
+    "mtime": 1789840553.2116258,
+    "ast_hash": "9d74c554769eacc7d6c8460838b618ca",
+    "semantic_hash": ""
+  },
+  "frontend/server.js": {
+    "mtime": 1789840420.1770868,
+    "ast_hash": "3b1d5ccd16f257ce050ab946fc28f0ce",
+    "semantic_hash": ""
+  },
+  "frontend/tailwind.config.ts": {
+    "mtime": 1789840420.1770868,
+    "ast_hash": "3711122cc0180e3ae3f1ae580eab7e37",
+    "semantic_hash": ""
+  },
+  "frontend/tsconfig.json": {
+    "mtime": 1789840420.1927092,
+    "ast_hash": "613557e859a3b12ef5f905ec224d87cc",
+    "semantic_hash": ""
+  },
+  "GETTING_STARTED.md": {
+    "mtime": 1789840382.7688658,
+    "ast_hash": "6d73cc80f3f80572f06d86801b56783b",
+    "semantic_hash": ""
+  },
+  "IMPLEMENTASI_GRUP_TRYOUT_FINAL.md": {
+    "mtime": 1789840382.7778716,
+    "ast_hash": "4fcbeaf263e0f0e1b5789e3319f3823f",
+    "semantic_hash": ""
+  },
+  "PHASE_3_FRONTEND_SUMMARY.md": {
+    "mtime": 1789840382.7778716,
+    "ast_hash": "bfea222c87c658255e7da4768b8831f8",
+    "semantic_hash": ""
+  },
+  "QUICK_REFERENCE.md": {
+    "mtime": 1789840382.7935035,
+    "ast_hash": "aaf4f3eaf5b747b2d0246775fbfb6c32",
+    "semantic_hash": ""
+  },
+  "README.md": {
+    "mtime": 1789840382.7935035,
+    "ast_hash": "fcebad94773498b96852f385ed1a7f40",
+    "semantic_hash": ""
+  },
+  "START_HERE.md": {
+    "mtime": 1789840382.8091304,
+    "ast_hash": "c0744471cd538adaf85d07d2ab3dc852",
+    "semantic_hash": ""
+  },
+  "VERIFIKASI_GRUP_TRYOUT.md": {
+    "mtime": 1789840382.8317404,
+    "ast_hash": "6f53e0cebb63491b0d69327ad21e0843",
+    "semantic_hash": ""
+  },
+  "backend/CRITICAL_FIXES_GUIDE.md": {
+    "mtime": 1789840382.8569071,
+    "ast_hash": "b1614cacb0847f7e531237a801566e9f",
+    "semantic_hash": ""
+  },
+  "backend/FIXES_SUMMARY.md": {
+    "mtime": 1789840382.9037788,
+    "ast_hash": "6938fd987fe73e0c13d124f4cc4d3b07",
+    "semantic_hash": ""
+  },
+  "backend/QUICK_START.md": {
+    "mtime": 1789840382.9194164,
+    "ast_hash": "7598e30b86b11dee635f43c7aa7546e5",
+    "semantic_hash": ""
+  },
+  "backend/requirements.txt": {
+    "mtime": 1789840382.9194164,
+    "ast_hash": "a884c244281d7a22cdfb0c96dbe73a55",
+    "semantic_hash": ""
+  },
+  "docs/ARCHITECTURE.md": {
+    "mtime": 1789840420.0208342,
+    "ast_hash": "e076012ad8b32e4722891ee2132a9d9b",
+    "semantic_hash": ""
+  },
+  "docs/CLIENT_REQUESTS_2026-09-16.md": {
+    "mtime": 1789840420.0208342,
+    "ast_hash": "357912245fc5da51448c2de13c84b869",
+    "semantic_hash": ""
+  },
+  "docs/CLIENT_REQUESTS_2026-09-17.md": {
+    "mtime": 1789840420.0364602,
+    "ast_hash": "d1f705c7a1501f631520e064a583874a",
+    "semantic_hash": ""
+  },
+  "docs/CLIENT_REQUESTS_2026-09-18.md": {
+    "mtime": 1789840420.0364602,
+    "ast_hash": "1de6e00ec662280ef5a5c147d3534f68",
+    "semantic_hash": ""
+  },
+  "docs/DATABASE.md": {
+    "mtime": 1789840420.0520842,
+    "ast_hash": "27c537a14d21ff8626fea556989019c0",
+    "semantic_hash": ""
+  },
+  "docs/DUMMY_DATA.md": {
+    "mtime": 1789840420.0520842,
+    "ast_hash": "aa4da31c7c92239e085e114d1cde54b7",
+    "semantic_hash": ""
+  },
+  "docs/PANDUAN_GRUP_TRYOUT.md": {
+    "mtime": 1789840420.0520842,
+    "ast_hash": "f18f2fb62b3d9b3c70a25fff12bc49d7",
+    "semantic_hash": ""
+  },
+  "docs/PHASE_0_CHECKLIST.md": {
+    "mtime": 1789840420.0677135,
+    "ast_hash": "30e658e3a08ec1a7297c67467782e643",
+    "semantic_hash": ""
+  },
+  "docs/PHASE_1_COMPLETION.md": {
+    "mtime": 1789840420.0677135,
+    "ast_hash": "ce55cd3a0233b15c491db8060539475f",
+    "semantic_hash": ""
+  },
+  "docs/PHASE_3_FRONTEND.md": {
+    "mtime": 1789840420.0677135,
+    "ast_hash": "03ddee54689716ceb6ad6d2a4aac1490",
+    "semantic_hash": ""
+  },
+  "docs/PRD_SISWA_BACKEND_DATABASE.md": {
+    "mtime": 1789840420.083336,
+    "ast_hash": "6a6685b7be5bd2308ffaaa50d8ea280e",
+    "semantic_hash": ""
+  },
+  "docs/PROGRESS_TRACKER.md": {
+    "mtime": 1789840420.083336,
+    "ast_hash": "d8175f340cc0898836d7cd00bc170393",
+    "semantic_hash": ""
+  },
+  "docs/QA_REPORT.md": {
+    "mtime": 1789840420.083336,
+    "ast_hash": "92ebab54bd8be57991d0914887523c18",
+    "semantic_hash": ""
+  },
+  "docs/QUICK_REFERENCE.md": {
+    "mtime": 1789840420.0989604,
+    "ast_hash": "94b4994e5f5c3301dee785ec7f1a7018",
+    "semantic_hash": ""
+  },
+  "docs/ROADMAP.md": {
+    "mtime": 1789840420.0989604,
+    "ast_hash": "6aaf94de6f0ec0a340eea61b4ff19937",
+    "semantic_hash": ""
+  },
+  "docs/review.md": {
+    "mtime": 1789840420.0989604,
+    "ast_hash": "235b0a12cf2988595977bf91807e9894",
+    "semantic_hash": ""
+  },
+  "tunnel-url.txt": {
+    "mtime": 1789840382.8144066,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "Resume_Project_CBT_Bimbel.pdf": {
+    "mtime": 1789840382.7935035,
+    "ast_hash": "b7d2e0912b70cbc9e576fa9ce82f6dcc",
+    "semantic_hash": ""
+  },
+  "Logo-Square-Fit-Transparant-WhiteStroke.png": {
+    "mtime": 1789840382.7778716,
+    "ast_hash": "80c15499d0c27bb95a7d4cdfc739a9e3",
+    "semantic_hash": ""
+  },
+  "WhatsApp Image 2026-08-23 at 3.01.20 PM.jpeg": {
+    "mtime": 1789840382.8317404,
+    "ast_hash": "65f7481bd3a437d565760a318d1df623",
+    "semantic_hash": ""
+  },
+  "frontend/public/quantum-research-logo.png": {
+    "mtime": 1789840553.1960018,
+    "ast_hash": "80c15499d0c27bb95a7d4cdfc739a9e3",
+    "semantic_hash": ""
+  },
+  "frontend/app/admin/paket-ujian/tambah/page.tsx": {
+    "mtime": 1790011206.5602753,
+    "ast_hash": "0d30a7021dee54eb57139c800673b15d",
+    "semantic_hash": ""
+  },
+  "frontend/app/admin/paket-ujian/isi-soal/page.tsx": {
+    "mtime": 1790005461.982477,
+    "ast_hash": "306f1db2c37e1c2046abb070ccec11dc",
+    "semantic_hash": ""
+  },
+  "frontend/app/guru/paket-ujian/isi-soal/page.tsx": {
+    "mtime": 1789915938.828608,
+    "ast_hash": "f784d5209c9a3940626631c0420fe4a5",
+    "semantic_hash": ""
+  },
+  "frontend/components/PaketQuestionAssignment.tsx": {
+    "mtime": 1790008647.7687328,
+    "ast_hash": "25e19bc9d257a85a698de011eaf1e9ff",
+    "semantic_hash": ""
+  },
+  "frontend/app/guru/soal/tambah/page.tsx": {
+    "mtime": 1789922034.1665537,
+    "ast_hash": "fab96392663e01948c6a86149f490db5",
+    "semantic_hash": ""
+  },
+  "backend/app/models/pernyataan_benar_salah.py": {
+    "mtime": 1789924677.277241,
+    "ast_hash": "1c807ac0140e67f10cdb2f06613b3387",
+    "semantic_hash": ""
+  },
+  "backend/app/schemas/pernyataan_benar_salah.py": {
+    "mtime": 1789923385.065935,
+    "ast_hash": "8e36ff49d6752f258bcaff9714fe6f7e",
+    "semantic_hash": ""
+  },
+  "backend/tests/test_compound_benar_salah.py": {
+    "mtime": 1789924335.1661,
+    "ast_hash": "2f6254b3894c2faa751efc5f0f947079",
+    "semantic_hash": ""
+  },
+  "backend/tests/test_package_hierarchy.py": {
+    "mtime": 1790014287.8469956,
+    "ast_hash": "f42989d989840b36841fcfe2aa0f001e",
+    "semantic_hash": ""
+  },
+  "backend/app/models/kategori_paket.py": {
+    "mtime": 1789978917.6103916,
+    "ast_hash": "e9fbc49c571b74c8efbcde9bcee7ec68",
+    "semantic_hash": ""
+  },
+  "backend/app/routers/kategori_paket.py": {
+    "mtime": 1789983637.2205534,
+    "ast_hash": "7ce2305dc88eaa9ddd124499a4c36b52",
+    "semantic_hash": ""
+  },
+  "backend/app/schemas/kategori_paket.py": {
+    "mtime": 1789978930.478437,
+    "ast_hash": "d22655ac6f4512f89d15a6469bb612f4",
+    "semantic_hash": ""
+  },
+  "backend/tests/test_kategori_paket.py": {
+    "mtime": 1789980244.5563803,
+    "ast_hash": "6adf92a0d5809ab4afd2329f5dc29ddc",
+    "semantic_hash": ""
+  },
+  "frontend/app/admin/kategori-ujian/page.tsx": {
+    "mtime": 1789980167.3986547,
+    "ast_hash": "d6532a60a223ba42e770c170e7593482",
+    "semantic_hash": ""
+  },
+  "backend/app/models/subbab.py": {
+    "mtime": 1789984713.6170774,
+    "ast_hash": "1f7ba91284f05bdee4e8e976d31fdf04",
+    "semantic_hash": ""
+  },
+  "backend/app/routers/subbab.py": {
+    "mtime": 1789987428.7513528,
+    "ast_hash": "2c436b04cef55f8413b925db5570f7b0",
+    "semantic_hash": ""
+  },
+  "backend/app/schemas/subbab.py": {
+    "mtime": 1789984783.2541738,
+    "ast_hash": "4b8398f3a5002202dee3fc610f266852",
+    "semantic_hash": ""
+  },
+  "backend/tests/test_bab_subbab_master.py": {
+    "mtime": 1789986439.9985774,
+    "ast_hash": "432f7bc228f4885c993396a1501bf6bf",
+    "semantic_hash": ""
+  },
+  "frontend/app/admin/bab-subbab/page.tsx": {
+    "mtime": 1789985537.7367928,
+    "ast_hash": "030d83882c97ae26e574e4fe5e15353a",
+    "semantic_hash": ""
+  },
+  "backend/scripts/apply_local_cohort_schema.py": {
+    "mtime": 1790011032.3737555,
+    "ast_hash": "22c1f47019cfd1a3db8d95dea7ea9c25",
+    "semantic_hash": ""
+  },
+  "backend/tests/test_cohort_scoring.py": {
+    "mtime": 1790012325.3137696,
+    "ast_hash": "289b26001ee0d45b925b81e2d026e988",
+    "semantic_hash": ""
+  }
+}

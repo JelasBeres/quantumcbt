@@ -1,0 +1,214 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --color-brand-primary: #2d3c8f;
+  --color-brand-primary-light: #3447a8;
+  --color-cta: #ed1b24;
+  --color-cta-alt: #ff3b30;
+  --color-neutral: #f4f5f7;
+  --color-card-bg: #ffffff;
+  --color-card-border: #e4e7ee;
+  --color-heading-dark: #1a1d24;
+  --color-body-dark: #333a46;
+  --color-text-muted: #6b7280;
+  --color-cream: #faf6ee;
+  --radius-input: 10px;
+  --radius-modal: 18px;
+  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
+  --shadow-card-hover: 0 4px 12px rgba(16, 24, 40, 0.08);
+  background: #F8F8F8;
+  color: #333A46;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(1100px 520px at 12% -6%, rgba(45, 60, 143, 0.10), transparent 60%),
+    radial-gradient(1000px 480px at 96% 4%, rgba(237, 27, 36, 0.09), transparent 55%),
+    radial-gradient(900px 500px at 55% 108%, rgba(250, 246, 238, 0.85), transparent 60%),
+    #F8F8F8;
+  background-attachment: fixed;
+  color: #333A46;
+  font-family: "Plus Jakarta Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F4F5F7;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #C9D0EA;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #2D3C8F;
+}
+
+/* KaTeX math wrappers */
+.katex-display-wrap {
+  display: block;
+  margin: 0.75rem 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.katex-inline-wrap {
+  display: inline;
+}
+
+/* Transitions */
+@layer utilities {
+  .transition-all {
+    transition-property: all;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+  }
+}
+
+/* Skeleton loading */
+@layer components {
+  .skeleton {
+    @apply animate-pulse rounded-lg bg-card-border;
+  }
+}
+
+/* ===== Micro-interactions (exam room & reusable) ===== */
+@keyframes qfade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes qpop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes qtimer-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.75;
+  }
+}
+
+.animate-question-in {
+  animation: qfade-in 0.28s ease-out both;
+}
+
+.animate-option-in {
+  animation: qpop-in 0.22s ease-out both;
+}
+
+.animate-timer-pulse {
+  animation: qtimer-pulse 1.6s ease-in-out infinite;
+}
+
+/* ===== Bottom Navigation (mobile) ===== */
+.bottom-nav-shell {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  padding: 0 12px 12px;
+  pointer-events: none;
+}
+
+.bottom-nav-bar {
+  pointer-events: auto;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+  margin: 0 auto;
+  max-width: 480px;
+  border-radius: 16px;
+  border: 1px solid var(--color-card-border);
+  background: var(--color-card-bg);
+  padding: 8px 6px;
+  box-shadow: var(--shadow-card);
+}
+
+.bottom-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 2px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-align: center;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.bottom-nav-item.active {
+  color: var(--color-brand-primary);
+}
+
+.bottom-nav-item:hover {
+  color: var(--color-brand-primary);
+  background: rgba(45, 60, 143, 0.05);
+}
+
+.bottom-nav-item:focus-visible {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: 2px;
+}
+
+.bottom-nav-item:active {
+  transform: scale(0.96);
+}
+
+/* Ruang konten: beri jarak bawah agar tidak tertutup bottom nav */
+body {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Sembunyikan bottom nav (mobile) saat drawer menu header terbuka,
+   supaya tidak menimpa bagian footer drawer (Ganti Password & Logout). */
+body.drawer-open .bottom-nav-shell {
+  display: none;
+}
