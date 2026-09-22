@@ -188,6 +188,7 @@ def _paket_out(paket: PaketUjian, db: Session, readiness: tuple[int, int, bool] 
         "kategori_nama": kategori_nama,
         "metode_penilaian": paket.metode_penilaian or "biasa",
         "skala_kohort": paket.skala_kohort or "utbk",
+        "izinkan_pilih_mapel": paket.izinkan_pilih_mapel if paket.izinkan_pilih_mapel is not None else True,
         "created_by": paket.created_by,
         "is_archived": paket.is_archived,
         "archived_at": paket.archived_at,
@@ -262,10 +263,21 @@ def _require_paket_owner(paket: PaketUjian, user) -> None:
         raise HTTPException(status_code=403, detail="Hanya pembuat paket yang dapat mengubah paket ini")
 
 
+def _has_locking_attempt(paket_id: int, db: Session) -> bool:
+    # Latihan per-mapel (scoped ke satu bagian, lihat /ujian-siswa/mulai-latihan)
+    # bukan pengerjaan resmi dan tidak boleh mengunci paket dari perubahan.
+    return (
+        db.query(UjianSiswa.id)
+        .filter(UjianSiswa.paket_ujian_id == paket_id, UjianSiswa.latihan_bagian_id.is_(None))
+        .first()
+        is not None
+    )
+
+
 def _ensure_paket_mutable(paket: PaketUjian, db: Session) -> None:
     if paket.is_archived:
         raise HTTPException(status_code=409, detail="Paket telah diarsipkan dan tidak dapat diubah")
-    if db.query(UjianSiswa.id).filter(UjianSiswa.paket_ujian_id == paket.id).first():
+    if _has_locking_attempt(paket.id, db):
         raise HTTPException(status_code=409, detail="Paket sudah memiliki attempt siswa. Clone paket untuk melakukan perubahan")
 
 
@@ -291,6 +303,7 @@ def create_paket_ujian(payload: PaketUjianCreate, db: Session = Depends(get_db),
         kategori=category.kode,
         metode_penilaian=payload.metode_penilaian,
         skala_kohort=payload.skala_kohort or _derive_skala_kohort(category),
+        izinkan_pilih_mapel=payload.izinkan_pilih_mapel,
         created_by=current_user.id,
     )
     db.add(paket)
@@ -402,6 +415,7 @@ def clone_paket_ujian(
         kategori=source.kategori_ref.kode if source.kategori_ref else source.kategori,
         metode_penilaian=source.metode_penilaian or "biasa",
         skala_kohort=source.skala_kohort or "utbk",
+        izinkan_pilih_mapel=source.izinkan_pilih_mapel if source.izinkan_pilih_mapel is not None else True,
         created_by=current_user.id,
     )
     db.add(clone)
@@ -472,6 +486,8 @@ def update_paket_ujian(paket_id: int, payload: PaketUjianUpdate, db: Session = D
         paket.skala_kohort = payload.skala_kohort
     elif not paket.skala_kohort and category is not None:
         paket.skala_kohort = _derive_skala_kohort(category)
+    if payload.izinkan_pilih_mapel is not None:
+        paket.izinkan_pilih_mapel = payload.izinkan_pilih_mapel
     if category is not None:
         paket.kategori_id = category.id
         paket.kategori = category.kode
@@ -489,7 +505,7 @@ def delete_paket_ujian(paket_id: int, db: Session = Depends(get_db), current_use
     _require_paket_owner(paket, current_user)
     if db.query(JadwalUjian.id).filter(JadwalUjian.paket_ujian_id == paket.id).first():
         raise HTTPException(status_code=409, detail="Paket sudah memiliki jadwal dan tidak dapat dihapus. Arsipkan paket sebagai gantinya")
-    if db.query(UjianSiswa.id).filter(UjianSiswa.paket_ujian_id == paket.id).first():
+    if _has_locking_attempt(paket.id, db):
         raise HTTPException(status_code=409, detail="Paket sudah memiliki attempt siswa dan tidak dapat dihapus")
     db.query(PaketSoal).filter(PaketSoal.paket_ujian_id == paket.id).delete(synchronize_session=False)
     db.delete(paket)

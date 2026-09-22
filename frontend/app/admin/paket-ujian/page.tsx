@@ -704,7 +704,7 @@ export default function PaketUjianPage() {
                     {item.jumlah_bagian ?? 0} bagian · {item.jumlah_soal} soal
                   </p>
                   <span className="mt-3 mr-2 inline-block rounded-full bg-brand-primary/10 px-2.5 py-1 text-xs font-semibold text-brand-primary">
-                    {item.metode_penilaian === "kohort" ? `Benchmark Kohort · ${(item.skala_kohort ?? "utbk").toUpperCase()}` : "Nilai Biasa"}
+                    {item.metode_penilaian === "kohort" ? `Benchmark IRT · ${(item.skala_kohort ?? "utbk").toUpperCase()}` : "Nilai Biasa"}
                   </span>
                   <span
                     className={`mt-3 inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${item.siap_dipublikasikan ? "bg-green-50 text-green-700" : "bg-amber-50 text-amber-700"}`}
@@ -735,7 +735,8 @@ export default function PaketUjianPage() {
                  {kategoriLabel(activePaket)} ·{" "}
 
                  {getNama(programList, activePaket.program_id)} · Total durasi{" "}
-                 {activePaket.durasi_menit} menit · {activePaket.metode_penilaian === "kohort" ? `Benchmark Kohort (${(activePaket.skala_kohort ?? "utbk").toUpperCase()})` : "Nilai Biasa"}
+                 {activePaket.durasi_menit} menit · {activePaket.metode_penilaian === "kohort" ? `Benchmark IRT (${(activePaket.skala_kohort ?? "utbk").toUpperCase()})` : "Nilai Biasa"}
+                 {activePaket.tipe === "ujian" && ` · Latihan per mapel: ${activePaket.izinkan_pilih_mapel === false ? "Nonaktif" : "Aktif"}`}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">

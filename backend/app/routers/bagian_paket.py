@@ -10,7 +10,6 @@ from app.models.paket_soal import PaketSoal
 from app.models.paket_ujian import PaketUjian
 from app.models.pelajaran import Pelajaran
 from app.models.soal import Soal
-from app.models.ujian_siswa import UjianSiswa
 from app.schemas.bagian_paket import (
     BagianDurasiUpdate,
     BagianPaketCreate,
@@ -32,7 +31,8 @@ def _get_paket(paket_id: int, db: Session, current_user=None, mutable: bool = Fa
     if mutable:
         if paket.is_archived:
             raise HTTPException(status_code=409, detail="Paket telah diarsipkan")
-        if db.query(UjianSiswa.id).filter(UjianSiswa.paket_ujian_id == paket.id).first():
+        from app.routers.paket_ujian import _has_locking_attempt
+        if _has_locking_attempt(paket.id, db):
             raise HTTPException(status_code=409, detail="Paket sudah memiliki attempt siswa. Clone paket untuk melakukan perubahan")
     return paket
 

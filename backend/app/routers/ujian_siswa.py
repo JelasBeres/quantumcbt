@@ -57,6 +57,16 @@ def authorize_ujian(ujian: UjianSiswa, current_user, db: Session) -> None:
             raise HTTPException(status_code=403, detail="Insufficient permissions")
 
 
+def effective_durasi_menit(ujian: UjianSiswa, paket: PaketUjian) -> int:
+    # Latihan yang di-scope ke satu bagian/mapel memakai durasi bagian itu
+    # sendiri, bukan durasi total paket (yang mencakup semua mapel).
+    if ujian.latihan_bagian_id is not None and ujian.bagian_urutan:
+        bagian = next((b for b in ujian.bagian_urutan if b.get("bagian_id") == ujian.latihan_bagian_id), None)
+        if bagian and bagian.get("durasi_menit"):
+            return bagian["durasi_menit"]
+    return paket.durasi_menit
+
+
 def calculate_time_info(ujian: UjianSiswa, paket: PaketUjian) -> tuple[int, Optional[datetime]]:
     if paket.tipe == "latihan" and ujian.mode_latihan == "drill":
         return -1, None
@@ -64,10 +74,47 @@ def calculate_time_info(ujian: UjianSiswa, paket: PaketUjian) -> tuple[int, Opti
         started_at = utc_now()
     else:
         started_at = ensure_utc(ujian.started_at)
-    finish_at = started_at + timedelta(minutes=paket.durasi_menit)
+    finish_at = started_at + timedelta(minutes=effective_durasi_menit(ujian, paket))
     now = utc_now()
     sisa_waktu_detik = max(0, int((finish_at - now).total_seconds()))
     return sisa_waktu_detik, finish_at
+
+
+def get_bagian_aktif(ujian: UjianSiswa) -> Optional[dict]:
+    if not ujian.bagian_urutan:
+        return None
+    idx = ujian.bagian_aktif or 0
+    if idx < 0 or idx >= len(ujian.bagian_urutan):
+        return None
+    return ujian.bagian_urutan[idx]
+
+
+def is_bagian_terakhir(ujian: UjianSiswa, paket: PaketUjian) -> bool:
+    if paket.tipe != "ujian" or not ujian.bagian_urutan:
+        return True
+    return (ujian.bagian_aktif or 0) >= len(ujian.bagian_urutan) - 1
+
+
+def calculate_display_time_info(ujian: UjianSiswa, paket: PaketUjian) -> tuple[int, Optional[datetime]]:
+    """Sisa waktu yang ditampilkan/diawasi frontend: khusus paket tipe ujian
+    dengan bagian_urutan, ini adalah sisa waktu BAGIAN yang sedang aktif
+    (dikunci ke sisa waktu keseluruhan ujian sebagai batas atas). Paket
+    latihan atau ujian tanpa bagian tetap memakai sisa waktu keseluruhan."""
+    whole_sisa, whole_finish = calculate_time_info(ujian, paket)
+    if whole_sisa == -1:
+        return whole_sisa, whole_finish
+    if paket.tipe != "ujian":
+        return whole_sisa, whole_finish
+    bagian = get_bagian_aktif(ujian)
+    durasi = bagian.get("durasi_menit") if bagian else None
+    if not durasi:
+        return whole_sisa, whole_finish
+    mulai = ensure_utc(ujian.bagian_mulai_at) if ujian.bagian_mulai_at else ensure_utc(ujian.started_at) if ujian.started_at else utc_now()
+    finish_bagian = mulai + timedelta(minutes=durasi)
+    if whole_finish and finish_bagian > whole_finish:
+        finish_bagian = whole_finish
+    sisa = max(0, int((finish_bagian - utc_now()).total_seconds()))
+    return sisa, finish_bagian
 
 
 def get_ujian_status(ujian: UjianSiswa, paket: PaketUjian) -> str:
@@ -92,6 +139,9 @@ def ensure_ujian_active(ujian: UjianSiswa, paket: PaketUjian) -> None:
 
 
 def active_question_ids(ujian: UjianSiswa, paket: PaketUjian) -> list[int]:
+    if paket.tipe == "ujian" and ujian.bagian_urutan:
+        bagian = get_bagian_aktif(ujian)
+        return (bagian or {}).get("soal_ids") or []
     return ujian.soal_urutan or []
 
 
@@ -210,25 +260,41 @@ def start_ujian_siswa(
 @router.post("/mulai-latihan", response_model=UjianSiswaStartOut)
 def start_latihan(payload: LatihanStartRequest, db: Session = Depends(get_db), current_user=Depends(require_roles(["siswa"]))):
     siswa = get_siswa_for_current_user(current_user, db)
-    paket = db.query(PaketUjian).filter(PaketUjian.id == payload.paket_ujian_id, PaketUjian.tipe == "latihan", PaketUjian.is_archived == False).first()
-    if not paket:
+    paket = db.query(PaketUjian).filter(PaketUjian.id == payload.paket_ujian_id, PaketUjian.is_archived == False).first()
+    if not paket or paket.tipe not in ("latihan", "ujian"):
         raise HTTPException(status_code=404, detail="Latihan tidak tersedia")
+    if paket.tipe == "ujian":
+        # Latihan per-mapel dari paket Tryout: harus diizinkan admin, dan wajib
+        # scoped ke satu bagian (bukan pengganti pengerjaan Tryout penuh yang
+        # terikat jadwal & skor kohort).
+        if not paket.izinkan_pilih_mapel:
+            raise HTTPException(status_code=409, detail="Paket ini hanya bisa dikerjakan penuh berurutan, bukan per mapel")
+        if payload.bagian_id is None:
+            raise HTTPException(status_code=400, detail="Pilih mapel untuk latihan dari paket tryout ini")
     if (paket.program_id is not None and paket.program_id != siswa.program_id) or (paket.kelas_id is not None and paket.kelas_id != siswa.kelas_id):
         raise HTTPException(status_code=403, detail="Latihan di luar program atau kelas Anda")
-    existing = db.query(UjianSiswa).filter(UjianSiswa.siswa_id == siswa.id, UjianSiswa.paket_ujian_id == paket.id, UjianSiswa.is_submitted == False, UjianSiswa.jadwal_ujian_id.is_(None), UjianSiswa.mode_latihan == payload.mode).order_by(UjianSiswa.id.desc()).first()
+    bagian_id = payload.bagian_id
+    if bagian_id is not None and not db.query(BagianPaket.id).filter(BagianPaket.id == bagian_id, BagianPaket.paket_ujian_id == paket.id).first():
+        raise HTTPException(status_code=404, detail="Bagian/mapel tidak ditemukan pada latihan ini")
+    existing_query = db.query(UjianSiswa).filter(
+        UjianSiswa.siswa_id == siswa.id, UjianSiswa.paket_ujian_id == paket.id,
+        UjianSiswa.is_submitted == False, UjianSiswa.jadwal_ujian_id.is_(None), UjianSiswa.mode_latihan == payload.mode,
+    )
+    existing_query = existing_query.filter(UjianSiswa.latihan_bagian_id.is_(None)) if bagian_id is None else existing_query.filter(UjianSiswa.latihan_bagian_id == bagian_id)
+    existing = existing_query.order_by(UjianSiswa.id.desc()).first()
     if existing and not is_ujian_expired(existing, paket):
         remaining, finish = calculate_time_info(existing, paket)
         return UjianSiswaStartOut(ujian_siswa_id=existing.id, jadwal_ujian_id=None, soal_urutan=existing.soal_urutan,
             bagian_urutan=existing.bagian_urutan, waktu_mulai=ensure_utc(existing.started_at), waktu_selesai=finish,
-            durasi_menit=paket.durasi_menit, jumlah_soal=len(existing.soal_urutan), sisa_waktu_detik=remaining)
+            durasi_menit=effective_durasi_menit(existing, paket), jumlah_soal=len(existing.soal_urutan), sisa_waktu_detik=remaining)
     if existing:
         existing.is_submitted = True
         existing.finished_at = utc_now()
         db.commit()
-    return _initialize_attempt(db, siswa, paket, mode=payload.mode)
+    return _initialize_attempt(db, siswa, paket, mode=payload.mode, bagian_id=bagian_id)
 
 
-def _initialize_attempt(db: Session, siswa: Siswa, paket: PaketUjian, jadwal_id: int | None = None, mode: str = "latihan"):
+def _initialize_attempt(db: Session, siswa: Siswa, paket: PaketUjian, jadwal_id: int | None = None, mode: str = "latihan", bagian_id: int | None = None):
     # Serialize starting an attempt with automatic approved-revision replacement.
     paket = db.query(PaketUjian).filter(PaketUjian.id == paket.id).with_for_update().first()
     # soal diambil dari relasi PaketSoal (bank soal), bukan filter kolom soal.paket_ujian_id
@@ -238,6 +304,8 @@ def _initialize_attempt(db: Session, siswa: Siswa, paket: PaketUjian, jadwal_id:
         .order_by(PaketSoal.urutan, PaketSoal.id)
         .all()
     )
+    if bagian_id is not None:
+        paket_soal_rows = [r for r in paket_soal_rows if r.bagian_paket_id == bagian_id]
     if not paket_soal_rows:
         raise HTTPException(status_code=400, detail="No soal available for paket ujian")
 
@@ -338,6 +406,7 @@ def _initialize_attempt(db: Session, siswa: Siswa, paket: PaketUjian, jadwal_id:
         soal_urutan=soal_ids,
         opsi_urutan=opsi_urutan_map,
         bagian_urutan=[b.model_dump() for b in bagian_urutan] if bagian_urutan else None,
+        latihan_bagian_id=bagian_id,
     )
     db.add(ujian)
     try:
@@ -381,7 +450,7 @@ def _initialize_attempt(db: Session, siswa: Siswa, paket: PaketUjian, jadwal_id:
         bagian_urutan=bagian_urutan if bagian_urutan else None,
         waktu_mulai=ujian.started_at,
         waktu_selesai=waktu_selesai,
-        durasi_menit=paket.durasi_menit,
+        durasi_menit=effective_durasi_menit(ujian, paket),
         jumlah_soal=len(soal_ids),
         sisa_waktu_detik=sisa_waktu_detik,
     )
@@ -697,11 +766,12 @@ def get_ujian_sisa_waktu(
     paket = db.query(PaketUjian).filter(PaketUjian.id == ujian.paket_ujian_id).first()
     if not paket:
         raise HTTPException(status_code=404, detail="Paket Ujian not found")
-    sisa_waktu_detik, waktu_selesai = calculate_time_info(ujian, paket)
+    sisa_waktu_detik, waktu_selesai = calculate_display_time_info(ujian, paket)
     return {
         "sisa_waktu_detik": sisa_waktu_detik,
         "server_time": datetime.now(timezone.utc),
         "waktu_selesai": waktu_selesai,
+        "bagian_terakhir": is_bagian_terakhir(ujian, paket),
     }
 
 
@@ -759,7 +829,7 @@ def get_ujian_state(
         else:
             jawaban_tersimpan[str(jawaban.soal_id)] = jawaban.jawaban
 
-    sisa_waktu_detik, finish_at = calculate_time_info(ujian, paket)
+    sisa_waktu_detik, finish_at = calculate_display_time_info(ujian, paket)
     bagian_urutan_out: Optional[List[BagianUjianOut]] = None
     if ujian.bagian_urutan:
         bagian_urutan_out = [BagianUjianOut(**b) for b in ujian.bagian_urutan]
@@ -777,9 +847,10 @@ def get_ujian_state(
         bagian_urutan=bagian_urutan_out,
         waktu_mulai=ensure_utc(ujian.started_at),
         waktu_selesai=finish_at,
-        durasi_menit=paket.durasi_menit,
+        durasi_menit=effective_durasi_menit(ujian, paket),
         jumlah_soal=len(ujian.soal_urutan),
         sisa_waktu_detik=sisa_waktu_detik,
+        bagian_terakhir=is_bagian_terakhir(ujian, paket),
     )
 
 
@@ -795,7 +866,7 @@ def advance_section(ujian_id: int, bagian_aktif: int, db: Session = Depends(get_
         raise HTTPException(status_code=409, detail="Bagian aktif sudah berubah, muat ulang ujian")
     if bagian_aktif + 1 >= len(ujian.bagian_urutan):
         raise HTTPException(status_code=409, detail="Bagian terakhir, kumpulkan ujian")
-    updated = db.query(UjianSiswa).filter(UjianSiswa.id == ujian_id, UjianSiswa.bagian_aktif == bagian_aktif).update({"bagian_aktif": bagian_aktif + 1})
+    updated = db.query(UjianSiswa).filter(UjianSiswa.id == ujian_id, UjianSiswa.bagian_aktif == bagian_aktif).update({"bagian_aktif": bagian_aktif + 1, "bagian_mulai_at": utc_now()})
     if not updated:
         db.rollback()
         raise HTTPException(status_code=409, detail="Bagian aktif sudah berubah")

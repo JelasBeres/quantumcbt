@@ -77,6 +77,7 @@ export type PaketUjian = {
   kategori_nama?: string | null;
   metode_penilaian?: "biasa" | "kohort";
   skala_kohort?: "utbk" | "tka";
+  izinkan_pilih_mapel?: boolean;
   jumlah_bagian?: number;
   jumlah_bagian_kosong?: number;
   siap_dipublikasikan?: boolean;

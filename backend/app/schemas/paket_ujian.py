@@ -29,6 +29,7 @@ class PaketUjianCreate(BaseModel):
     kategori: Optional[str] = None
     metode_penilaian: Literal["biasa", "kohort"] = "biasa"
     skala_kohort: Optional[Literal["utbk", "tka"]] = None
+    izinkan_pilih_mapel: bool = True
 
     @model_validator(mode="after")
     def validate_package(self):
@@ -53,6 +54,7 @@ class PaketUjianUpdate(BaseModel):
     kategori: Optional[str] = None
     metode_penilaian: Optional[Literal["biasa", "kohort"]] = None
     skala_kohort: Optional[Literal["utbk", "tka"]] = None
+    izinkan_pilih_mapel: Optional[bool] = None
 
 
 class PaketUjianOut(BaseModel):
@@ -73,6 +75,7 @@ class PaketUjianOut(BaseModel):
     kategori_nama: Optional[str] = None
     metode_penilaian: Literal["biasa", "kohort"] = "biasa"
     skala_kohort: Literal["utbk", "tka"] = "utbk"
+    izinkan_pilih_mapel: bool = True
     jumlah_bagian: int = 0
     jumlah_bagian_kosong: int = 0
     siap_dipublikasikan: bool = False

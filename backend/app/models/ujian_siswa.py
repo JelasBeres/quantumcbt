@@ -22,3 +22,5 @@ class UjianSiswa(Base):
     bagian_urutan = Column(JSON, nullable=True)
     mode_latihan = Column(String(20), nullable=True)
     bagian_aktif = Column(Integer, nullable=False, default=0, server_default="0")
+    bagian_mulai_at = Column(DateTime(timezone=True), nullable=True)
+    latihan_bagian_id = Column(Integer, nullable=True)

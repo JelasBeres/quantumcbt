@@ -19,7 +19,19 @@ type Riwayat = {
   nama_grup_tryout?: string | null;
 };
 
-type StatusRingkasan = { benar: number; salah: number; kosong: number };
+type StatusRingkasan = { benar: number; salah: number; kosong: number; menunggu: number };
+
+// Samakan logika status per soal dengan halaman hasil, supaya benar+salah+kosong+menunggu selalu = total soal.
+function statusSoal(soal: any): "benar" | "salah" | "kosong" | "menunggu" {
+  const kosong = soal.jawaban_user == null || (Array.isArray(soal.jawaban_user) && soal.jawaban_user.length === 0);
+  if (soal.tipe === "esai" || soal.tipe === "isian") {
+    if (kosong) return "kosong";
+    if (soal.is_correct != null) return soal.is_correct ? "benar" : "salah";
+    return "menunggu";
+  }
+  if (kosong) return "kosong";
+  return soal.is_correct ? "benar" : "salah";
+}
 
 function formatTanggal(value?: string | null): string {
   if (!value) return "-";
@@ -47,19 +59,15 @@ export default function RiwayatPage() {
             try {
               const detail = await api.get(`/hasil-ujian/ujian/${item.ujian_siswa_id}/detail`);
               const soal: any[] = detail.data?.soal ?? [];
-              summaries[item.ujian_siswa_id] = {
-                benar: soal.filter((s) => {
-                  if (s.jawaban_user == null) return false;
-                  return s.is_correct === true;
-                }).length,
-                salah: soal.filter((s) => {
-                  if (s.jawaban_user == null) return false;
-                  return s.is_correct === false;
-                }).length,
-                kosong: soal.filter((s) => s.jawaban_user == null).length
-              };
+              summaries[item.ujian_siswa_id] = soal.reduce(
+                (acc, s) => {
+                  acc[statusSoal(s)] += 1;
+                  return acc;
+                },
+                { benar: 0, salah: 0, kosong: 0, menunggu: 0 } as StatusRingkasan
+              );
             } catch {
-              summaries[item.ujian_siswa_id] = { benar: 0, salah: 0, kosong: 0 };
+              summaries[item.ujian_siswa_id] = { benar: 0, salah: 0, kosong: 0, menunggu: 0 };
             }
           })
         );
@@ -79,9 +87,7 @@ export default function RiwayatPage() {
     <main className="min-h-screen bg-transparent px-4 py-8 sm:px-6">
       <section className="mx-auto max-w-5xl space-y-6">
         <div>
-          <p className="text-sm font-semibold text-brand-primary">Ujian Siswa</p>
           <h1 className="mt-1 text-3xl font-bold text-heading-dark">Riwayat Pengerjaan</h1>
-          <p className="mt-1 text-sm text-text-muted">Setiap ujian yang pernah kamu selesaikan tersimpan di sini.</p>
         </div>
         {error && <div className="rounded-input border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
         {loading ? (
@@ -113,10 +119,11 @@ export default function RiwayatPage() {
                           <span className="font-semibold text-green-700">✓ {ringkas.benar} benar</span>
                           <span className="font-semibold text-red-700">× {ringkas.salah} salah</span>
                           <span className="font-semibold text-text-muted">○ {ringkas.kosong} kosong</span>
+                          {ringkas.menunggu > 0 && <span className="font-semibold text-amber-700">⏳ {ringkas.menunggu} menunggu</span>}
                         </div>
                       )}
                       <div className="text-right">
-                        <p className="text-xs text-text-muted">{item.metode_penilaian === "kohort" ? `Benchmark Kohort · ${(item.skala ?? "utbk").toUpperCase()}` : "Nilai Biasa"}</p>
+                        <p className="text-xs text-text-muted">{item.metode_penilaian === "kohort" ? `Benchmark IRT · ${(item.skala ?? "utbk").toUpperCase()}` : "Nilai Biasa"}</p>
                         <p className="text-2xl font-bold text-brand-primary">{item.skor != null ? item.skor.toFixed(item.metode_penilaian === "kohort" ? 0 : 1) : "Belum tersedia"}</p>
                         {item.metode_penilaian === "kohort" && item.kohort_status === "sementara" && <p className="text-xs font-semibold text-amber-700">Sementara</p>}
                       </div>

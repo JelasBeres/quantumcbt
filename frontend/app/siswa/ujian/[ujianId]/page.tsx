@@ -36,6 +36,7 @@ type ExamState = {
   sisa_waktu_detik: number;
   waktu_selesai?: string | null;
   waktu_mulai?: string | null;
+  bagian_terakhir: boolean;
 };
 
 type BagianUjian = {
@@ -172,6 +173,27 @@ export default function ExamRoomPage() {
     }
   }, [submitExam, ujianId]);
 
+  // Lanjut ke bagian/mapel berikutnya (dipanggil manual atau otomatis saat waktu bagian habis).
+  // Tidak bisa kembali ke bagian sebelumnya setelah pindah.
+  const advanceSection = useCallback(async (currentBagianAktif: number) => {
+    try {
+      const { data } = await api.post<ExamState>(`/ujian-siswa/${ujianId}/lanjut-bagian`, null, {
+        params: { bagian_aktif: currentBagianAktif },
+      });
+      setState(data);
+      waktuSelesaiRef.current = performance.now() + data.sisa_waktu_detik * 1000;
+      setRemaining(data.sisa_waktu_detik);
+      const firstUnanswered = data.soal_urutan.findIndex((id) => {
+        if (!data.soal_aktif_ids.includes(id)) return false;
+        const v = data.jawaban_tersimpan[String(id)];
+        return v == null || (Array.isArray(v) && v.length === 0);
+      });
+      await loadQuestion(firstUnanswered >= 0 ? firstUnanswered + 1 : data.soal_urutan.indexOf(data.soal_aktif_ids[0]) + 1);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || "Gagal lanjut ke bagian berikutnya.");
+    }
+  }, [loadQuestion, ujianId]);
+
   useEffect(() => {
     api.get(`/ujian-siswa/${ujianId}/state`)
       .then((response) => {
@@ -225,25 +247,30 @@ export default function ExamRoomPage() {
       try {
         const response = await api.get(`/ujian-siswa/${ujianId}/sisa-waktu`);
         const sisa = response.data.sisa_waktu_detik as number;
+        const bagianTerakhir = response.data.bagian_terakhir as boolean;
         // server otoritatif, tapi tetap jangan pernah menaikkan melebihi nilai lokal
         if (sisa <= 0) {
-          await submitExam(true);
+          if (bagianTerakhir) await submitExam(true);
+          else await advanceSection(state.bagian_aktif);
           return;
         }
         waktuSelesaiRef.current = performance.now() + sisa * 1000;
         setRemaining(Math.max(0, sisa));
+        setState((prev) => (prev && prev.bagian_terakhir !== bagianTerakhir ? { ...prev, bagian_terakhir: bagianTerakhir } : prev));
       } catch {}
     }, 10000);
     return () => {
       window.clearInterval(localTimer);
       window.clearInterval(serverTimer);
     };
-  }, [state, ujianId, submitExam]);
+  }, [state, ujianId, submitExam, advanceSection]);
 
   useEffect(() => {
-    if (state && state.mode_latihan !== "drill" && remaining === 0) void submitExam(true);
+    if (!state || state.mode_latihan === "drill" || remaining !== 0) return;
+    if (state.bagian_terakhir) void submitExam(true);
+    else void advanceSection(state.bagian_aktif);
     // Failed requests retry on the server timer, not every submitting toggle.
-  }, [remaining, state, submitExam]);
+  }, [remaining, state, submitExam, advanceSection]);
 
   useEffect(() => {
     const onVisibility = () => {
@@ -428,6 +455,14 @@ export default function ExamRoomPage() {
   const totalSoal = state?.jumlah_soal || 0;
   const isLastQuestion = nomor >= totalSoal;
   const sectionIds = state?.soal_aktif_ids ?? [];
+  const bagianUrutan = state?.bagian_urutan ?? [];
+  // Nomor soal pada bagian yang belum dicapai disembunyikan dari strip navigasi
+  // (bukan cuma di-disable) supaya tidak terlihat seolah "terkunci padahal ada".
+  const visibleQuestionIds = bagianUrutan.length > 1
+    ? new Set(bagianUrutan.slice(0, (state?.bagian_aktif ?? 0) + 1).flatMap((b) => b.soal_ids))
+    : null;
+  const isLastQuestionInSection = sectionIds.length > 0 && sectionIds[sectionIds.length - 1] === (state?.soal_urutan[nomor - 1] ?? -1);
+  const canAdvanceSection = isLastQuestionInSection && !isLastQuestion && state?.bagian_terakhir === false;
   const progress = totalSoal > 0 ? (answered / totalSoal) * 100 : 0;
 
   const soalStateCls = (soalId: number, index: number) => {
@@ -470,14 +505,23 @@ export default function ExamRoomPage() {
           {/* Kanan: timer */}
           <div className="flex w-1/3 items-center justify-end gap-2">
             <div
-              className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 tabular-nums transition-colors duration-300 ${
+              className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 tabular-nums transition-colors duration-300 sm:gap-2 sm:px-4 sm:py-2 ${
                 state?.mode_latihan !== "drill" && remaining <= 300
                   ? "animate-timer-pulse border-cta-alt bg-cta text-heading-light"
                   : "border-white/20 bg-white/10 text-heading-light"
               }`}
             >
-              <Clock3 className="h-4 w-4" aria-hidden="true" />
-              <span className="text-sm font-bold sm:text-base">{state?.mode_latihan === "drill" ? "Tanpa timer" : `${minutes}:${seconds}`}</span>
+              <Clock3 className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden="true" />
+              <span className="whitespace-nowrap text-xs font-bold sm:text-sm md:text-base">
+                {state?.mode_latihan === "drill" ? (
+                  <>
+                    <span className="sm:hidden">Bebas</span>
+                    <span className="hidden sm:inline">Tanpa timer</span>
+                  </>
+                ) : (
+                  `${minutes}:${seconds}`
+                )}
+              </span>
             </div>
           </div>
         </div>
@@ -496,20 +540,23 @@ export default function ExamRoomPage() {
           <LayoutGrid className="hidden h-4 w-4 shrink-0 text-text-muted sm:block" aria-hidden="true" />
           <div
             ref={soalNavRef}
-            className="flex flex-1 items-center justify-center gap-1.5 overflow-x-auto px-2 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="relative flex flex-1 items-center gap-1.5 overflow-x-auto px-2 py-2 before:ml-auto before:content-[''] after:mr-auto after:content-[''] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
-            {state?.soal_urutan.map((soalId, index) => (
-              <button
-                key={soalId}
-                onClick={() => goToQuestion(index + 1)}
-                disabled={loading || !sectionIds.includes(soalId)}
-                aria-label={`Soal nomor ${index + 1}`}
-                aria-current={nomor === index + 1 ? "true" : undefined}
-                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border text-sm font-semibold transition-all duration-200 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 disabled:opacity-60 ${soalStateCls(soalId, index)}`}
-              >
-                {index + 1}
-              </button>
-            ))}
+            {state?.soal_urutan.map((soalId, index) => {
+              if (visibleQuestionIds && !visibleQuestionIds.has(soalId)) return null;
+              return (
+                <button
+                  key={soalId}
+                  onClick={() => goToQuestion(index + 1)}
+                  disabled={loading || !sectionIds.includes(soalId)}
+                  aria-label={`Soal nomor ${index + 1}`}
+                  aria-current={nomor === index + 1 ? "true" : undefined}
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border text-sm font-semibold transition-all duration-200 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 disabled:opacity-60 ${soalStateCls(soalId, index)}`}
+                >
+                  {index + 1}
+                </button>
+              );
+            })}
           </div>
           <div className="ml-auto hidden shrink-0 items-center gap-3 text-xs text-text-muted md:flex">
             <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-blue-600" /> Terjawab {answered}</span>
@@ -520,7 +567,7 @@ export default function ExamRoomPage() {
       </div>
 
       {/* ============ MAIN CONTENT ============ */}
-      <div className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6">
+      <div className="mx-auto w-full max-w-7xl flex-1 px-4 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] pt-6 sm:px-6">
         {error && (
           <div className="mb-4 flex items-center gap-2 rounded-card border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             <AlertTriangle className="h-4 w-4 shrink-0" />
@@ -589,8 +636,36 @@ export default function ExamRoomPage() {
                 />
               </div>
             ) : question.tipe === "benar_salah" && question.pernyataan && question.pernyataan.length > 0 ? (
-              <div key={question.soal_id} className="animate-question-in overflow-x-auto">
-                <table className="w-full min-w-[28rem] border-collapse text-sm"><thead><tr><th className="border-b border-card-border px-3 py-2 text-left">Pernyataan</th><th className="border-b border-card-border px-3 py-2">{question.label_benar || "Benar"}</th><th className="border-b border-card-border px-3 py-2">{question.label_salah || "Salah"}</th></tr></thead><tbody>{question.pernyataan.map((statement) => { const selectedValue = statementAnswers.find((item) => item.pernyataan_id === statement.pernyataan_id)?.jawaban; return <tr key={statement.pernyataan_id}><td className="border-b border-card-border px-3 py-3"><MathContent className="prose prose-sm max-w-none" html={statement.teks} /></td>{[true, false].map((value) => <td key={String(value)} className="border-b border-card-border px-3 py-3 text-center"><input type="radio" name={`statement-${statement.pernyataan_id}`} checked={selectedValue === value} onChange={() => selectStatementAnswer(statement.pernyataan_id, value)} disabled={saving || submitting} /></td>)}</tr>; })}</tbody></table>
+              <div key={question.soal_id} className="animate-question-in space-y-3">
+                {question.pernyataan.map((statement, index) => {
+                  const selectedValue = statementAnswers.find((item) => item.pernyataan_id === statement.pernyataan_id)?.jawaban;
+                  return (
+                    <div
+                      key={statement.pernyataan_id}
+                      style={{ animationDelay: `${index * 45}ms` }}
+                      className="animate-option-in rounded-input border border-card-border bg-card-bg p-4"
+                    >
+                      <MathContent className="prose prose-sm max-w-none text-body-dark prose-p:text-body-dark" html={statement.teks} />
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        {[true, false].map((value) => (
+                          <button
+                            key={String(value)}
+                            type="button"
+                            onClick={() => selectStatementAnswer(statement.pernyataan_id, value)}
+                            disabled={saving || submitting}
+                            className={`rounded-input border px-3 py-2.5 text-sm font-semibold transition-all duration-200 active:scale-[0.97] disabled:opacity-60 disabled:active:scale-100 ${
+                              selectedValue === value
+                                ? "border-brand-primary bg-brand-primary text-heading-light"
+                                : "border-card-border bg-neutral text-body-dark hover:border-brand-primary hover:bg-brand-primary/5"
+                            }`}
+                          >
+                            {value ? (question.label_benar || "Benar") : (question.label_salah || "Salah")}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             ) : isOpsiType(question.tipe) ? (
               <div key={question.soal_id} className="animate-question-in space-y-3">
@@ -664,7 +739,7 @@ export default function ExamRoomPage() {
       </div>
 
       {/* ============ BOTTOM NAVIGATION ============ */}
-      <footer className="sticky bottom-0 z-20 border-t border-card-border bg-card-bg">
+      <footer className="fixed inset-x-0 bottom-0 z-20 border-t border-card-border bg-card-bg pb-[env(safe-area-inset-bottom,0px)]">
         <div className="mx-auto flex w-full max-w-md items-center justify-center gap-2 px-3 py-3">
           <div className="w-28 sm:w-32">
             <Button
@@ -697,7 +772,24 @@ export default function ExamRoomPage() {
           </Button>
 
           <div className="flex w-28 justify-end sm:w-32">
-            {!isLastQuestion ? (
+            {canAdvanceSection ? (
+              <Button
+                disabled={loading || submitting}
+                onClick={async () => {
+                  const confirmed = await showConfirm({
+                    title: "Lanjut ke Bagian Berikutnya",
+                    description: "Setelah lanjut, kamu tidak bisa kembali ke mapel ini lagi. Yakin ingin lanjut?",
+                    confirmLabel: "Lanjut",
+                  });
+                  if (confirmed && state) await advanceSection(state.bagian_aktif);
+                }}
+                className="w-full transition-all duration-200 active:scale-95"
+              >
+                <span className="hidden sm:inline">Lanjut Bagian</span>
+                <span className="sm:hidden">Lanjut</span>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            ) : !isLastQuestion ? (
               <Button
                 disabled={loading || submitting}
                 onClick={() => goToQuestion(nomor + 1)}

@@ -54,6 +54,7 @@ class UjianSiswaStartOut(BaseModel):
 class LatihanStartRequest(BaseModel):
     paket_ujian_id: int
     mode: Literal["latihan", "drill"] = "latihan"
+    bagian_id: Optional[int] = None
 
 
 class JawabanPernyataan(BaseModel):
@@ -124,3 +125,4 @@ class UjianSiswaStateOut(BaseModel):
     durasi_menit: int
     jumlah_soal: int
     sisa_waktu_detik: int
+    bagian_terakhir: bool = True

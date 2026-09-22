@@ -214,7 +214,7 @@ export default function HasilDetailPage() {
   return (
     <main className="min-h-screen bg-transparent">
       {/* ===== TOP BAR: back + judul + posisi soal (fixed, semua breakpoint) ===== */}
-      <div className="fixed inset-x-0 top-16 z-30 border-b border-card-border bg-card-bg">
+      <div className="fixed inset-x-0 top-[var(--st-header-h)] z-30 border-b border-card-border bg-card-bg">
         <div className="mx-auto flex h-[3.25rem] w-full max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
           <Link
             href="/siswa/riwayat"
@@ -231,7 +231,7 @@ export default function HasilDetailPage() {
       </div>
 
       {/* ===== NAVIGATOR NOMOR SOAL (mobile/tablet saja) ===== */}
-      <div className="fixed inset-x-0 top-[7.25rem] z-30 border-b border-card-border bg-card-bg lg:hidden">
+      <div className="fixed inset-x-0 top-[calc(var(--st-header-h)+3.25rem)] z-30 border-b border-card-border bg-card-bg lg:hidden">
         <div className="mx-auto flex h-[3.5rem] w-full max-w-7xl items-center gap-2 px-4 sm:px-6">
           <span className="shrink-0 text-[11px] font-bold uppercase tracking-wider text-text-muted">Soal</span>
           <div ref={navStripRef} className="flex items-center gap-1.5 overflow-x-auto px-1 py-1" style={{ scrollbarWidth: "thin" }}>
@@ -260,108 +260,33 @@ export default function HasilDetailPage() {
       </div>
 
       {/* Padding atas mobile mencakup top bar + navigator; desktop hanya top bar */}
-      <div className="mx-auto max-w-7xl px-4 pb-[calc(10rem+env(safe-area-inset-bottom,0px))] pt-[11.25rem] sm:px-6 md:pb-28 lg:pt-[7.25rem]">
+      <div className="mx-auto max-w-7xl px-4 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] pt-[calc(6.75rem+0.75rem)] sm:px-6 lg:pb-28 lg:pt-[calc(3.25rem+1.5rem)]">
         <div className="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)_260px] lg:items-start">
 
-          {/* ===== KIRI: SKOR & RINGKASAN ===== */}
-          <aside className="hidden lg:order-1 lg:sticky lg:top-[11.25rem] lg:block lg:self-start">
-            <div className="rounded-card border border-card-border bg-card-bg p-5 shadow-card">
-              <div className="flex flex-col items-center text-center">
-                <div className="relative flex h-28 w-28 items-center justify-center">
-                  <svg className="h-28 w-28 -rotate-90" viewBox="0 0 120 120">
-                    <circle cx="60" cy="60" r="52" fill="none" stroke="#E5E7EB" strokeWidth="10" />
-                    <circle
-                      cx="60" cy="60" r="52" fill="none"
-                      stroke={skorPembanding != null && skorPembanding >= 80 ? "#1E7A4D" : skorPembanding != null && skorPembanding >= 60 ? "#D97706" : "#C0392B"}
-                      strokeWidth="10" strokeLinecap="round"
-                      strokeDasharray={`${(skorPersen / 100) * 326.7} 326.7`}
-                    />
-                  </svg>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-3xl font-extrabold text-heading-dark">{skor != null ? skorBulat : "-"}</span>
-                  </div>
-                </div>
-                <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-text-muted">{isCohort ? `Benchmark Kohort · ${(meta?.skala ?? "utbk").toUpperCase()}` : "Nilai Biasa"}</p>
-                {isCohort && <p className="mt-1 text-xs text-text-muted">Skor mentah {meta?.skor_mentah ?? "-"} · {meta?.kohort_status === "final" ? "Final" : meta?.kohort_status === "kosong" ? "Belum tersedia" : "Sementara"}</p>}
-                <p className="mt-2 text-sm font-medium text-body-dark">{messageByScore(skorPembanding)}</p>
-              </div>
-
-              <div className="my-4 border-t border-card-border" />
-
-              <p className="text-[11px] font-bold uppercase tracking-wider text-text-muted">Ringkasan</p>
-              <div className="mt-2 space-y-2">
-                <div className="flex items-center justify-between rounded-input bg-blue-50 px-3 py-2">
-                  <span className="flex items-center gap-2 text-sm text-blue-800">
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-white"><Check className="h-3 w-3" /></span>
-                    Benar
-                  </span>
-                  <span className="text-sm font-bold text-blue-800">{jumlahBenar}</span>
-                </div>
-                <div className="flex items-center justify-between rounded-input bg-red-50 px-3 py-2">
-                  <span className="flex items-center gap-2 text-sm text-red-700">
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-white"><X className="h-3 w-3" /></span>
-                    Salah
-                  </span>
-                  <span className="text-sm font-bold text-red-700">{jumlahSalah}</span>
-                </div>
-                <div className="flex items-center justify-between rounded-input bg-neutral px-3 py-2">
-                  <span className="flex items-center gap-2 text-sm text-text-muted">
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-gray-400 text-white"><X className="h-3 w-3" /></span>
-                    Kosong
-                  </span>
-                  <span className="text-sm font-bold text-text-muted">{jumlahKosong}</span>
-                </div>
-              </div>
-
-              <div className="my-4 border-t border-card-border" />
-
-              <p className="text-[11px] font-bold uppercase tracking-wider text-text-muted">Detail</p>
-              <div className="mt-2 space-y-1.5 text-xs text-body-dark">
-                <p className="flex justify-between"><span>Total soal</span><span className="font-semibold text-heading-dark">{totalSoal}</span></p>
-                <p className="flex justify-between"><span>Selesai</span><span className="font-semibold text-heading-dark">{formatTanggal(detail?.soal.length ? hasil.calculated_at : null)}</span></p>
-              </div>
-
-              {meta?.kohort_status === "sementara" && (
-                <p className="mt-4 rounded-md bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
-                  Benchmark Kohort masih sementara karena peserta kurang dari 5 atau koreksi esai belum selesai.
-                </p>
-              )}
-              {hasil.skor_per_pelajaran_json?._meta?.menunggu_koreksi && (
-                <p className="mt-4 rounded-md bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
-                  Nilai sementara. Ada jawaban yang masih menunggu koreksi guru.
-                </p>
-              )}
+          {/* ===== RINGKASAN SKOR (mobile/tablet; di desktop ada di panel kiri) ===== */}
+          <div className="flex items-center gap-4 rounded-card border border-card-border bg-card-bg p-4 shadow-card lg:hidden">
+            <div className="flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-full border-4 border-brand-primary">
+              <span className="text-xl font-extrabold text-heading-dark">{skor != null ? skorBulat : "-"}</span>
             </div>
-
-            <div className="mt-4 rounded-card border border-card-border bg-card-bg p-4 shadow-card">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-text-muted">Rincian per Pelajaran</p>
-              {hasil.skor_per_pelajaran_json && Object.keys(hasil.skor_per_pelajaran_json).filter((k) => k !== "_meta").length > 0 ? (
-                <div className="mt-2 space-y-2">
-                  {Object.entries(hasil.skor_per_pelajaran_json).filter(([key]) => key !== "_meta").map(([pelajaran, item]) => {
-                    const d = item as Record<string, unknown>;
-                    return (
-                      <div key={pelajaran} className="rounded-input bg-neutral p-2.5">
-                        <p className="text-xs font-semibold text-heading-dark">{String(d.nama ?? pelajaran)}</p>
-                        <p className="mt-0.5 text-xs text-text-muted">
-                          {String(d.jumlah_benar ?? 0)} benar Â· {String(d.jumlah_soal ?? 0)} soal
-                          <span className="ml-1 font-semibold text-heading-dark">{String(d.skor ?? 0)}</span>
-                        </p>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="mt-2 text-xs text-text-muted">Tidak tersedia.</p>
-              )}
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-text-muted">Nilai</p>
+              <div className="mt-1.5 flex flex-wrap gap-2 text-xs font-semibold">
+                <span className="rounded-md bg-blue-50 px-2 py-1 text-blue-800">Benar {jumlahBenar}</span>
+                <span className="rounded-md bg-red-50 px-2 py-1 text-red-700">Salah {jumlahSalah}</span>
+                <span className="rounded-md bg-neutral px-2 py-1 text-text-muted">Kosong {jumlahKosong}</span>
+              </div>
             </div>
-          </aside>
+          </div>
+
+          {/* ===== KIRI: placeholder lebar grid saja; isi aslinya di panel fixed di bawah ===== */}
+          <aside className="hidden lg:order-1 lg:block" aria-hidden="true" />
 
           {/* ===== TENGAH: REVIEW SOAL ===== */}
           <section className="order-1 min-w-0 lg:order-2">
             {soalAktif ? (
               <div className="rounded-card border border-card-border bg-card-bg shadow-card">
                 {/* Bar info soal â€” statis, terpisah dari isi soal */}
-                <div className="sticky top-[11.25rem] z-20 flex flex-wrap items-center justify-between gap-2 rounded-t-card border-b border-card-border bg-card-bg px-5 py-3.5">
+                <div className="sticky top-[calc(var(--st-header-h)+6.75rem)] z-20 lg:top-[calc(var(--st-header-h)+3.25rem)] flex flex-wrap items-center justify-between gap-2 rounded-t-card border-b border-card-border bg-card-bg px-5 py-3.5">
                   <div className="flex items-center gap-3">
                     <h2 className="text-sm font-bold text-heading-dark">Soal #{soalAktif.nomor}</h2>
                     <span className="text-xs text-text-muted">{labelTipeSoal(soalAktif.tipe)}</span>
@@ -384,7 +309,21 @@ export default function HasilDetailPage() {
                   <MathContent className="prose prose-sm max-w-none" html={soalAktif.teks_soal} />
 
                   {soalAktif.tipe === "benar_salah" && soalAktif.pernyataan && soalAktif.pernyataan.length > 0 && (
-                    <div className="overflow-x-auto"><table className="w-full min-w-[36rem] border-collapse text-sm"><thead><tr><th className="border-b border-card-border px-3 py-2 text-left">Pernyataan</th><th className="border-b border-card-border px-3 py-2">Jawaban Anda</th><th className="border-b border-card-border px-3 py-2">Kunci</th><th className="border-b border-card-border px-3 py-2">Status</th></tr></thead><tbody>{soalAktif.pernyataan.map((row) => { const label = (value: boolean) => value ? soalAktif.label_benar || "Benar" : soalAktif.label_salah || "Salah"; return <tr key={row.pernyataan_id}><td className="border-b border-card-border px-3 py-3"><MathContent className="prose prose-sm max-w-none" html={row.teks} /></td><td className="border-b border-card-border px-3 py-3 text-center">{row.jawaban_user == null ? "-" : label(row.jawaban_user)}</td><td className="border-b border-card-border px-3 py-3 text-center">{label(row.jawaban_benar)}</td><td className={`border-b border-card-border px-3 py-3 text-center font-semibold ${row.is_correct ? "text-blue-700" : "text-red-700"}`}>{row.is_correct ? "Benar" : "Salah"}</td></tr>; })}</tbody></table></div>
+                    <div className="space-y-2.5">
+                      {soalAktif.pernyataan.map((row) => {
+                        const label = (value: boolean) => value ? soalAktif.label_benar || "Benar" : soalAktif.label_salah || "Salah";
+                        return (
+                          <div key={row.pernyataan_id} className={`rounded-input border p-3 ${row.is_correct ? "border-blue-200 bg-blue-50" : "border-red-200 bg-red-50"}`}>
+                            <MathContent className="prose prose-sm max-w-none" html={row.teks} />
+                            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+                              <span className={`font-semibold ${row.is_correct ? "text-blue-700" : "text-red-700"}`}>{row.is_correct ? "Benar" : "Salah"}</span>
+                              <span className="text-text-muted">Jawabanmu: <strong className="font-semibold text-body-dark">{row.jawaban_user == null ? "-" : label(row.jawaban_user)}</strong></span>
+                              <span className="text-text-muted">Kunci: <strong className="font-semibold text-body-dark">{label(row.jawaban_benar)}</strong></span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   )}
 
                   {(soalAktif.tipe === "pilihan_ganda" || (soalAktif.tipe === "benar_salah" && !soalAktif.pernyataan?.length) || soalAktif.tipe === "pilihan_lebih_dari_satu") && (
@@ -481,8 +420,112 @@ export default function HasilDetailPage() {
             )}
           </section>
 
-          {/* ===== KANAN: GRID NAVIGASI SOAL (desktop saja) ===== */}
-          <aside className="hidden lg:sticky lg:top-[11.25rem] lg:order-3 lg:block lg:self-start">
+          {/* ===== KANAN: placeholder lebar grid saja; isi aslinya di panel fixed di bawah ===== */}
+          <aside className="hidden lg:order-3 lg:block" aria-hidden="true" />
+        </div>
+      </div>
+
+      {/* ===== PANEL KIRI & KANAN (fixed, tidak ikut scroll konten soal; masing-masing scroll internal) ===== */}
+      <div className="pointer-events-none fixed inset-x-0 top-[calc(var(--st-header-h)+3.25rem+1rem)] bottom-20 z-20 hidden lg:block">
+        <div className="mx-auto grid h-full max-w-7xl gap-6 px-4 sm:px-6 lg:grid-cols-[240px_minmax(0,1fr)_260px]">
+          {/* KIRI: SKOR & RINGKASAN â€” scrollbar disembunyikan */}
+          <div className="pointer-events-auto h-full overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="rounded-card border border-card-border bg-card-bg p-5 shadow-card">
+              <div className="flex flex-col items-center text-center">
+                <div className="relative flex h-28 w-28 items-center justify-center">
+                  <svg className="h-28 w-28 -rotate-90" viewBox="0 0 120 120">
+                    <circle cx="60" cy="60" r="52" fill="none" stroke="#E5E7EB" strokeWidth="10" />
+                    <circle
+                      cx="60" cy="60" r="52" fill="none"
+                      stroke={skorPembanding != null && skorPembanding >= 80 ? "#1E7A4D" : skorPembanding != null && skorPembanding >= 60 ? "#D97706" : "#C0392B"}
+                      strokeWidth="10" strokeLinecap="round"
+                      strokeDasharray={`${(skorPersen / 100) * 326.7} 326.7`}
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-3xl font-extrabold text-heading-dark">{skor != null ? skorBulat : "-"}</span>
+                  </div>
+                </div>
+                <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-text-muted">{isCohort ? `Benchmark IRT · ${(meta?.skala ?? "utbk").toUpperCase()}` : "Nilai Biasa"}</p>
+                {isCohort && <p className="mt-1 text-xs text-text-muted">Skor mentah {meta?.skor_mentah ?? "-"} · {meta?.kohort_status === "final" ? "Final" : meta?.kohort_status === "kosong" ? "Belum tersedia" : "Sementara"}</p>}
+                <p className="mt-2 text-sm font-medium text-body-dark">{messageByScore(skorPembanding)}</p>
+              </div>
+
+              <div className="my-4 border-t border-card-border" />
+
+              <p className="text-[11px] font-bold uppercase tracking-wider text-text-muted">Ringkasan</p>
+              <div className="mt-2 space-y-2">
+                <div className="flex items-center justify-between rounded-input bg-blue-50 px-3 py-2">
+                  <span className="flex items-center gap-2 text-sm text-blue-800">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-white"><Check className="h-3 w-3" /></span>
+                    Benar
+                  </span>
+                  <span className="text-sm font-bold text-blue-800">{jumlahBenar}</span>
+                </div>
+                <div className="flex items-center justify-between rounded-input bg-red-50 px-3 py-2">
+                  <span className="flex items-center gap-2 text-sm text-red-700">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-white"><X className="h-3 w-3" /></span>
+                    Salah
+                  </span>
+                  <span className="text-sm font-bold text-red-700">{jumlahSalah}</span>
+                </div>
+                <div className="flex items-center justify-between rounded-input bg-neutral px-3 py-2">
+                  <span className="flex items-center gap-2 text-sm text-text-muted">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-gray-400 text-white"><X className="h-3 w-3" /></span>
+                    Kosong
+                  </span>
+                  <span className="text-sm font-bold text-text-muted">{jumlahKosong}</span>
+                </div>
+              </div>
+
+              <div className="my-4 border-t border-card-border" />
+
+              <p className="text-[11px] font-bold uppercase tracking-wider text-text-muted">Detail</p>
+              <div className="mt-2 space-y-1.5 text-xs text-body-dark">
+                <p className="flex justify-between"><span>Total soal</span><span className="font-semibold text-heading-dark">{totalSoal}</span></p>
+                <p className="flex justify-between"><span>Selesai</span><span className="font-semibold text-heading-dark">{formatTanggal(detail?.soal.length ? hasil.calculated_at : null)}</span></p>
+              </div>
+
+              {meta?.kohort_status === "sementara" && (
+                <p className="mt-4 rounded-md bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+                  Benchmark IRT masih sementara karena peserta kurang dari 5 atau koreksi esai belum selesai.
+                </p>
+              )}
+              {hasil.skor_per_pelajaran_json?._meta?.menunggu_koreksi && (
+                <p className="mt-4 rounded-md bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+                  Nilai sementara. Ada jawaban yang masih menunggu koreksi guru.
+                </p>
+              )}
+            </div>
+
+            <div className="mt-4 rounded-card border border-card-border bg-card-bg p-4 shadow-card">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-text-muted">Rincian per Pelajaran</p>
+              {hasil.skor_per_pelajaran_json && Object.keys(hasil.skor_per_pelajaran_json).filter((k) => k !== "_meta").length > 0 ? (
+                <div className="mt-2 space-y-2">
+                  {Object.entries(hasil.skor_per_pelajaran_json).filter(([key]) => key !== "_meta").map(([pelajaran, item]) => {
+                    const d = item as Record<string, unknown>;
+                    return (
+                      <div key={pelajaran} className="rounded-input bg-neutral p-2.5">
+                        <p className="text-xs font-semibold text-heading-dark">{String(d.nama ?? pelajaran)}</p>
+                        <p className="mt-0.5 text-xs text-text-muted">
+                          {String(d.jumlah_benar ?? 0)} benar · {String(d.jumlah_soal ?? 0)} soal
+                          <span className="ml-1 font-semibold text-heading-dark">{String(d.skor ?? 0)}</span>
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="mt-2 text-xs text-text-muted">Tidak tersedia.</p>
+              )}
+            </div>
+          </div>
+
+          {/* spacer kolom tengah: konten soal sudah ada di grid yang scroll normal di atas */}
+          <div />
+
+          {/* KANAN: GRID NAVIGASI SOAL */}
+          <div className="pointer-events-auto h-full overflow-y-auto">
             <div className="rounded-card border border-card-border bg-card-bg p-4 shadow-card">
               <p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-text-muted">Navigasi Soal</p>
               <div className="grid grid-cols-4 gap-2">
@@ -515,13 +558,13 @@ export default function HasilDetailPage() {
                 <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-amber-500" /> Menunggu koreksi</span>
               </div>
             </div>
-          </aside>
+          </div>
         </div>
       </div>
 
       {/* ===== FOOTER FIXED: Sebelumnya / Soal X dari Y / Berikutnya ===== */}
       {/* Dinaikkan di atas bottom nav aplikasi pada mobile agar tidak tertutup. */}
-      <div className="fixed inset-x-0 bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] z-40 border-t border-card-border bg-card-bg md:bottom-0 md:pb-[env(safe-area-inset-bottom,0px)]">
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-card-border bg-card-bg pb-[env(safe-area-inset-bottom,0px)]">
         <div className="mx-auto flex w-full max-w-xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <Button variant="outline" size="sm" disabled={nomor <= 1} onClick={() => setNomor((n) => Math.max(1, n - 1))}>
             Sebelumnya

@@ -40,6 +40,8 @@ class SiswaOut(BaseModel):
     no_induk: Optional[str] = None
     program_id: Optional[int] = None
     kelas_id: Optional[int] = None
+    program_nama: Optional[str] = None
+    kelas_nama: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -84,6 +86,7 @@ class SiswaJadwalUjianOut(BaseModel):
     kategori: Optional[str] = None
     kategori_nama: Optional[str] = None
     deskripsi_paket: Optional[str] = None
+    izinkan_pilih_mapel: bool = True
 
 
 class BagianTersediaOut(BaseModel):

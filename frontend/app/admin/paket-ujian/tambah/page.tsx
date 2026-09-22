@@ -22,6 +22,7 @@ type FormData = {
   program_id: string;
   metode_penilaian: "biasa" | "kohort";
   skala_kohort: "utbk" | "tka";
+  izinkan_pilih_mapel: boolean;
   is_random_soal: boolean;
   is_random_opsi: boolean;
 };
@@ -41,6 +42,7 @@ export default function TambahPaketUjianPage() {
     program_id: "",
     metode_penilaian: "biasa",
     skala_kohort: "utbk",
+    izinkan_pilih_mapel: true,
     is_random_soal: true,
     is_random_opsi: true,
   });
@@ -77,6 +79,7 @@ export default function TambahPaketUjianPage() {
             program_id: item.program_id ? String(item.program_id) : "",
             metode_penilaian: item.metode_penilaian === "kohort" ? "kohort" : "biasa",
             skala_kohort: item.skala_kohort === "tka" ? "tka" : "utbk",
+            izinkan_pilih_mapel: item.izinkan_pilih_mapel !== false,
             is_random_soal: item.is_random_soal,
             is_random_opsi: item.is_random_opsi,
           });
@@ -122,6 +125,7 @@ export default function TambahPaketUjianPage() {
         kategori_id: Number(formData.kategori_id),
         metode_penilaian: formData.tipe === "ujian" ? formData.metode_penilaian : "biasa",
         skala_kohort: formData.skala_kohort,
+        izinkan_pilih_mapel: formData.tipe === "ujian" ? formData.izinkan_pilih_mapel : true,
         is_random_soal: formData.is_random_soal,
         is_random_opsi: formData.is_random_opsi,
         jumlah_soal: jumlahSoal,
@@ -178,7 +182,7 @@ export default function TambahPaketUjianPage() {
                   label="Metode Penilaian"
                   value={formData.metode_penilaian}
                   onChange={(event) => setFormData({ ...formData, metode_penilaian: event.target.value as "biasa" | "kohort" })}
-                  options={[{ value: "biasa", label: "Nilai Biasa" }, { value: "kohort", label: "Benchmark Kohort" }]}
+                  options={[{ value: "biasa", label: "Nilai Biasa" }, { value: "kohort", label: "Benchmark IRT" }]}
                 />
                 {formData.metode_penilaian === "kohort" && (
                   <Select
@@ -189,7 +193,12 @@ export default function TambahPaketUjianPage() {
                   />
                 )}
               </div>
-              {formData.metode_penilaian === "kohort" && <p className="mt-3 text-xs text-text-muted">Benchmark Kohort membandingkan jawaban dengan peserta terbaru dalam program yang sama. Nilai sementara hingga minimal 5 peserta dan belum tersedia jika seluruh soal dijawab benar atau koreksi esai belum selesai.</p>}
+              {formData.metode_penilaian === "kohort" && <p className="mt-3 text-xs text-text-muted">Benchmark IRT membandingkan jawaban dengan peserta terbaru dalam program yang sama. Nilai sementara hingga minimal 5 peserta dan belum tersedia jika seluruh soal dijawab benar atau koreksi esai belum selesai.</p>}
+              <label className="mt-3 flex items-center gap-2 text-sm font-medium">
+                <input type="checkbox" checked={formData.izinkan_pilih_mapel} onChange={(event) => setFormData({ ...formData, izinkan_pilih_mapel: event.target.checked })} />
+                Izinkan siswa latihan per mapel
+              </label>
+              <p className="mt-1 text-xs text-text-muted">Kalau dinyalakan, siswa bisa pilih 1 mapel dulu untuk dilatih (nilainya nilai biasa, tidak masuk Benchmark IRT), selain lewat jalur "Mulai Ujian" yang mengerjakan semua mapel berurutan sesuai jadwal. Matikan untuk simulasi resmi yang wajib dikerjakan penuh.</p>
             </div>
           )}
           <div className="grid gap-3 sm:grid-cols-2">
