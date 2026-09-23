@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import QuestionMetaFilters, { emptyMetaFilter, matchesMeta } from "@/components/QuestionMetaFilters";
 import Badge from "@/components/Badge";
 import Button from "@/components/Button";
@@ -329,7 +328,6 @@ export default function PaketQuestionAssignment() {
   if (!paket || !bagian || loadError) {
     return (
       <div className="space-y-4">
-        <Link href="/guru/paket-ujian" className="inline-flex items-center gap-2 text-sm font-semibold text-brand-primary hover:underline"><ArrowLeft className="h-4 w-4" /> Kembali ke Daftar Paket</Link>
         <Card><p className="text-red-700">{loadError || "Paket atau bagian ujian tidak ditemukan."}</p></Card>
       </div>
     );
@@ -338,7 +336,6 @@ export default function PaketQuestionAssignment() {
   return (
     <div className="space-y-6">
       <header>
-        <Link href={listHref} className="mb-3 inline-flex items-center gap-2 text-sm font-semibold text-brand-primary hover:underline"><ArrowLeft className="h-4 w-4" /> Kembali ke Daftar Paket</Link>
         <h1 className="text-2xl font-bold text-heading-dark sm:text-3xl">Isi Soal Bagian</h1>
         <p className="mt-1 text-sm text-text-muted">Pilih soal approved dari Bank Soal sesuai penugasan bagian.</p>
       </header>

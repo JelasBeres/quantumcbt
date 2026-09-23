@@ -17,6 +17,8 @@ class LaporanSoalOut(BaseModel):
     created_at: Optional[datetime] = None
     teks_soal: Optional[str] = None
     nama_pelapor: Optional[str] = None
+    soal_status: Optional[str] = None
+    soal_created_by: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
 

@@ -1,7 +1,8 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
-import { Flag, Inbox } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Flag, Inbox, Pencil } from "lucide-react";
 import { api, getErrorMessage } from "@/lib/api";
 import { getUser } from "@/lib/auth";
 import Button from "@/components/Button";
@@ -17,10 +18,14 @@ type Laporan = {
   created_at?: string | null;
   teks_soal?: string | null;
   nama_pelapor?: string | null;
+  soal_status?: string | null;
+  soal_created_by?: number | null;
 };
 
 export default function LaporanSoalPage() {
-  const isGuru = getUser()?.role === "guru";
+  const router = useRouter();
+  const [currentUser, setCurrentUser] = useState<{ id: number | null; isGuru: boolean }>({ id: null, isGuru: false });
+  const isGuru = currentUser.isGuru;
   const [items, setItems] = useState<Laporan[]>([]);
   const [status, setStatus] = useState("baru");
   const [loading, setLoading] = useState(true);
@@ -41,8 +46,48 @@ export default function LaporanSoalPage() {
   };
 
   useEffect(() => {
+    const user = getUser();
+    setCurrentUser({ id: user?.id ?? null, isGuru: user?.role === "guru" });
+  }, []);
+
+  useEffect(() => {
     load();
   }, [status]);
+
+  // Admin selalu bisa mengedit langsung. Guru mengikuti workflow bank soal:
+  // draft/perlu revisi milik sendiri diedit langsung, soal approved milik guru lain
+  // dibuatkan revisi dulu (direview admin sebelum terbit).
+  const editMode = (item: Laporan): "direct" | "revision" | null => {
+    if (!isGuru) return "direct";
+    const own = currentUser.id !== null && item.soal_created_by === currentUser.id;
+    if (own && (item.soal_status === "draft" || item.soal_status === "rejected")) return "direct";
+    if (!own && item.soal_status === "approved") return "revision";
+    return null;
+  };
+
+  const editSoal = async (item: Laporan) => {
+    const mode = editMode(item);
+    if (mode === "direct") {
+      router.push(isGuru ? `/guru/soal/tambah?id=${item.soal_id}` : `/admin/tambah-soal?id=${item.soal_id}`);
+      return;
+    }
+    if (mode !== "revision") return;
+    setSavingId(item.id);
+    setError("");
+    try {
+      const res = await api.post(`/soal/${item.soal_id}/revision`);
+      router.push(`/guru/soal/tambah?id=${res.data.id}`);
+    } catch (err: any) {
+      setError(getErrorMessage(err, "Revisi soal gagal dibuat."));
+      setSavingId(null);
+    }
+  };
+
+  const editHint = (item: Laporan) => {
+    if (item.soal_status === "pending_review") return "Soal sedang menunggu review admin.";
+    if (item.soal_status === "approved") return "Soal milik Anda. Revisi dilakukan oleh guru lain atau admin.";
+    return "Soal tidak dapat diedit dari akun ini.";
+  };
 
   const tandaiSelesai = async (item: Laporan) => {
     setSavingId(item.id);
@@ -108,15 +153,24 @@ export default function LaporanSoalPage() {
                       <p className="text-sm font-semibold text-heading-dark">Soal #{item.soal_id}</p>
                       <p className="text-xs text-text-muted">
                         {item.nama_pelapor || "Anonim"}
-                        {item.created_at ? ` Â· ${new Date(item.created_at).toLocaleString("id-ID")}` : ""}
+                        {item.created_at ? ` · ${new Date(item.created_at).toLocaleString("id-ID")}` : ""}
                       </p>
                     </div>
                   </div>
-                  {item.status === "baru" && (
-                    <Button size="sm" disabled={savingId === item.id} onClick={() => tandaiSelesai(item)}>
-                      {savingId === item.id ? "Menyimpan..." : "Tandai Selesai"}
-                    </Button>
-                  )}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {editMode(item) ? (
+                      <Button size="sm" variant="outline" disabled={savingId === item.id} onClick={() => editSoal(item)}>
+                        <Pencil className="mr-1 h-4 w-4" aria-hidden="true" /> {editMode(item) === "revision" ? "Edit Soal (Revisi)" : "Edit Soal"}
+                      </Button>
+                    ) : (
+                      <span className="text-xs text-text-muted">{editHint(item)}</span>
+                    )}
+                    {item.status === "baru" && (
+                      <Button size="sm" disabled={savingId === item.id} onClick={() => tandaiSelesai(item)}>
+                        {savingId === item.id ? "Menyimpan..." : "Tandai Selesai"}
+                      </Button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="mt-3 rounded-input border border-card-border bg-neutral p-3">

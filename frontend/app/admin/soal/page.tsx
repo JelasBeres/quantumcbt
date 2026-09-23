@@ -201,6 +201,7 @@ export default function SoalPage() {
   };
 
   const columns = [
+    { header: "ID", accessor: (row: Soal) => <span className="font-mono text-xs text-text-muted">#{row.id}</span> },
     { header: "Soal", accessor: (row: Soal) => <MathContent className="prose prose-sm max-w-none line-clamp-2" html={row.teks_soal} /> },
     { header: "Kelas", accessor: (row: Soal) => getNama(kelasList, row.kelas_id) || "Tanpa Kelas" },
     { header: "Bab", accessor: (row: Soal) => getNama(topikList, row.topik_id) || "Tanpa Bab" },

@@ -75,6 +75,8 @@ def list_laporan(
             created_at=laporan.created_at,
             teks_soal=soal.teks_soal,
             nama_pelapor=user.username if user else None,
+            soal_status=soal.status,
+            soal_created_by=soal.created_by,
         )
         for laporan, soal, user in rows
     ]

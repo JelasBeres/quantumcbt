@@ -65,7 +65,7 @@ export default function SoalFormModal({
   defaultTopikId,
   defaultSubbab,
   defaultTipe,
-  description = "Soal akan disimpan sebagai draft dan dapat diajukan untuk review admin.",
+  description,
   presentation = "modal"
 }: SoalFormModalProps) {
   const [formData, setFormData] = useState({
@@ -267,7 +267,7 @@ export default function SoalFormModal({
         <div className="flex items-start justify-between gap-4 border-b border-card-border px-4 py-4 sm:px-6">
           <div>
             <h2 id="soal-form-title" className="text-lg font-bold text-heading-dark">{editSoalId ? "Edit Soal" : "Buat Soal Baru"}</h2>
-             <p className="mt-1 text-sm text-text-muted">{description}</p>
+            {description && <p className="mt-1 text-sm text-text-muted">{description}</p>}
           </div>
           {!pageMode && <button type="button" onClick={onClose} className="rounded-lg px-2 py-1 text-xl text-text-muted transition hover:bg-neutral hover:text-heading-dark" aria-label="Tutup">×</button>}
         </div>

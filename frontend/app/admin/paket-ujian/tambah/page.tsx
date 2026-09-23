@@ -1,9 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 import Button from "@/components/Button";
 import Card from "@/components/Card";
 import Input from "@/components/Input";
@@ -148,9 +146,6 @@ export default function TambahPaketUjianPage() {
   return (
     <div className="space-y-6">
       <header>
-        <Link href={listHref} className="mb-3 inline-flex items-center gap-2 text-sm font-semibold text-brand-primary hover:underline">
-          <ArrowLeft className="h-4 w-4" /> Kembali ke Paket
-        </Link>
         <h1 className="text-3xl font-bold text-heading-dark">{editId ? "Edit Paket" : formData.tipe === "latihan" ? "Buat Latihan" : "Buat Tryout"}</h1>
         <p className="mt-1 text-sm text-text-muted">Simpan paket, lalu tambahkan mata pelajaran/bagian dan isi soalnya.</p>
       </header>
