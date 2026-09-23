@@ -456,10 +456,19 @@ export default function ExamRoomPage() {
   const isLastQuestion = nomor >= totalSoal;
   const sectionIds = state?.soal_aktif_ids ?? [];
   const bagianUrutan = state?.bagian_urutan ?? [];
-  // Nomor soal pada bagian yang belum dicapai disembunyikan dari strip navigasi
-  // (bukan cuma di-disable) supaya tidak terlihat seolah "terkunci padahal ada".
+  // Nomor soal dimulai lagi dari 1 di setiap bagian (Matematika 1: 1-10, Matematika 2: 1-10).
+  const nomorTampil = new Map<number, number>();
+  if (bagianUrutan.length > 0) {
+    bagianUrutan.forEach((b) => b.soal_ids.forEach((id, i) => nomorTampil.set(id, i + 1)));
+  } else {
+    state?.soal_urutan.forEach((id, i) => nomorTampil.set(id, i + 1));
+  }
+  const nomorSoal = (soalId: number | undefined, fallback: number) =>
+    (soalId != null ? nomorTampil.get(soalId) : undefined) ?? fallback;
+  // Strip navigasi hanya menampilkan soal bagian yang sedang dikerjakan, karena
+  // nomornya berulang antarbagian dan bagian sebelumnya sudah terkunci.
   const visibleQuestionIds = bagianUrutan.length > 1
-    ? new Set(bagianUrutan.slice(0, (state?.bagian_aktif ?? 0) + 1).flatMap((b) => b.soal_ids))
+    ? new Set(bagianAktif?.soal_ids ?? sectionIds)
     : null;
   const isLastQuestionInSection = sectionIds.length > 0 && sectionIds[sectionIds.length - 1] === (state?.soal_urutan[nomor - 1] ?? -1);
   const canAdvanceSection = isLastQuestionInSection && !isLastQuestion && state?.bagian_terakhir === false;
@@ -549,11 +558,11 @@ export default function ExamRoomPage() {
                   key={soalId}
                   onClick={() => goToQuestion(index + 1)}
                   disabled={loading || !sectionIds.includes(soalId)}
-                  aria-label={`Soal nomor ${index + 1}`}
+                  aria-label={`Soal nomor ${nomorSoal(soalId, index + 1)}`}
                   aria-current={nomor === index + 1 ? "true" : undefined}
                   className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border text-sm font-semibold transition-all duration-200 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 disabled:opacity-60 ${soalStateCls(soalId, index)}`}
                 >
-                  {index + 1}
+                  {nomorSoal(soalId, index + 1)}
                 </button>
               );
             })}
@@ -580,7 +589,7 @@ export default function ExamRoomPage() {
           <section className="rounded-card border border-card-border bg-card-bg p-5 shadow-card sm:p-7">
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-base font-bold text-heading-dark sm:text-lg">
-                Soal {nomor}
+                Soal {nomorSoal(question?.soal_id ?? state?.soal_urutan[nomor - 1], nomor)}
                 {bagianAktif ? <span className="ml-2 rounded-md bg-brand-primary/10 px-2 py-0.5 text-xs font-semibold text-brand-primary">{bagianAktif.nama}</span> : null}
               </h2>
               {question?.is_ragu && (

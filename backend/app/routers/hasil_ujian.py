@@ -130,6 +130,11 @@ def get_hasil_detail(
 
     LABEL = ["A", "B", "C", "D", "E", "F", "G", "H"]
 
+    posisi_bagian: Dict[int, tuple[int, str]] = {}
+    for bagian in ujian.bagian_urutan or []:
+        for i, sid in enumerate(bagian.get("soal_ids") or [], start=1):
+            posisi_bagian[sid] = (i, bagian.get("nama") or "")
+
     for idx, soal_id in enumerate(ujian.soal_urutan, start=1):
         soal = soal_map.get(soal_id)
         if not soal:
@@ -209,6 +214,8 @@ def get_hasil_detail(
         soal_detail.append(
             HasilSoalDetail(
                 nomor=idx,
+                nomor_bagian=posisi_bagian.get(soal.id, (None, None))[0],
+                bagian_nama=posisi_bagian.get(soal.id, (None, None))[1] or None,
                 soal_id=soal.id,
                 teks_soal=soal.teks_soal,
                 tipe=soal.tipe,

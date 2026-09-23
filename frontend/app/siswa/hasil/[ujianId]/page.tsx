@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, Fragment, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { AlertTriangle, ArrowLeft, Check, X } from "lucide-react";
@@ -31,6 +31,8 @@ type HasilPernyataan = { pernyataan_id: number; teks: string; urutan: number; ja
 type HasilOpsi = { id: number; label: string; teks: string; is_benar: boolean };
 type HasilSoalDetailItem = {
   nomor: number;
+  nomor_bagian?: number | null;
+  bagian_nama?: string | null;
   soal_id: number;
   teks_soal: string;
   tipe: string;
@@ -169,6 +171,26 @@ export default function HasilDetailPage() {
   const skor = hasil?.skor ?? detail?.skor ?? null;
 
   const soalAktif = detail?.soal.find((s) => s.nomor === nomor) ?? null;
+  // Nomor ditampilkan per bagian (mulai lagi dari 1), sama seperti saat mengerjakan.
+  // `nomor` global tetap dipakai sebagai kunci navigasi.
+  const grupBagian = useMemo(() => {
+    const groups: { nama: string | null; soal: HasilSoalDetailItem[] }[] = [];
+    for (const soal of detail?.soal ?? []) {
+      const nama = soal.bagian_nama ?? null;
+      const last = groups[groups.length - 1];
+      if (last && last.nama === nama) last.soal.push(soal);
+      else groups.push({ nama, soal: [soal] });
+    }
+    return groups;
+  }, [detail]);
+  const adaBagian = grupBagian.some((g) => g.nama);
+  const labelNomor = (soal: HasilSoalDetailItem) => soal.nomor_bagian ?? soal.nomor;
+  const judulSoal = (soal: HasilSoalDetailItem) =>
+    soal.bagian_nama ? `${soal.bagian_nama} · Soal ${labelNomor(soal)}` : `Soal #${soal.nomor}`;
+  const grupAktif = grupBagian.find((g) => g.soal.some((s) => s.nomor === nomor));
+  const posisiAktif = adaBagian && soalAktif && grupAktif
+    ? { ke: labelNomor(soalAktif), dari: grupAktif.soal.length }
+    : { ke: nomor, dari: totalSoal };
   const statusAktif = soalAktif ? statusSoal(soalAktif) : "kosong";
 
   const kirimLaporan = async (e: FormEvent) => {
@@ -225,7 +247,7 @@ export default function HasilDetailPage() {
           </Link>
           <p className="truncate text-sm font-bold text-heading-dark">Pembahasan</p>
           <span className="shrink-0 text-xs font-semibold text-text-muted">
-            {nomor} / {totalSoal}
+            {posisiAktif.ke} / {posisiAktif.dari}
           </span>
         </div>
       </div>
@@ -235,26 +257,33 @@ export default function HasilDetailPage() {
         <div className="mx-auto flex h-[3.5rem] w-full max-w-7xl items-center gap-2 px-4 sm:px-6">
           <span className="shrink-0 text-[11px] font-bold uppercase tracking-wider text-text-muted">Soal</span>
           <div ref={navStripRef} className="flex items-center gap-1.5 overflow-x-auto px-1 py-1" style={{ scrollbarWidth: "thin" }}>
-            {(detail?.soal ?? []).map((soal) => {
-              const st = statusSoal(soal);
-              const isCurrent = soal.nomor === nomor;
-              return (
-                <button
-                  key={soal.soal_id}
-                  type="button"
-                  onClick={() => setNomor(soal.nomor)}
-                  aria-label={`Soal nomor ${soal.nomor}`}
-                  aria-current={isCurrent ? "true" : undefined}
-                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-transparent text-[13px] font-bold transition-all duration-200 hover:scale-110 ${
-                    isCurrent
-                      ? "ring-2 ring-brand-primary ring-offset-1 " + statusCls(st)
-                      : statusCls(st)
-                  } text-white`}
-                >
-                  {soal.nomor}
-                </button>
-              );
-            })}
+            {grupBagian.map((grup, gi) => (
+              <Fragment key={`${grup.nama ?? "umum"}-${gi}`}>
+                {adaBagian && grup.nama && (
+                  <span className={`shrink-0 whitespace-nowrap text-[11px] font-semibold text-text-muted ${gi > 0 ? "ml-2" : ""}`}>{grup.nama}</span>
+                )}
+                {grup.soal.map((soal) => {
+                  const st = statusSoal(soal);
+                  const isCurrent = soal.nomor === nomor;
+                  return (
+                    <button
+                      key={soal.soal_id}
+                      type="button"
+                      onClick={() => setNomor(soal.nomor)}
+                      aria-label={judulSoal(soal)}
+                      aria-current={isCurrent ? "true" : undefined}
+                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-transparent text-[13px] font-bold transition-all duration-200 hover:scale-110 ${
+                        isCurrent
+                          ? "ring-2 ring-brand-primary ring-offset-1 " + statusCls(st)
+                          : statusCls(st)
+                      } text-white`}
+                    >
+                      {labelNomor(soal)}
+                    </button>
+                  );
+                })}
+              </Fragment>
+            ))}
           </div>
         </div>
       </div>
@@ -288,7 +317,7 @@ export default function HasilDetailPage() {
                 {/* Bar info soal â€” statis, terpisah dari isi soal */}
                 <div className="sticky top-[calc(var(--st-header-h)+6.75rem)] z-20 lg:top-[calc(var(--st-header-h)+3.25rem)] flex flex-wrap items-center justify-between gap-2 rounded-t-card border-b border-card-border bg-card-bg px-5 py-3.5">
                   <div className="flex items-center gap-3">
-                    <h2 className="text-sm font-bold text-heading-dark">Soal #{soalAktif.nomor}</h2>
+                    <h2 className="text-sm font-bold text-heading-dark">{judulSoal(soalAktif)}</h2>
                     <span className="text-xs text-text-muted">{labelTipeSoal(soalAktif.tipe)}</span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -528,27 +557,36 @@ export default function HasilDetailPage() {
           <div className="pointer-events-auto h-full overflow-y-auto">
             <div className="rounded-card border border-card-border bg-card-bg p-4 shadow-card">
               <p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-text-muted">Navigasi Soal</p>
-              <div className="grid grid-cols-4 gap-2">
-                {(detail?.soal ?? []).map((soal) => {
-                  const st = statusSoal(soal);
-                  const isCurrent = soal.nomor === nomor;
-                  return (
-                    <button
-                      key={soal.soal_id}
-                      type="button"
-                      onClick={() => setNomor(soal.nomor)}
-                      aria-label={`Soal nomor ${soal.nomor}`}
-                      aria-current={isCurrent ? "true" : undefined}
-                      className={`aspect-square w-full transform rounded-lg border border-transparent font-bold transition-all duration-200 hover:scale-110 flex items-center justify-center ${
-                        isCurrent
-                          ? "ring-2 ring-brand-primary ring-offset-1 " + statusCls(st)
-                          : statusCls(st)
-                      } text-white`}
-                    >
-                      {soal.nomor}
-                    </button>
-                  );
-                })}
+              <div className="space-y-3">
+                {grupBagian.map((grup, gi) => (
+                  <div key={`${grup.nama ?? "umum"}-${gi}`}>
+                    {adaBagian && grup.nama && (
+                      <p className="mb-1.5 text-xs font-semibold text-heading-dark">{grup.nama}</p>
+                    )}
+                    <div className="grid grid-cols-4 gap-2">
+                      {grup.soal.map((soal) => {
+                        const st = statusSoal(soal);
+                        const isCurrent = soal.nomor === nomor;
+                        return (
+                          <button
+                            key={soal.soal_id}
+                            type="button"
+                            onClick={() => setNomor(soal.nomor)}
+                            aria-label={judulSoal(soal)}
+                            aria-current={isCurrent ? "true" : undefined}
+                            className={`aspect-square w-full transform rounded-lg border border-transparent font-bold transition-all duration-200 hover:scale-110 flex items-center justify-center ${
+                              isCurrent
+                                ? "ring-2 ring-brand-primary ring-offset-1 " + statusCls(st)
+                                : statusCls(st)
+                            } text-white`}
+                          >
+                            {labelNomor(soal)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
 
               <div className="mt-4 space-y-1.5 border-t border-card-border pt-3 text-[11px] text-text-muted">
@@ -569,7 +607,9 @@ export default function HasilDetailPage() {
           <Button variant="outline" size="sm" disabled={nomor <= 1} onClick={() => setNomor((n) => Math.max(1, n - 1))}>
             Sebelumnya
           </Button>
-          <span className="text-xs font-semibold text-text-muted">Soal {nomor} dari {totalSoal}</span>
+          <span className="text-xs font-semibold text-text-muted">
+            {adaBagian && grupAktif?.nama ? `${grupAktif.nama} · ` : ""}Soal {posisiAktif.ke} dari {posisiAktif.dari}
+          </span>
           <Button variant="outline" size="sm" disabled={nomor >= totalSoal} onClick={() => setNomor((n) => Math.min(totalSoal, n + 1))}>
             Berikutnya
           </Button>
@@ -581,7 +621,7 @@ export default function HasilDetailPage() {
         <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-heading-dark/50 p-4" role="dialog" aria-modal="true" aria-labelledby="laporkan-title">
           <div className="my-8 w-full max-w-md rounded-modal border border-card-border bg-card-bg shadow-modal">
             <div className="flex items-center justify-between border-b border-card-border px-5 py-4">
-              <h3 id="laporkan-title" className="text-base font-bold text-heading-dark">Laporkan Soal #{laporkanSoal.nomor}</h3>
+              <h3 id="laporkan-title" className="text-base font-bold text-heading-dark">Laporkan {judulSoal(laporkanSoal)}</h3>
               <button type="button" onClick={() => setLaporkanSoal(null)} className="rounded-btn px-2 py-1 text-xl text-text-muted transition hover:bg-neutral hover:text-heading-dark" aria-label="Tutup">×</button>
             </div>
             <form onSubmit={kirimLaporan} className="space-y-4 p-5">

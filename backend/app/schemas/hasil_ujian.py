@@ -37,6 +37,9 @@ class HasilPernyataanDetail(BaseModel):
 
 class HasilSoalDetail(BaseModel):
     nomor: int
+    # Nomor di dalam bagian (mulai lagi dari 1 tiap bagian), sama seperti saat mengerjakan.
+    nomor_bagian: Optional[int] = None
+    bagian_nama: Optional[str] = None
     soal_id: int
     teks_soal: str
     tipe: str
