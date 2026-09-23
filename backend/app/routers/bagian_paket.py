@@ -151,15 +151,28 @@ def _validate_pelajaran_bagian(
         raise HTTPException(status_code=404, detail="Pelajaran not found")
     if not pelajaran.is_active:
         raise HTTPException(status_code=400, detail="Mata pelajaran tidak aktif")
-    duplicate = db.query(BagianPaket.id).filter(
-        BagianPaket.paket_ujian_id == paket.id,
-        BagianPaket.pelajaran_id == pelajaran_id,
-    )
-    if bagian_id is not None:
-        duplicate = duplicate.filter(BagianPaket.id != bagian_id)
-    if duplicate.first():
-        raise HTTPException(status_code=409, detail="Mata pelajaran sudah digunakan oleh bagian lain dalam paket ini")
     return pelajaran
+
+
+def _resolve_nama_bagian(
+    db: Session,
+    paket_id: int,
+    pelajaran: Pelajaran,
+    nama: str | None,
+    bagian_id: int | None = None,
+) -> str:
+    """Satu mapel boleh punya beberapa set soal (Matematika 1, Matematika 2, ...),
+    jadi yang harus unik dalam paket adalah nama set-nya, bukan mapelnya."""
+    others = db.query(BagianPaket).filter(BagianPaket.paket_ujian_id == paket_id)
+    if bagian_id is not None:
+        others = others.filter(BagianPaket.id != bagian_id)
+    others = others.all()
+    nama = (nama or "").strip()
+    if not nama:
+        nama = f"{pelajaran.nama} {sum(1 for b in others if b.pelajaran_id == pelajaran.id) + 1}"
+    if any(b.nama.strip().lower() == nama.lower() for b in others):
+        raise HTTPException(status_code=409, detail=f"Nama set soal \"{nama}\" sudah dipakai dalam paket ini")
+    return nama
 
 
 def _next_urutan(paket_id: int, db: Session) -> int:
@@ -192,7 +205,7 @@ def create_bagian(payload: BagianPaketCreate, paket_id: int, db: Session = Depen
     pelajaran = _validate_pelajaran_bagian(db, paket, payload.pelajaran_id)
     bagian = BagianPaket(
         paket_ujian_id=paket_id,
-        nama=payload.nama.strip() or pelajaran.nama,
+        nama=_resolve_nama_bagian(db, paket_id, pelajaran, payload.nama),
         urutan=payload.urutan if payload.urutan > 0 else _next_urutan(paket_id, db),
         durasi_menit=None,
         pelajaran_id=payload.pelajaran_id,
@@ -225,7 +238,7 @@ def update_bagian(bagian_id: int, payload: BagianPaketUpdate, paket_id: int, db:
     selected_pelajaran_id = payload.pelajaran_id if "pelajaran_id" in payload.model_fields_set else bagian.pelajaran_id
     pelajaran = _validate_pelajaran_bagian(db, paket, selected_pelajaran_id, bagian.id)
     if payload.nama is not None:
-        bagian.nama = payload.nama.strip() or pelajaran.nama
+        bagian.nama = _resolve_nama_bagian(db, paket_id, pelajaran, payload.nama, bagian.id)
     if payload.urutan is not None:
         bagian.urutan = payload.urutan
     if "pelajaran_id" in payload.model_fields_set:

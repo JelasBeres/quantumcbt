@@ -5,8 +5,9 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { api, getErrorMessage } from "@/lib/api";
 import { ArrowLeft, CheckCircle2, Clock3, FileText, Play, BookOpen } from "lucide-react";
+import SetSoalPerMapel from "@/components/SetSoalPerMapel";
 
-// Detail 1 jadwal tryout: kiri daftar mapel (bagian), kanan card soal per mapel.
+// Detail 1 jadwal tryout: kiri daftar mapel, kanan kartu set soal (bagian) mapel tersebut.
 type Jadwal = {
   jadwal_ujian_id: number;
   paket_ujian_id: number;
@@ -17,7 +18,7 @@ type Jadwal = {
   durasi_menit?: number;
   jumlah_soal?: number;
   tipe?: "ujian" | "latihan" | string;
-  bagian?: { bagian_id: number; nama: string; urutan: number; jumlah_soal?: number }[];
+  bagian?: { bagian_id: number; nama: string; urutan: number; jumlah_soal?: number; pelajaran_id?: number | null; pelajaran_nama?: string | null }[];
   pelajaran?: string | null;
   deskripsi_paket?: string | null;
   izinkan_pilih_mapel?: boolean;
@@ -236,35 +237,33 @@ export default function DetailPaketPage() {
               </ul>
             ) : (
               <>
-            <p className="student-split-label">Daftar Mapel</p>
             {bagianList.length === 0 ? (
-              <p className="student-notice">Belum ada bagian pada paket ini.</p>
+              <p className="student-notice">Belum ada set soal pada paket ini.</p>
             ) : (
-              <ul className="student-set-list">
-                {bagianList.map((b, i) => (
-                  <li key={b.bagian_id} className="student-set">
-                    <span className="student-set-no">{i + 1}</span>
-                    <h3>{b.nama}</h3>
-                    <div className="student-meta">
-                      <span><FileText size={14} aria-hidden="true" />{b.jumlah_soal ?? 0} soal</span>
-                      <span><Clock3 size={14} aria-hidden="true" />{formatDurasi(jadwal.durasi_menit ?? 0)}</span>
-                    </div>
-                    <div className="student-set-actions">
-                      {actionNode}
-                      {bisaPilihMapel && b.bagian_id !== -1 && (
-                        <button
-                          type="button"
-                          className="student-btn student-btn-outline"
-                          disabled={startingBagianId !== null}
-                          onClick={() => startLatihanMapel(b.bagian_id)}
-                        >
-                          <BookOpen size={15} aria-hidden="true" /> {startingBagianId === b.bagian_id ? "Menyiapkan..." : "Latihan Mapel Ini"}
-                        </button>
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ul>
+              <SetSoalPerMapel
+                items={bagianList}
+                renderMeta={(b) => (
+                  <div className="student-meta">
+                    <span><FileText size={14} aria-hidden="true" />{b.jumlah_soal ?? 0} soal</span>
+                    <span><Clock3 size={14} aria-hidden="true" />{formatDurasi(jadwal.durasi_menit ?? 0)}</span>
+                  </div>
+                )}
+                renderActions={(b) => (
+                  <>
+                    {actionNode}
+                    {bisaPilihMapel && b.bagian_id !== -1 && (
+                      <button
+                        type="button"
+                        className="student-btn student-btn-outline"
+                        disabled={startingBagianId !== null}
+                        onClick={() => startLatihanMapel(b.bagian_id)}
+                      >
+                        <BookOpen size={15} aria-hidden="true" /> {startingBagianId === b.bagian_id ? "Menyiapkan..." : "Latihan Set Ini"}
+                      </button>
+                    )}
+                  </>
+                )}
+              />
             )}
               </>
             )}

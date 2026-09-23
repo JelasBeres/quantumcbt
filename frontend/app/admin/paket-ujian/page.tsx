@@ -245,22 +245,25 @@ export default function PaketUjianPage() {
     });
     setBagianFormOpen(true);
   };
-  const selectedPelajaran = pelajaranList.find(
-    (p) => p.id === Number(bagianForm.pelajaran_id),
+  // Satu mapel boleh punya beberapa set soal (bagian): Matematika 1, Matematika 2, ...
+  const availablePelajaran = pelajaranList.filter(
+    (p) => p.is_active || p.id === Number(bagianForm.pelajaran_id),
   );
-  const availablePelajaran = pelajaranList.filter((p) => {
-    if (!p.is_active) return false;
-    return !bagianList.some(
-      (b) => b.id !== bagianEditingId && b.pelajaran_id === p.id,
-    );
-  });
+  const namaSetOtomatis = (pelajaranId: number) => {
+    const p = pelajaranList.find((item) => item.id === pelajaranId);
+    if (!p) return "";
+    const urutan = bagianList.filter(
+      (b) => b.id !== bagianEditingId && b.pelajaran_id === pelajaranId,
+    ).length + 1;
+    return `${p.nama} ${urutan}`;
+  };
   const submitBagian = async (event: FormEvent) => {
     event.preventDefault();
     if (!activePaket || !bagianForm.pelajaran_id) return;
     setBagianSaving(true);
     try {
       const payload = {
-        nama: bagianForm.nama.trim() || selectedPelajaran?.nama || "",
+        nama: bagianForm.nama.trim() || namaSetOtomatis(Number(bagianForm.pelajaran_id)),
         urutan: 0,
         pelajaran_id: Number(bagianForm.pelajaran_id),
         deskripsi: bagianForm.deskripsi || null,
@@ -809,14 +812,16 @@ export default function PaketUjianPage() {
                   required
                   value={bagianForm.pelajaran_id}
                   onChange={(e) => {
-                    const p = pelajaranList.find(
-                      (item) => item.id === Number(e.target.value),
-                    );
-                    setBagianForm((current) => ({
-                      ...current,
-                      pelajaran_id: e.target.value,
-                      nama: current.nama || p?.nama || "",
-                    }));
+                    const pelajaranId = e.target.value;
+                    setBagianForm((current) => {
+                      const namaLama = current.pelajaran_id ? namaSetOtomatis(Number(current.pelajaran_id)) : "";
+                      const namaMasihOtomatis = !current.nama || current.nama === namaLama;
+                      return {
+                        ...current,
+                        pelajaran_id: pelajaranId,
+                        nama: namaMasihOtomatis && pelajaranId ? namaSetOtomatis(Number(pelajaranId)) : current.nama,
+                      };
+                    });
                   }}
                   options={[
                     { value: "", label: "- Pilih Mata Pelajaran -" },
@@ -827,12 +832,12 @@ export default function PaketUjianPage() {
                   ]}
                 />
                 <Input
-                  label="Nama Bagian"
+                  label="Nama Set Soal"
                   value={bagianForm.nama}
                   onChange={(e) =>
                     setBagianForm({ ...bagianForm, nama: e.target.value })
                   }
-                  placeholder="Otomatis mengikuti nama mapel"
+                  placeholder="Contoh: Matematika 1"
                 />
               </div>
               <Textarea

@@ -76,7 +76,7 @@ def test_category_create_update_backward_compatibility_and_clone(isolated_databa
     assert next(item for item in listed.json() if item["id"] == legacy_id)["kategori"] is None
 
 
-def test_section_subject_required_unique_active_and_cross_program_allowed(isolated_database):
+def test_section_subject_required_active_sets_per_subject_and_cross_program_allowed(isolated_database):
     program_id, first_id, second_id, foreign_id, inactive_id, username = _setup()
     headers = _headers(username)
     legacy_mismatch = client.post("/paket-ujian/", json=_payload(program_id, pelajaran_id=foreign_id), headers=headers)
@@ -90,11 +90,16 @@ def test_section_subject_required_unique_active_and_cross_program_allowed(isolat
     assert missing.status_code == 422
     created = client.post(f"/paket-ujian/{paket_id}/bagian/", json={"nama": "", "pelajaran_id": first_id}, headers=headers)
     assert created.status_code == 200
-    assert created.json()["nama"] == "Matematika"
+    assert created.json()["nama"] == "Matematika 1"
     assert created.json()["durasi_menit"] is None
-    duplicate = client.post(f"/paket-ujian/{paket_id}/bagian/", json={"nama": "Duplikat", "pelajaran_id": first_id}, headers=headers)
+    # Satu mapel boleh punya beberapa set soal; nama otomatis bernomor.
+    second_set = client.post(f"/paket-ujian/{paket_id}/bagian/", json={"nama": "", "pelajaran_id": first_id}, headers=headers)
+    assert second_set.status_code == 200
+    assert second_set.json()["nama"] == "Matematika 2"
+    duplicate = client.post(f"/paket-ujian/{paket_id}/bagian/", json={"nama": "matematika 2", "pelajaran_id": first_id}, headers=headers)
     assert duplicate.status_code == 409
-    assert duplicate.json()["detail"] == "Mata pelajaran sudah digunakan oleh bagian lain dalam paket ini"
+    assert duplicate.json()["detail"] == 'Nama set soal "matematika 2" sudah dipakai dalam paket ini'
+    assert client.delete(f"/paket-ujian/{paket_id}/bagian/{second_set.json()['id']}", headers=headers).status_code == 200
     foreign = client.post(f"/paket-ujian/{paket_id}/bagian/", json={"nama": "Lintas Program", "pelajaran_id": foreign_id}, headers=headers)
     assert foreign.status_code == 200
     assert foreign.json()["pelajaran_id"] == foreign_id
@@ -103,8 +108,10 @@ def test_section_subject_required_unique_active_and_cross_program_allowed(isolat
     assert inactive.json()["detail"] == "Mata pelajaran tidak aktif"
     second = client.post(f"/paket-ujian/{paket_id}/bagian/", json={"nama": "Bahasa", "pelajaran_id": second_id}, headers=headers)
     assert second.status_code == 200
-    duplicate_update = client.put(f"/paket-ujian/{paket_id}/bagian/{second.json()['id']}", json={"pelajaran_id": first_id}, headers=headers)
-    assert duplicate_update.status_code == 409
+    same_subject_update = client.put(f"/paket-ujian/{paket_id}/bagian/{second.json()['id']}", json={"pelajaran_id": first_id}, headers=headers)
+    assert same_subject_update.status_code == 200
+    duplicate_name = client.put(f"/paket-ujian/{paket_id}/bagian/{second.json()['id']}", json={"nama": "Matematika 1"}, headers=headers)
+    assert duplicate_name.status_code == 409
     detail = client.get(f"/paket-ujian/{paket_id}", headers=headers)
     assert detail.json()["durasi_menit"] == 0
     updated = client.put(f"/paket-ujian/{paket_id}/bagian/{created.json()['id']}", json={"nama": "Matematika Wajib"}, headers=headers)

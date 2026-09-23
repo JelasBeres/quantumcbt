@@ -100,6 +100,8 @@ class BagianTersediaOut(BaseModel):
     nama: str
     urutan: int
     jumlah_soal: int = 0
+    pelajaran_id: Optional[int] = None
+    pelajaran_nama: Optional[str] = None
 
 
 class SiswaJadwalTersediaOut(SiswaJadwalUjianOut):

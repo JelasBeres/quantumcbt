@@ -77,6 +77,14 @@
 .student-set .student-meta { flex-direction: column; gap: 4px; border-top: 0; padding-top: 0; font-size: 12px; color: var(--st-muted); }
 .student-set-actions { display: flex; flex-direction: column; gap: 6px; }
 .student-set-actions .student-btn, .student-set-actions .student-pill { width: 100%; text-align: center; }
+/* Set soal per mapel: kiri daftar mapel, kanan kartu set */
+.student-mapel-layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 24px; align-items: start; }
+.student-mapel-list { display: flex; flex-direction: column; gap: 6px; list-style: none; margin: 0; padding: 0; }
+.student-mapel-tab { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 10px; padding: 11px 14px; border-radius: 12px; border: 1px solid var(--st-border); background: var(--st-surface); color: var(--st-text); font-size: 14px; font-weight: 600; text-align: left; transition: border-color .2s, background .2s; }
+.student-mapel-tab:hover { border-color: var(--st-accent-soft); }
+.student-mapel-tab-active { background: var(--st-accent); border-color: var(--st-accent); color: var(--st-heading); }
+.student-mapel-count { flex-shrink: 0; font-size: 12px; font-weight: 500; color: var(--st-muted); }
+.student-mapel-tab-active .student-mapel-count { color: #dfe4f7; }
 .student-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 16px; border-radius: 10px; border: 1px solid transparent; background: var(--st-accent); color: var(--st-heading); font-size: 13px; font-weight: 700; white-space: nowrap; cursor: pointer; transition: background .2s, border-color .2s; }
 .student-btn:hover { background: var(--st-accent-hover); }
 .student-btn:disabled { opacity: .6; cursor: not-allowed; }
@@ -224,6 +232,11 @@ a.student-kategori:hover { border-color: var(--st-accent-soft); }
   .student-kategori strong { font-size: 16px; }
   .student-set-list { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .student-set { min-height: 190px; padding: 14px; }
+  .student-mapel-layout { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .student-mapel-list { flex-direction: row; overflow-x: auto; margin: 0 -16px; padding: 0 16px 4px; scrollbar-width: none; }
+  .student-mapel-list::-webkit-scrollbar { display: none; }
+  .student-mapel-list li { flex: 0 0 auto; }
+  .student-mapel-tab { width: auto; white-space: nowrap; }
 }
 @media (max-width: 767px) {
   .student-shell { --st-header-h: 60px; }

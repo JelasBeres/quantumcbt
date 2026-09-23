@@ -43,8 +43,9 @@ def list_latihan(db: Session = Depends(get_db), current_user=Depends(require_rol
         .group_by(PaketSoal.bagian_paket_id)
         .all()
     )
+    pelajaran_map = {pelajaran.id: pelajaran.nama for pelajaran in db.query(Pelajaran).all()}
     return [{"id": p.id, "nama": p.nama, "deskripsi": p.deskripsi, "durasi_menit": p.durasi_menit, "jumlah_soal": p.jumlah_soal, "kategori": p.kategori_ref.kode if p.kategori_ref else p.kategori, "kategori_nama": p.kategori_ref.nama if p.kategori_ref else None,
-             "bagian": [{"bagian_id": b.id, "nama": b.nama, "pelajaran_id": b.pelajaran_id, "durasi_menit": b.durasi_menit, "jumlah_soal": bagian_soal_count.get(b.id, 0)} for b in db.query(BagianPaket).filter(BagianPaket.paket_ujian_id == p.id).order_by(BagianPaket.urutan, BagianPaket.id).all()]}
+             "bagian": [{"bagian_id": b.id, "nama": b.nama, "pelajaran_id": b.pelajaran_id, "pelajaran_nama": pelajaran_map.get(b.pelajaran_id), "durasi_menit": b.durasi_menit, "jumlah_soal": bagian_soal_count.get(b.id, 0)} for b in db.query(BagianPaket).filter(BagianPaket.paket_ujian_id == p.id).order_by(BagianPaket.urutan, BagianPaket.id).all()]}
             for p in rows if (p.program_id is None or p.program_id == siswa.program_id) and (p.kelas_id is None or p.kelas_id == siswa.kelas_id)
             and db.query(PaketSoal.id).filter(PaketSoal.paket_ujian_id == p.id).first()]
 
@@ -316,6 +317,8 @@ def get_siswa_jadwal_tersedia(db: Session = Depends(get_db), current_user=Depend
                         nama=b.nama,
                         urutan=b.urutan,
                         jumlah_soal=bagian_soal_count.get(b.id, 0),
+                        pelajaran_id=b.pelajaran_id,
+                        pelajaran_nama=pelajaran_map.get(b.pelajaran_id),
                     )
                     for b in bagian_list
                 ],
