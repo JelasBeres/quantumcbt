@@ -1,0 +1,15 @@
+[Unit]
+Description=QuantumCBT frontend (Next.js + proxy)
+After=network.target quantumcbt-backend.service
+
+[Service]
+User=quantumcbt
+Group=quantumcbt
+WorkingDirectory=/opt/quantumcbt/frontend
+EnvironmentFile=/opt/quantumcbt/frontend.env
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,17 @@
+[Unit]
+Description=QuantumCBT backend (FastAPI)
+After=network.target postgresql.service
+Requires=postgresql.service
+
+[Service]
+User=quantumcbt
+Group=quantumcbt
+WorkingDirectory=/opt/quantumcbt/backend
+ExecStart=/opt/quantumcbt/backend/venv/bin/gunicorn app.main:app \
+  --worker-class uvicorn.workers.UvicornWorker --workers 3 \
+  --bind 127.0.0.1:8000 --forwarded-allow-ips=127.0.0.1 --timeout 60
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
