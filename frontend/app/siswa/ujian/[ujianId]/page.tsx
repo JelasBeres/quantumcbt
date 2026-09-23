@@ -16,6 +16,7 @@ import {
 import { API_BASE_URL, api } from "@/lib/api";
 import Button from "@/components/Button";
 import MathContent from "@/components/MathContent";
+import TabelBenarSalah from "@/components/TabelBenarSalah";
 import { useAppDialog } from "@/components/Dialog";
 
 type StatementAnswer = { pernyataan_id: number; jawaban: boolean };
@@ -645,37 +646,15 @@ export default function ExamRoomPage() {
                 />
               </div>
             ) : question.tipe === "benar_salah" && question.pernyataan && question.pernyataan.length > 0 ? (
-              <div key={question.soal_id} className="animate-question-in space-y-3">
-                {question.pernyataan.map((statement, index) => {
-                  const selectedValue = statementAnswers.find((item) => item.pernyataan_id === statement.pernyataan_id)?.jawaban;
-                  return (
-                    <div
-                      key={statement.pernyataan_id}
-                      style={{ animationDelay: `${index * 45}ms` }}
-                      className="animate-option-in rounded-input border border-card-border bg-card-bg p-4"
-                    >
-                      <MathContent className="prose prose-sm max-w-none text-body-dark prose-p:text-body-dark" html={statement.teks} />
-                      <div className="mt-3 grid grid-cols-2 gap-2">
-                        {[true, false].map((value) => (
-                          <button
-                            key={String(value)}
-                            type="button"
-                            onClick={() => selectStatementAnswer(statement.pernyataan_id, value)}
-                            disabled={saving || submitting}
-                            className={`rounded-input border px-3 py-2.5 text-sm font-semibold transition-all duration-200 active:scale-[0.97] disabled:opacity-60 disabled:active:scale-100 ${
-                              selectedValue === value
-                                ? "border-brand-primary bg-brand-primary text-heading-light"
-                                : "border-card-border bg-neutral text-body-dark hover:border-brand-primary hover:bg-brand-primary/5"
-                            }`}
-                          >
-                            {value ? (question.label_benar || "Benar") : (question.label_salah || "Salah")}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              <TabelBenarSalah
+                key={question.soal_id}
+                pernyataan={question.pernyataan}
+                jawaban={statementAnswers}
+                labelBenar={question.label_benar}
+                labelSalah={question.label_salah}
+                disabled={saving || submitting}
+                onPilih={selectStatementAnswer}
+              />
             ) : isOpsiType(question.tipe) ? (
               <div key={question.soal_id} className="animate-question-in space-y-3">
                 {question.opsi.map((option, index) => {

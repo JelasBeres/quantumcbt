@@ -77,6 +77,12 @@
 .student-set .student-meta { flex-direction: column; gap: 4px; border-top: 0; padding-top: 0; font-size: 12px; color: var(--st-muted); }
 .student-set-actions { display: flex; flex-direction: column; gap: 6px; }
 .student-set-actions .student-btn, .student-set-actions .student-pill { width: 100%; text-align: center; }
+/* Kotak pencarian daftar Latihan/Tryout */
+.student-search { display: flex; align-items: center; gap: 10px; max-width: 420px; padding: 0 14px; height: 44px; border-radius: 12px; border: 1px solid var(--st-border-strong); background: var(--st-surface); color: var(--st-muted); transition: border-color .2s; }
+.student-search:focus-within { border-color: var(--st-accent-soft); }
+.student-search input { flex: 1; min-width: 0; height: 100%; border: 0; outline: none; background: transparent; color: var(--st-heading); font-size: 14px; }
+.student-search input::placeholder { color: var(--st-subtle); }
+
 /* Set soal per mapel: kiri daftar mapel, kanan kartu set */
 .student-mapel-layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 24px; align-items: start; }
 .student-mapel-list { display: flex; flex-direction: column; gap: 6px; list-style: none; margin: 0; padding: 0; }

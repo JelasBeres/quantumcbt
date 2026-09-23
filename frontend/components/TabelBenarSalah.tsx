@@ -1,0 +1,70 @@
+"use client";
+
+import MathContent from "@/components/MathContent";
+
+// Soal tipe Benar/Salah ditampilkan sebagai tabel ala UTBK/TKA:
+// No | Pernyataan | Benar | Salah, satu pilihan per baris.
+type Pernyataan = { pernyataan_id: number; teks: string };
+
+type Props = {
+  pernyataan: Pernyataan[];
+  jawaban: { pernyataan_id: number; jawaban: boolean }[];
+  labelBenar?: string | null;
+  labelSalah?: string | null;
+  disabled?: boolean;
+  onPilih: (pernyataanId: number, value: boolean) => void;
+};
+
+export default function TabelBenarSalah({ pernyataan, jawaban, labelBenar, labelSalah, disabled, onPilih }: Props) {
+  const label = (value: boolean) => (value ? labelBenar || "Benar" : labelSalah || "Salah");
+
+  return (
+    <div className="animate-question-in overflow-x-auto rounded-input border border-card-border">
+      <table className="w-full border-collapse text-sm">
+        <thead>
+          <tr className="bg-neutral text-left text-xs font-semibold uppercase tracking-wide text-text-muted">
+            <th scope="col" className="w-10 px-3 py-2.5 text-center">No</th>
+            <th scope="col" className="px-3 py-2.5">Pernyataan</th>
+            {[true, false].map((value) => (
+              <th key={String(value)} scope="col" className="w-20 px-2 py-2.5 text-center sm:w-24">{label(value)}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {pernyataan.map((row, index) => {
+            const selected = jawaban.find((item) => item.pernyataan_id === row.pernyataan_id)?.jawaban;
+            return (
+              <tr key={row.pernyataan_id} className="border-t border-card-border align-middle">
+                <td className="px-3 py-3 text-center font-semibold text-text-muted">{index + 1}</td>
+                <td className="px-3 py-3">
+                  <MathContent className="prose prose-sm max-w-none text-body-dark prose-p:my-0 prose-p:text-body-dark" html={row.teks} />
+                </td>
+                {[true, false].map((value) => {
+                  const checked = selected === value;
+                  return (
+                    <td key={String(value)} className="px-2 py-3 text-center">
+                      <button
+                        type="button"
+                        aria-pressed={checked}
+                        aria-label={`${label(value)} untuk pernyataan ${index + 1}`}
+                        disabled={disabled}
+                        onClick={() => onPilih(row.pernyataan_id, value)}
+                        className={`inline-flex h-8 w-8 items-center justify-center rounded-full border-2 transition-all duration-200 active:scale-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 disabled:opacity-60 ${
+                          checked
+                            ? "border-brand-primary bg-brand-primary"
+                            : "border-card-border bg-card-bg hover:border-brand-primary"
+                        }`}
+                      >
+                        {checked && <span className="h-2.5 w-2.5 rounded-full bg-white" aria-hidden="true" />}
+                      </button>
+                    </td>
+                  );
+                })}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}

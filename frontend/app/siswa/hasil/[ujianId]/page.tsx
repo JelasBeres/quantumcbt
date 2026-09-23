@@ -338,20 +338,36 @@ export default function HasilDetailPage() {
                   <MathContent className="prose prose-sm max-w-none" html={soalAktif.teks_soal} />
 
                   {soalAktif.tipe === "benar_salah" && soalAktif.pernyataan && soalAktif.pernyataan.length > 0 && (
-                    <div className="space-y-2.5">
-                      {soalAktif.pernyataan.map((row) => {
-                        const label = (value: boolean) => value ? soalAktif.label_benar || "Benar" : soalAktif.label_salah || "Salah";
-                        return (
-                          <div key={row.pernyataan_id} className={`rounded-input border p-3 ${row.is_correct ? "border-blue-200 bg-blue-50" : "border-red-200 bg-red-50"}`}>
-                            <MathContent className="prose prose-sm max-w-none" html={row.teks} />
-                            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
-                              <span className={`font-semibold ${row.is_correct ? "text-blue-700" : "text-red-700"}`}>{row.is_correct ? "Benar" : "Salah"}</span>
-                              <span className="text-text-muted">Jawabanmu: <strong className="font-semibold text-body-dark">{row.jawaban_user == null ? "-" : label(row.jawaban_user)}</strong></span>
-                              <span className="text-text-muted">Kunci: <strong className="font-semibold text-body-dark">{label(row.jawaban_benar)}</strong></span>
-                            </div>
-                          </div>
-                        );
-                      })}
+                    <div className="overflow-x-auto rounded-input border border-card-border">
+                      <table className="w-full border-collapse text-sm">
+                        <thead>
+                          <tr className="bg-neutral text-left text-xs font-semibold uppercase tracking-wide text-text-muted">
+                            <th scope="col" className="w-10 px-3 py-2.5 text-center">No</th>
+                            <th scope="col" className="px-3 py-2.5">Pernyataan</th>
+                            <th scope="col" className="w-24 px-2 py-2.5 text-center">Jawabanmu</th>
+                            <th scope="col" className="w-20 px-2 py-2.5 text-center">Kunci</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {soalAktif.pernyataan.map((row, index) => {
+                            const label = (value: boolean) => value ? soalAktif.label_benar || "Benar" : soalAktif.label_salah || "Salah";
+                            return (
+                              <tr key={row.pernyataan_id} className={`border-t border-card-border align-middle ${row.is_correct ? "" : "bg-red-50"}`}>
+                                <td className="px-3 py-3 text-center font-semibold text-text-muted">{index + 1}</td>
+                                <td className="px-3 py-3"><MathContent className="prose prose-sm max-w-none prose-p:my-0" html={row.teks} /></td>
+                                <td className="px-2 py-3 text-center">
+                                  <span className={`inline-flex items-center gap-1 font-semibold ${row.is_correct ? "text-blue-700" : "text-red-700"}`}>
+                                    {row.is_correct ? <Check className="h-4 w-4" aria-hidden="true" /> : <X className="h-4 w-4" aria-hidden="true" />}
+                                    {row.jawaban_user == null ? "-" : label(row.jawaban_user)}
+                                    <span className="sr-only">{row.is_correct ? "(benar)" : "(salah)"}</span>
+                                  </span>
+                                </td>
+                                <td className="px-2 py-3 text-center font-semibold text-body-dark">{label(row.jawaban_benar)}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
                     </div>
                   )}
 

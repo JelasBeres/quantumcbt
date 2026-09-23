@@ -160,5 +160,5 @@ export default function MathContent({ html, className }: MathContentProps) {
     processElement(el);
   }, [html]);
 
-  return <div ref={ref} className={className} />;
+  return <div ref={ref} className={className ? `rich-content ${className}` : "rich-content"} />;
 }

@@ -53,6 +53,32 @@ textarea {
   font: inherit;
 }
 
+/* Tabel di dalam soal/opsi/pembahasan (editor, preview, ujian, pembahasan).
+   Warna semi-transparan agar terbaca di tema terang maupun gelap (area siswa). */
+.rich-content table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 0.75em 0;
+  border-collapse: collapse;
+}
+.rich-content th,
+.rich-content td {
+  min-width: 3rem;
+  padding: 6px 10px;
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  text-align: left;
+  vertical-align: top;
+}
+.rich-content th {
+  background: rgba(148, 163, 184, 0.16);
+  font-weight: 600;
+}
+.rich-content td > p:first-child,
+.rich-content th > p:first-child { margin-top: 0; }
+.rich-content td > p:last-child,
+.rich-content th > p:last-child { margin-bottom: 0; }
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
