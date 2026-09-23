@@ -8,7 +8,6 @@ from app.core.security import get_current_active_user, get_password_hash, requir
 from app.core.timeutils import ensure_utc, utc_now
 from app.db.database import get_db
 from app.models.bagian_paket import BagianPaket
-from app.models.grup_tryout import GrupTryout
 from app.models.hasil_ujian import HasilUjian
 from app.models.jadwal_ujian import JadwalUjian
 from app.models.kelas import Kelas
@@ -38,8 +37,14 @@ router = APIRouter(prefix="/siswa", tags=["siswa"])
 def list_latihan(db: Session = Depends(get_db), current_user=Depends(require_roles(["siswa"]))):
     siswa = get_current_siswa_profile(db, current_user)
     rows = db.query(PaketUjian).filter(PaketUjian.tipe == "latihan", PaketUjian.is_archived == False).order_by(PaketUjian.id.desc()).all()
+    bagian_soal_count = dict(
+        db.query(PaketSoal.bagian_paket_id, func.count(PaketSoal.id))
+        .filter(PaketSoal.bagian_paket_id.isnot(None))
+        .group_by(PaketSoal.bagian_paket_id)
+        .all()
+    )
     return [{"id": p.id, "nama": p.nama, "deskripsi": p.deskripsi, "durasi_menit": p.durasi_menit, "jumlah_soal": p.jumlah_soal, "kategori": p.kategori_ref.kode if p.kategori_ref else p.kategori, "kategori_nama": p.kategori_ref.nama if p.kategori_ref else None,
-             "bagian": [{"bagian_id": b.id, "nama": b.nama, "pelajaran_id": b.pelajaran_id} for b in db.query(BagianPaket).filter(BagianPaket.paket_ujian_id == p.id).order_by(BagianPaket.urutan, BagianPaket.id).all()]}
+             "bagian": [{"bagian_id": b.id, "nama": b.nama, "pelajaran_id": b.pelajaran_id, "durasi_menit": b.durasi_menit, "jumlah_soal": bagian_soal_count.get(b.id, 0)} for b in db.query(BagianPaket).filter(BagianPaket.paket_ujian_id == p.id).order_by(BagianPaket.urutan, BagianPaket.id).all()]}
             for p in rows if (p.program_id is None or p.program_id == siswa.program_id) and (p.kelas_id is None or p.kelas_id == siswa.kelas_id)
             and db.query(PaketSoal.id).filter(PaketSoal.paket_ujian_id == p.id).first()]
 
@@ -117,9 +122,20 @@ def list_siswa(db: Session = Depends(get_db), current_user=Depends(require_roles
     return db.query(Siswa).all()
 
 
+def _siswa_out_with_akademik(db: Session, siswa: Siswa) -> SiswaOut:
+    program = db.query(Program).filter(Program.id == siswa.program_id).first() if siswa.program_id else None
+    kelas = db.query(Kelas).filter(Kelas.id == siswa.kelas_id).first() if siswa.kelas_id else None
+    return SiswaOut(
+        **SiswaOut.model_validate(siswa).model_dump(exclude={"program_nama", "kelas_nama"}),
+        program_nama=program.nama if program else None,
+        kelas_nama=kelas.nama if kelas else None,
+    )
+
+
 @router.get("/profil", response_model=SiswaOut)
 def read_own_profile(db: Session = Depends(get_db), current_user=Depends(require_roles(["siswa"]))):
-    return get_current_siswa_profile(db, current_user)
+    siswa = get_current_siswa_profile(db, current_user)
+    return _siswa_out_with_akademik(db, siswa)
 
 
 @router.patch("/profil", response_model=SiswaOut)
@@ -132,7 +148,7 @@ def update_own_profile(payload: SiswaProfilUpdate, db: Session = Depends(get_db)
         siswa.pilihan_jurusan = [item.model_dump() for item in payload.pilihan_jurusan]
     db.commit()
     db.refresh(siswa)
-    return siswa
+    return _siswa_out_with_akademik(db, siswa)
 
 
 @router.get("/dashboard", response_model=SiswaDashboardOut)
@@ -177,7 +193,6 @@ def get_siswa_dashboard(db: Session = Depends(get_db), current_user=Depends(get_
 def get_siswa_jadwal_ujian(db: Session = Depends(get_db), current_user=Depends(get_current_active_user)):
     siswa = get_current_siswa_profile(db, current_user)
     paket_map = {paket.id: paket for paket in db.query(PaketUjian).all()}
-    grup_map = {grup.id: grup for grup in db.query(GrupTryout).all()}
     pelajaran_map = {pelajaran.id: pelajaran.nama for pelajaran in db.query(Pelajaran).all()}
     soal_count = {
         paket_id: count for paket_id, count in
@@ -212,8 +227,6 @@ def get_siswa_jadwal_ujian(db: Session = Depends(get_db), current_user=Depends(g
                 selesai=jadwal.selesai,
                 is_published=jadwal.is_published,
                 status=status,
-                grup_tryout_id=jadwal.grup_tryout_id,
-                nama_grup_tryout=grup_map[jadwal.grup_tryout_id].nama if jadwal.grup_tryout_id in grup_map else None,
                 durasi_menit=paket.durasi_menit,
                 jumlah_soal=soal_count.get(paket.id, paket.jumlah_soal or 0),
                 pelajaran=pelajaran_map.get(paket.pelajaran_id) if paket.pelajaran_id else None,
@@ -233,7 +246,6 @@ def get_siswa_jadwal_tersedia(db: Session = Depends(get_db), current_user=Depend
     siswa = get_current_siswa_profile(db, current_user)
     paket_map = {paket.id: paket for paket in db.query(PaketUjian).all()}
     pelajaran_map = {pelajaran.id: pelajaran.nama for pelajaran in db.query(Pelajaran).all()}
-    grup_map = {grup.id: grup for grup in db.query(GrupTryout).all()}
     bagian_map: Dict[int, List[BagianPaket]] = {}
     for bagian in db.query(BagianPaket).all():
         bagian_map.setdefault(bagian.paket_ujian_id, []).append(bagian)
@@ -290,8 +302,6 @@ def get_siswa_jadwal_tersedia(db: Session = Depends(get_db), current_user=Depend
                 selesai=jadwal.selesai,
                 is_published=jadwal.is_published,
                 status=status,
-                grup_tryout_id=jadwal.grup_tryout_id,
-                nama_grup_tryout=grup_map[jadwal.grup_tryout_id].nama if jadwal.grup_tryout_id in grup_map else None,
                 durasi_menit=paket.durasi_menit or 0,
                 jumlah_soal=soal_count.get(paket.id, 0),
                 pelajaran=kategori_pelajaran,
@@ -299,6 +309,7 @@ def get_siswa_jadwal_tersedia(db: Session = Depends(get_db), current_user=Depend
                 kategori=paket.kategori_ref.kode if paket.kategori_ref else paket.kategori,
                 kategori_nama=paket.kategori_ref.nama if paket.kategori_ref else None,
                 deskripsi_paket=paket.deskripsi,
+                izinkan_pilih_mapel=paket.izinkan_pilih_mapel if paket.izinkan_pilih_mapel is not None else True,
                 bagian=[
                     BagianTersediaOut(
                         bagian_id=b.id,
@@ -317,8 +328,6 @@ def get_siswa_jadwal_tersedia(db: Session = Depends(get_db), current_user=Depend
 def get_siswa_riwayat_ujian(db: Session = Depends(get_db), current_user=Depends(get_current_active_user)):
     siswa = get_current_siswa_profile(db, current_user)
     paket_map = {paket.id: paket for paket in db.query(PaketUjian).all()}
-    jadwal_map = {jadwal.id: jadwal for jadwal in db.query(JadwalUjian).all()}
-    grup_map = {grup.id: grup for grup in db.query(GrupTryout).all()}
     hasil_map = {
         hasil.ujian_siswa_id: hasil
         for hasil in (
@@ -355,10 +364,6 @@ def get_siswa_riwayat_ujian(db: Session = Depends(get_db), current_user=Depends(
                 skala=(hasil.skor_per_pelajaran_json or {}).get("_meta", {}).get("skala") if hasil else None,
                 skor_mentah=(hasil.skor_per_pelajaran_json or {}).get("_meta", {}).get("skor_mentah") if hasil else None,
                 metadata=(hasil.skor_per_pelajaran_json or {}).get("_meta") if hasil else None,
-                grup_tryout_id=None if ujian.jadwal_ujian_id not in jadwal_map else jadwal_map[ujian.jadwal_ujian_id].grup_tryout_id,
-                nama_grup_tryout=None
-                if not (ujian.jadwal_ujian_id in jadwal_map and jadwal_map[ujian.jadwal_ujian_id].grup_tryout_id in grup_map)
-                else grup_map[jadwal_map[ujian.jadwal_ujian_id].grup_tryout_id].nama,
             )
         )
     return rows

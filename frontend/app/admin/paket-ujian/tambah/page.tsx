@@ -24,6 +24,7 @@ type FormData = {
   skala_kohort: "utbk" | "tka";
   is_random_soal: boolean;
   is_random_opsi: boolean;
+  izinkan_pilih_mapel: boolean;
 };
 
 export default function TambahPaketUjianPage() {
@@ -43,6 +44,7 @@ export default function TambahPaketUjianPage() {
     skala_kohort: "utbk",
     is_random_soal: true,
     is_random_opsi: true,
+    izinkan_pilih_mapel: true,
   });
   const [kategoriList, setKategoriList] = useState<KategoriPaket[]>([]);
   const [kelasList, setKelasList] = useState<Kelas[]>([]);
@@ -79,6 +81,7 @@ export default function TambahPaketUjianPage() {
             skala_kohort: item.skala_kohort === "tka" ? "tka" : "utbk",
             is_random_soal: item.is_random_soal,
             is_random_opsi: item.is_random_opsi,
+            izinkan_pilih_mapel: item.izinkan_pilih_mapel !== false,
           });
           setLegacyPelajaranId(item.pelajaran_id ?? null);
           setJumlahSoal(item.jumlah_soal);
@@ -124,6 +127,7 @@ export default function TambahPaketUjianPage() {
         skala_kohort: formData.skala_kohort,
         is_random_soal: formData.is_random_soal,
         is_random_opsi: formData.is_random_opsi,
+        izinkan_pilih_mapel: formData.tipe === "ujian" ? formData.izinkan_pilih_mapel : true,
         jumlah_soal: jumlahSoal,
         pelajaran_id: editId ? legacyPelajaranId : null,
         kelas_id: formData.kelas_id ? Number(formData.kelas_id) : null,
@@ -154,19 +158,7 @@ export default function TambahPaketUjianPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input label="Nama Paket" required value={formData.nama} onChange={(event) => setFormData({ ...formData, nama: event.target.value })} />
           <Textarea label="Deskripsi" value={formData.deskripsi} onChange={(event) => setFormData({ ...formData, deskripsi: event.target.value })} />
-          <div className="grid gap-4 sm:grid-cols-3">
-            <Select
-              label="Jenis"
-              required
-              value={formData.tipe}
-              onChange={(event) => setFormData((current) => ({
-                ...current,
-                tipe: event.target.value as TipePaket,
-                kategori_id: "",
-                metode_penilaian: event.target.value === "latihan" ? "biasa" : current.metode_penilaian,
-              }))}
-              options={[{ value: "ujian", label: "Tryout (dengan jadwal)" }, { value: "latihan", label: "Latihan (tanpa jadwal)" }]}
-            />
+          <div className="grid gap-4 sm:grid-cols-2">
             <Select label="Kategori" required value={formData.kategori_id} onChange={(event) => handleCategoryChange(event.target.value)} options={[{ value: "", label: "- Pilih Kategori -" }, ...availableCategories.map((item) => ({ value: item.id, label: `${item.nama} (${item.kode})` }))]} />
             <Select label="Program" required value={formData.program_id} onChange={(event) => setFormData({ ...formData, program_id: event.target.value })} options={[{ value: "", label: "- Pilih Program -" }, ...programList.map((item) => ({ value: item.id, label: item.nama }))]} />
           </div>
@@ -174,6 +166,15 @@ export default function TambahPaketUjianPage() {
           {formData.tipe === "ujian" && (
             <div className="rounded-input border border-card-border bg-neutral p-4">
               <div className="grid gap-4 sm:grid-cols-2">
+                <Select
+                  label="Bisa Lihat Mapel"
+                  value={formData.izinkan_pilih_mapel ? "ya" : "tidak"}
+                  onChange={(event) => setFormData({ ...formData, izinkan_pilih_mapel: event.target.value === "ya" })}
+                  options={[{ value: "ya", label: "Ya - tampilkan daftar mapel & izinkan latihan per mapel" }, { value: "tidak", label: "Tidak - langsung ke ujian" }]}
+                />
+              </div>
+              <p className="mt-3 text-xs text-text-muted">Jika "Ya", siswa melihat daftar mapel/bagian dulu (tombol "Lihat Mapel") dan bisa latihan per mapel sebelum tryout. Jika "Tidak", tombol paket langsung "Mulai Ujian" tanpa breakdown mapel.</p>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 <Select
                   label="Metode Penilaian"
                   value={formData.metode_penilaian}

@@ -3,6 +3,8 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from typing import Any, Dict, List, Optional
 
+from app.core.timeutils import ensure_utc
+
 
 class PilihanJurusan(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
@@ -40,6 +42,8 @@ class SiswaOut(BaseModel):
     no_induk: Optional[str] = None
     program_id: Optional[int] = None
     kelas_id: Optional[int] = None
+    program_nama: Optional[str] = None
+    kelas_nama: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -75,8 +79,6 @@ class SiswaJadwalUjianOut(BaseModel):
     selesai: datetime
     is_published: bool
     status: str
-    grup_tryout_id: Optional[int] = None
-    nama_grup_tryout: Optional[str] = None
     durasi_menit: int = 0
     jumlah_soal: int = 0
     pelajaran: Optional[str] = None
@@ -84,6 +86,13 @@ class SiswaJadwalUjianOut(BaseModel):
     kategori: Optional[str] = None
     kategori_nama: Optional[str] = None
     deskripsi_paket: Optional[str] = None
+    izinkan_pilih_mapel: bool = True
+
+    @field_validator("mulai", "selesai")
+    @classmethod
+    def as_utc(cls, value: datetime) -> datetime:
+        # Waktu tanpa zona dari SQLite adalah UTC; tandai agar browser tidak salah membaca.
+        return ensure_utc(value)
 
 
 class BagianTersediaOut(BaseModel):
@@ -111,8 +120,6 @@ class SiswaRiwayatUjianOut(BaseModel):
     skala: Optional[str] = None
     skor_mentah: Optional[int] = None
     metadata: Optional[Dict[str, Any]] = None
-    grup_tryout_id: Optional[int] = None
-    nama_grup_tryout: Optional[str] = None
 
 
 class SiswaDashboardDataOut(BaseModel):

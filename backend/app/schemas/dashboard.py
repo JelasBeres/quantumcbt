@@ -27,7 +27,6 @@ class MonitoringUjianOut(BaseModel):
     paket_ujian_id: int
     nama_paket: str
     jadwal_ujian_id: Optional[int] = None
-    nama_grup_tryout: Optional[str] = None
     started_at: Optional[datetime] = None
     finished_at: Optional[datetime] = None
     status: str
@@ -36,6 +35,8 @@ class MonitoringUjianOut(BaseModel):
     terjawab: int = 0
     jumlah_ragu: int = 0
     total_pelanggaran: int = 0
+    kategori_id: Optional[int] = None
+    kategori_nama: Optional[str] = None
 
 
 class DashboardLogKecuranganOut(BaseModel):
@@ -46,6 +47,10 @@ class DashboardLogKecuranganOut(BaseModel):
     tipe_kecurangan: Optional[str] = None
     deskripsi: Optional[str] = None
     created_at: Optional[datetime] = None
+    paket_ujian_id: Optional[int] = None
+    nama_paket: Optional[str] = None
+    kategori_id: Optional[int] = None
+    kategori_nama: Optional[str] = None
 
 
 class DashboardHasilSiswaOut(BaseModel):

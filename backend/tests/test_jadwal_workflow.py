@@ -51,18 +51,17 @@ def test_guru_package_ownership_and_schedule_approval():
     admin_h = headers("jadwal-admin", "JadwalAdmin1")
     paket = client.post("/paket-ujian/", json={
         "nama": "Paket Guru Jadwal", "durasi_menit": 60, "jumlah_soal": 0,
-        "program_id": ids[0], "kelas_id": ids[1], "pelajaran_id": ids[2], "tipe": "ujian"
+        "program_id": ids[0], "kelas_id": ids[1], "pelajaran_id": ids[2], "tipe": "ujian", "kategori": "utbk"
     }, headers=admin_h)
     assert paket.status_code == 200
     paket_id = paket.json()["id"]
     assert paket.json()["created_by"] == admin.id
-    assert client.put(f"/paket-ujian/{paket_id}/penugasan", headers=admin_h, json=[guru.id]).status_code == 200
+    assert client.put(f"/paket-ujian/{paket_id}/penugasan", headers=admin_h, json=[guru.id]).status_code == 410
     assert client.get(f"/paket-ujian/{paket_id}", headers=guru_h).status_code == 200
-    assert client.patch(f"/paket-ujian/{paket_id}/durasi?durasi_menit=75", headers=guru_h).status_code == 200
-    assert client.patch(f"/paket-ujian/{paket_id}/durasi?durasi_menit=75", headers=guru2_h).status_code == 403
+    assert client.get(f"/paket-ujian/{paket_id}", headers=guru2_h).status_code == 200
     assert client.post("/paket-ujian/", headers=guru_h, json={"nama": "Forbidden", "program_id": ids[0]}).status_code == 403
 
-    assert client.get(f"/paket-ujian/{paket_id}", headers=guru2_h).status_code == 403
+    assert client.get(f"/paket-ujian/{paket_id}", headers=guru2_h).status_code == 200
 
     start = datetime.now(timezone.utc) + timedelta(days=30)
     create = client.post("/jadwal-ujian/", json={
@@ -78,4 +77,4 @@ def test_admin_package_visible_and_guru_only_sees_own_packages():
     guru = ensure_user("jadwal-guru-list", "JadwalGuruList1", "guru")
     response = client.get("/paket-ujian/", headers=headers("jadwal-guru-list", "JadwalGuruList1"))
     assert response.status_code == 200
-    assert all(guru.id in (item.get("assigned_guru_ids") or []) for item in response.json())
+    assert all(guru.id not in (item.get("assigned_guru_ids") or []) for item in response.json())

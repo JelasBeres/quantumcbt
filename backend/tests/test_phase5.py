@@ -1,4 +1,4 @@
-from support import default_program_id
+from support import default_program_id, make_paket_ready
 from datetime import datetime, timedelta
 from unittest.mock import patch
 from fastapi.testclient import TestClient
@@ -92,7 +92,7 @@ def test_phase5_start_resume_and_save_answer():
         db.refresh(siswa)
     db.close()
 
-    r = client.post("/paket-ujian/", json={"program_id": default_program_id(), "nama": "Paket Phase 5", "durasi_menit": 10, "jumlah_soal": 1, "is_random_soal": True, "is_random_opsi": True}, headers=admin_headers)
+    r = client.post("/paket-ujian/", json={"program_id": default_program_id(), "kategori": "utbk", "nama": "Paket Phase 5", "durasi_menit": 10, "jumlah_soal": 1, "is_random_soal": True, "is_random_opsi": True}, headers=admin_headers)
     assert r.status_code == 200
     paket = r.json()
     paket_id = paket["id"]
@@ -107,6 +107,7 @@ def test_phase5_start_resume_and_save_answer():
     db.add_all([opsi1, opsi2])
     db.commit()
 
+    make_paket_ready(paket_id, durasi_menit=10)
     duration = timedelta(minutes=15)
     existing_intervals = get_existing_jadwal_intervals(admin_headers)
     mulai, selesai = find_non_overlapping_interval(utc_now(), duration, existing_intervals)
@@ -213,11 +214,12 @@ def test_phase5_cannot_start_before_jadwal_mulai():
     student_token, student_id = get_token(username="phase5siswa2", password="phase5pass2", role="siswa")
     student_headers = {"Authorization": f"Bearer {student_token}"}
 
-    r = client.post("/paket-ujian/", json={"program_id": default_program_id(), "nama": "Paket Phase 5 Future", "durasi_menit": 10, "jumlah_soal": 1, "is_random_soal": False, "is_random_opsi": False}, headers=admin_headers)
+    r = client.post("/paket-ujian/", json={"program_id": default_program_id(), "kategori": "utbk", "nama": "Paket Phase 5 Future", "durasi_menit": 10, "jumlah_soal": 1, "is_random_soal": False, "is_random_opsi": False}, headers=admin_headers)
     assert r.status_code == 200
     paket_id = r.json()["id"]
 
     # schedule starts after current time and avoids overlap with other exams
+    make_paket_ready(paket_id, durasi_menit=10)
     duration = timedelta(minutes=15)
     existing_intervals = get_existing_jadwal_intervals(admin_headers)
     mulai = utc_now() + timedelta(days=365)

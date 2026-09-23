@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, CalendarClock, Activity, History, User } from "lucide-react";
+import { LayoutDashboard, ClipboardList, BookOpen, Activity, History, User } from "lucide-react";
 
 const ITEMS = [
   { href: "/siswa/dashboard", label: "Beranda", icon: LayoutDashboard, match: ["/siswa/dashboard"] },
-  { href: "/siswa/jadwal-ujian", label: "Latihan", icon: CalendarClock, match: ["/siswa/jadwal-ujian"] },
+  { href: "/siswa/tryout", label: "Tryout", icon: ClipboardList, match: ["/siswa/tryout", "/siswa/paket"] },
+  { href: "/siswa/latihan", label: "Latihan", icon: BookOpen, match: ["/siswa/latihan"] },
   { href: "/siswa/ujian-aktif", label: "Ujian", icon: Activity, match: ["/siswa/ujian-aktif", "/siswa/ujian"] },
   { href: "/siswa/riwayat", label: "Riwayat", icon: History, match: ["/siswa/riwayat", "/siswa/hasil"] },
   { href: "/siswa/profil", label: "Profil", icon: User, match: ["/siswa/profil"] }
@@ -22,7 +23,7 @@ export default function SiswaBottomNav() {
     item.match.some((path) => pathname === path || pathname.startsWith(path + "/"));
 
   return (
-    <nav className="bottom-nav-shell md:hidden" aria-label="Navigasi utama">
+    <nav className="bottom-nav-shell" aria-label="Navigasi utama">
       <div className="bottom-nav-bar">
         {ITEMS.map((item) => {
           const Icon = item.icon;

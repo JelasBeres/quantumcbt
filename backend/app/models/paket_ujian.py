@@ -25,6 +25,7 @@ class PaketUjian(Base):
     kategori_id = Column(Integer, ForeignKey("kategori_paket.id", ondelete="RESTRICT"), nullable=True, index=True)
     metode_penilaian = Column(String(20), nullable=False, default="biasa", server_default="biasa")
     skala_kohort = Column(String(20), nullable=False, default="utbk", server_default="utbk")
+    izinkan_pilih_mapel = Column(Boolean, nullable=False, default=True, server_default="true")
     kategori_ref = relationship("KategoriPaket", back_populates="paket")
     created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     is_archived = Column(Boolean, nullable=False, default=False, server_default="false", index=True)

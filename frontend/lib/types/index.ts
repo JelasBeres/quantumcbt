@@ -77,8 +77,10 @@ export type PaketUjian = {
   kategori_nama?: string | null;
   metode_penilaian?: "biasa" | "kohort";
   skala_kohort?: "utbk" | "tka";
+  izinkan_pilih_mapel?: boolean;
   jumlah_bagian?: number;
   jumlah_bagian_kosong?: number;
+  jumlah_bagian_approved?: number;
   siap_dipublikasikan?: boolean;
   created_by?: number | null;
   is_archived?: boolean;
@@ -91,7 +93,6 @@ export type JadwalUjian = {
   mulai: string;
   selesai: string;
   is_published: boolean;
-  grup_tryout_id?: number | null;
   program_id?: number | null;
   kelas_id?: number | null;
   durasi_menit_paket?: number | null;
@@ -115,6 +116,14 @@ export type BagianPaket = {
   deskripsi?: string | null;
   jumlah_soal: number;
   soal_ids: number[];
+  status?: "draft" | "pending_review" | "revision_required" | "approved" | string;
+  review_note?: string | null;
+  submitted_for_review_at?: string | null;
+  reviewed_at?: string | null;
+  reviewed_by?: number | null;
+  revision_number?: number;
+  guru_pengampu?: string | null;
+  reviewer_nama?: string | null;
 };
 
 export type Soal = {
@@ -171,6 +180,10 @@ export type PernyataanBenarSalah = {
   teks_pernyataan: string;
   urutan: number;
   is_benar?: boolean;
+};
+
+export type PernyataanBenarSalahAdmin = Omit<PernyataanBenarSalah, "is_benar"> & {
+  is_benar: boolean;
 };
 
 export type OpsiJawaban = {

@@ -5,7 +5,7 @@ from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.core.security import require_roles
+from app.core.security import get_current_active_user, require_roles
 from app.db.database import get_db
 from app.models.pelajaran import Pelajaran
 from app.models.soal import Soal
@@ -42,7 +42,7 @@ def _commit(db: Session) -> None:
 
 
 @router.get("/", response_model=List[SubbabOut])
-def list_subbab(topik_id: Optional[int] = None, pelajaran_id: Optional[int] = None, db: Session = Depends(get_db)):
+def list_subbab(topik_id: Optional[int] = None, pelajaran_id: Optional[int] = None, db: Session = Depends(get_db), current_user=Depends(get_current_active_user)):
     query = db.query(Subbab).join(Topik, Topik.id == Subbab.topik_id)
     if topik_id is not None:
         query = query.filter(Subbab.topik_id == topik_id)

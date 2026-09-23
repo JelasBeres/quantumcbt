@@ -15,7 +15,6 @@ class JadwalUjian(Base):
     is_published = Column(Boolean, nullable=True, server_default=text('false'), default=False)
     program_id = Column(Integer, nullable=True, index=True)
     kelas_id = Column(Integer, nullable=True, index=True)
-    grup_tryout_id = Column(Integer, ForeignKey("grup_tryout.id", ondelete="SET NULL"), nullable=True, index=True)
     is_deleted = Column(Boolean, nullable=True, server_default=text('false'), default=False)
     durasi_menit_paket = Column(Integer, nullable=True)
     status = Column(String(30), nullable=False, server_default="draft", default="draft", index=True)

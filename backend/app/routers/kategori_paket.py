@@ -5,7 +5,7 @@ from sqlalchemy import func, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.core.security import require_roles
+from app.core.security import get_current_active_user, require_roles
 from app.db.database import get_db
 from app.models.kategori_paket import KategoriPaket
 from app.models.paket_ujian import PaketUjian
@@ -21,11 +21,12 @@ DEFAULT_KATEGORI = (
 
 
 def seed_kategori_paket(db: Session) -> None:
-    existing = {row.kode: row for row in db.query(KategoriPaket).filter(KategoriPaket.kode.in_([item[0] for item in DEFAULT_KATEGORI])).all()}
-    for kode, nama, deskripsi, tipe in DEFAULT_KATEGORI:
-        if kode not in existing:
+    # Kategori bawaan hanya dibuat sekali saat tabel masih kosong. Jika dibuat ulang
+    # setiap kali daftar dimuat, kategori bawaan yang dihapus admin akan muncul lagi.
+    if not db.query(KategoriPaket.id).first():
+        for kode, nama, deskripsi, tipe in DEFAULT_KATEGORI:
             db.add(KategoriPaket(kode=kode, nama=nama, deskripsi=deskripsi, tipe=tipe, is_active=True))
-    db.flush()
+        db.flush()
     categories = {row.kode: row.id for row in db.query(KategoriPaket).all()}
     for kode, category_id in categories.items():
         db.query(PaketUjian).filter(PaketUjian.kategori_id.is_(None), PaketUjian.kategori == kode).update({PaketUjian.kategori_id: category_id}, synchronize_session=False)
@@ -60,7 +61,7 @@ def _out(row: KategoriPaket, db: Session) -> dict:
 
 
 @router.get("/", response_model=List[KategoriPaketOut])
-def list_kategori_paket(db: Session = Depends(get_db)):
+def list_kategori_paket(db: Session = Depends(get_db), current_user=Depends(get_current_active_user)):
     seed_kategori_paket(db)
     return [_out(row, db) for row in db.query(KategoriPaket).order_by(KategoriPaket.nama).all()]
 

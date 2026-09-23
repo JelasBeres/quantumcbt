@@ -334,22 +334,15 @@ export default function SoalFormModal({
             ]}
           />
 
-           <RichEditor
-             label="Teks Soal"
-             required
-             value={formData.teks_soal}
-             onChange={(html) => setFormData({ ...formData, teks_soal: html })}
-             placeholder="Tulis soal di sini. Gunakan tombol Σ untuk menyisipkan rumus matematika."
-           />
+            <RichEditor
+              label="Teks Soal"
+              required
+              value={formData.teks_soal}
+              onChange={(html) => setFormData({ ...formData, teks_soal: html })}
+              placeholder="Tulis soal di sini. Gunakan tombol Σ untuk menyisipkan rumus matematika."
+            />
 
-           <Input
-             label="URL Gambar (opsional)"
-             value={formData.gambar_url}
-             onChange={(e) => setFormData({ ...formData, gambar_url: e.target.value })}
-             placeholder="https://example.com/image.jpg"
-           />
-
-             <div className="grid gap-4 sm:grid-cols-3">
+              <div className="grid gap-4 sm:grid-cols-3">
                <Select
                 label="Tingkat Kesulitan"
                 value={formData.tingkat_kesulitan}

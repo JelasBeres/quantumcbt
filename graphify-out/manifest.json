@@ -15,8 +15,8 @@
     "semantic_hash": ""
   },
   "backend/app/core/security.py": {
-    "mtime": 1789840383.29441,
-    "ast_hash": "a38fca31d7f899c9610b48e82381bba5",
+    "mtime": 1790053828.6886897,
+    "ast_hash": "035b6b34afee3b787c6fdf4f03e44280",
     "semantic_hash": ""
   },
   "backend/app/core/timeutils.py": {
@@ -155,8 +155,8 @@
     "semantic_hash": ""
   },
   "backend/app/models/topik.py": {
-    "mtime": 1789984687.5302837,
-    "ast_hash": "776fbcb4eed02c31bae704a8a9e26b4a",
+    "mtime": 1790018896.8965092,
+    "ast_hash": "69b77749645031540bf1d7f326cb71d0",
     "semantic_hash": ""
   },
   "backend/app/models/ujian_siswa.py": {
@@ -180,8 +180,8 @@
     "semantic_hash": ""
   },
   "backend/app/routers/bagian_paket.py": {
-    "mtime": 1790013856.587006,
-    "ast_hash": "fd35acf16d47af0f94dbbf2e35dbe445",
+    "mtime": 1790026743.3735857,
+    "ast_hash": "9decb2616323e75957f13908c03b710a",
     "semantic_hash": ""
   },
   "backend/app/routers/dashboard.py": {
@@ -190,13 +190,13 @@
     "semantic_hash": ""
   },
   "backend/app/routers/grup_tryout.py": {
-    "mtime": 1789840383.5448802,
+    "mtime": 1790025205.651744,
     "ast_hash": "86326df601a98f1544e8844dee3cb54e",
     "semantic_hash": ""
   },
   "backend/app/routers/guru_scope.py": {
-    "mtime": 1789840383.5605206,
-    "ast_hash": "5b73f71f3349661ab471e49c2de4d5c4",
+    "mtime": 1790025792.789848,
+    "ast_hash": "10b4b48d836eda3fdbc3243c5137e824",
     "semantic_hash": ""
   },
   "backend/app/routers/hasil_ujian.py": {
@@ -215,8 +215,8 @@
     "semantic_hash": ""
   },
   "backend/app/routers/jawaban_siswa.py": {
-    "mtime": 1790010814.4963193,
-    "ast_hash": "5cfc70653f9fd5362ad4e7b8b58a4d2e",
+    "mtime": 1790054097.2998345,
+    "ast_hash": "f9929b2efe759fa2410187ac9373be25",
     "semantic_hash": ""
   },
   "backend/app/routers/kelas.py": {
@@ -225,8 +225,8 @@
     "semantic_hash": ""
   },
   "backend/app/routers/laporan_soal.py": {
-    "mtime": 1789840383.576132,
-    "ast_hash": "de0752dce6397a6301b96f38e636e55c",
+    "mtime": 1790053979.981102,
+    "ast_hash": "8d14272144d6783626ed1bb680cef52d",
     "semantic_hash": ""
   },
   "backend/app/routers/log_kecurangan.py": {
@@ -245,8 +245,8 @@
     "semantic_hash": ""
   },
   "backend/app/routers/paket_ujian.py": {
-    "mtime": 1790011509.276704,
-    "ast_hash": "2cfc370426974daf37efd22fd3b0c353",
+    "mtime": 1790026358.5397892,
+    "ast_hash": "74ad93878637402ae6d8f35c0a47ff3c",
     "semantic_hash": ""
   },
   "backend/app/routers/pelajaran.py": {
@@ -270,8 +270,8 @@
     "semantic_hash": ""
   },
   "backend/app/routers/soal.py": {
-    "mtime": 1790012906.1667075,
-    "ast_hash": "06099e037e708cde30328f2406c72c47",
+    "mtime": 1790025714.2163765,
+    "ast_hash": "55a13ef70a87cbaf6253dc1c4748b4b5",
     "semantic_hash": ""
   },
   "backend/app/routers/topik.py": {
@@ -310,7 +310,7 @@
     "semantic_hash": ""
   },
   "backend/app/schemas/grup_tryout.py": {
-    "mtime": 1789840383.7480195,
+    "mtime": 1790025143.3869002,
     "ast_hash": "eb537df5fcb82caf49bf71edf3443c1f",
     "semantic_hash": ""
   },
@@ -385,8 +385,8 @@
     "semantic_hash": ""
   },
   "backend/app/schemas/soal.py": {
-    "mtime": 1790012895.4765918,
-    "ast_hash": "fdc35a01a1e69d859d9bc55f97dcabe2",
+    "mtime": 1790026925.5053527,
+    "ast_hash": "878aff172dabaf9a58039228f6674b16",
     "semantic_hash": ""
   },
   "backend/app/schemas/topik.py": {
@@ -465,8 +465,8 @@
     "semantic_hash": ""
   },
   "backend/tests/test_bagian_paket.py": {
-    "mtime": 1789933540.9801831,
-    "ast_hash": "6d7dc04f4d4ad566b6a3bf41941c9d64",
+    "mtime": 1790027113.915513,
+    "ast_hash": "59502e4f50deeca98b617ddcb8f92b52",
     "semantic_hash": ""
   },
   "backend/tests/test_client_september17.py": {
@@ -485,7 +485,7 @@
     "semantic_hash": ""
   },
   "backend/tests/test_grup_tryout.py": {
-    "mtime": 1789840383.998791,
+    "mtime": 1790026337.1862638,
     "ast_hash": "d8d54f534e73141f71d0f79ba0f6ed0d",
     "semantic_hash": ""
   },
@@ -500,8 +500,8 @@
     "semantic_hash": ""
   },
   "backend/tests/test_jadwal_workflow.py": {
-    "mtime": 1789840384.0138137,
-    "ast_hash": "b1e1d74f28c32f91973ee841fb82c9c3",
+    "mtime": 1790023828.9344444,
+    "ast_hash": "f6755eeef992a085eabf4042349f2b8b",
     "semantic_hash": ""
   },
   "backend/tests/test_opsi_authorization.py": {
@@ -585,13 +585,13 @@
     "semantic_hash": ""
   },
   "frontend/app/admin/koreksi-esai/page.tsx": {
-    "mtime": 1789840423.9984994,
-    "ast_hash": "36d5de8dcce75e0a28f1c1d1f70b491d",
+    "mtime": 1790053996.7723148,
+    "ast_hash": "34e1922dfdb4617c432fb66389327489",
     "semantic_hash": ""
   },
   "frontend/app/admin/laporan-soal/page.tsx": {
-    "mtime": 1789840423.9984994,
-    "ast_hash": "163e6d5b8c8391c25be095f5c29bb949",
+    "mtime": 1790053996.7879376,
+    "ast_hash": "2f0f030c821c4357c34355506b24c357",
     "semantic_hash": ""
   },
   "frontend/app/admin/layout.tsx": {
@@ -610,8 +610,8 @@
     "semantic_hash": ""
   },
   "frontend/app/admin/paket-ujian/page.tsx": {
-    "mtime": 1790013872.6210217,
-    "ast_hash": "55b4b92dccd7588e2512d3d35892115e",
+    "mtime": 1790025800.674125,
+    "ast_hash": "c3f0814965dfd25ba54fc424b7bbb061",
     "semantic_hash": ""
   },
   "frontend/app/admin/pelajaran/page.tsx": {
@@ -640,8 +640,8 @@
     "semantic_hash": ""
   },
   "frontend/app/admin/review-soal/page.tsx": {
-    "mtime": 1789840424.076626,
-    "ast_hash": "d8d10fd6ac62d003dd8c4a9f1a4ca0ca",
+    "mtime": 1790020469.6415906,
+    "ast_hash": "cb111763229515b1dfb68dc6aecd7a82",
     "semantic_hash": ""
   },
   "frontend/app/admin/siswa/page.tsx": {
@@ -660,8 +660,8 @@
     "semantic_hash": ""
   },
   "frontend/app/admin/users/page.tsx": {
-    "mtime": 1789840424.1079416,
-    "ast_hash": "be550db78900b78e8a952fa46783080e",
+    "mtime": 1790031490.9746218,
+    "ast_hash": "436f7966fdff4fc1ff9ffd4aa06c57c0",
     "semantic_hash": ""
   },
   "frontend/app/change-password/page.tsx": {
@@ -670,8 +670,8 @@
     "semantic_hash": ""
   },
   "frontend/app/guru/dashboard/page.tsx": {
-    "mtime": 1789840424.123503,
-    "ast_hash": "975b6be5282428a5025c6097bf41d692",
+    "mtime": 1790025374.9969184,
+    "ast_hash": "ed4999ac0fea0ae1ffd80d32e8a2370c",
     "semantic_hash": ""
   },
   "frontend/app/guru/jadwal/page.tsx": {
@@ -805,8 +805,8 @@
     "semantic_hash": ""
   },
   "frontend/components/Header.tsx": {
-    "mtime": 1789985557.5939727,
-    "ast_hash": "4e8eb6b254f749ce406896db1976ab06",
+    "mtime": 1790025250.7336903,
+    "ast_hash": "43133c49960aea11c7f9e91761f2819a",
     "semantic_hash": ""
   },
   "frontend/components/Input.tsx": {
@@ -860,8 +860,8 @@
     "semantic_hash": ""
   },
   "frontend/components/SoalFormModal.tsx": {
-    "mtime": 1790011176.2290528,
-    "ast_hash": "2e2accbe659770c7db6b17a382c75ebb",
+    "mtime": 1790017427.695557,
+    "ast_hash": "094ce06ac09e1bb035a3a5006d611cd5",
     "semantic_hash": ""
   },
   "frontend/components/StatCard.tsx": {
@@ -900,8 +900,8 @@
     "semantic_hash": ""
   },
   "frontend/lib/types/index.ts": {
-    "mtime": 1790013865.7279315,
-    "ast_hash": "efc5c2b5aaf41b25ba036c28125c88ff",
+    "mtime": 1790020407.362772,
+    "ast_hash": "54743f239e584f079002c77ca9d5c7d3",
     "semantic_hash": ""
   },
   "frontend/next-env.d.ts": {
@@ -1079,24 +1079,9 @@
     "ast_hash": "235b0a12cf2988595977bf91807e9894",
     "semantic_hash": ""
   },
-  "tunnel-url.txt": {
-    "mtime": 1789840382.8144066,
-    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
-    "semantic_hash": ""
-  },
-  "Resume_Project_CBT_Bimbel.pdf": {
-    "mtime": 1789840382.7935035,
-    "ast_hash": "b7d2e0912b70cbc9e576fa9ce82f6dcc",
-    "semantic_hash": ""
-  },
   "Logo-Square-Fit-Transparant-WhiteStroke.png": {
     "mtime": 1789840382.7778716,
     "ast_hash": "80c15499d0c27bb95a7d4cdfc739a9e3",
-    "semantic_hash": ""
-  },
-  "WhatsApp Image 2026-08-23 at 3.01.20 PM.jpeg": {
-    "mtime": 1789840382.8317404,
-    "ast_hash": "65f7481bd3a437d565760a318d1df623",
     "semantic_hash": ""
   },
   "frontend/public/quantum-research-logo.png": {
@@ -1120,8 +1105,8 @@
     "semantic_hash": ""
   },
   "frontend/components/PaketQuestionAssignment.tsx": {
-    "mtime": 1790008647.7687328,
-    "ast_hash": "25e19bc9d257a85a698de011eaf1e9ff",
+    "mtime": 1790025688.2284126,
+    "ast_hash": "24bcdbebd96544b35748b5f01cf950c6",
     "semantic_hash": ""
   },
   "frontend/app/guru/soal/tambah/page.tsx": {
@@ -1145,8 +1130,8 @@
     "semantic_hash": ""
   },
   "backend/tests/test_package_hierarchy.py": {
-    "mtime": 1790014287.8469956,
-    "ast_hash": "f42989d989840b36841fcfe2aa0f001e",
+    "mtime": 1790026752.4668663,
+    "ast_hash": "e489352aa1810d96739dfae7069d4acf",
     "semantic_hash": ""
   },
   "backend/app/models/kategori_paket.py": {
@@ -1175,8 +1160,8 @@
     "semantic_hash": ""
   },
   "backend/app/models/subbab.py": {
-    "mtime": 1789984713.6170774,
-    "ast_hash": "1f7ba91284f05bdee4e8e976d31fdf04",
+    "mtime": 1790018896.9044347,
+    "ast_hash": "56c8b09df0299edb585633258ec796eb",
     "semantic_hash": ""
   },
   "backend/app/routers/subbab.py": {
@@ -1207,6 +1192,11 @@
   "backend/tests/test_cohort_scoring.py": {
     "mtime": 1790012325.3137696,
     "ast_hash": "289b26001ee0d45b925b81e2d026e988",
+    "semantic_hash": ""
+  },
+  "backend/tests/test_guru_essay_report_security.py": {
+    "mtime": 1790054489.7132964,
+    "ast_hash": "ab319fb044e4ea17f9b5a388a8af9bcc",
     "semantic_hash": ""
   }
 }

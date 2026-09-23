@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Flag, Inbox } from "lucide-react";
 import { api, getErrorMessage } from "@/lib/api";
+import { getUser } from "@/lib/auth";
 import Button from "@/components/Button";
 import Card from "@/components/Card";
 import MathContent from "@/components/MathContent";
@@ -19,6 +20,7 @@ type Laporan = {
 };
 
 export default function LaporanSoalPage() {
+  const isGuru = getUser()?.role === "guru";
   const [items, setItems] = useState<Laporan[]>([]);
   const [status, setStatus] = useState("baru");
   const [loading, setLoading] = useState(true);
@@ -60,7 +62,9 @@ export default function LaporanSoalPage() {
         <div>
           <p className="text-sm font-semibold text-brand-primary">Bank Soal</p>
           <h1 className="mt-1 text-3xl font-bold text-heading-dark">Laporan Soal</h1>
-          <p className="mt-1 text-sm text-text-muted">Laporan dari siswa tentang soal yang bermasalah.</p>
+          <p className="mt-1 text-sm text-text-muted">
+            {isGuru ? "Laporan siswa untuk soal sesuai mapel yang diampu." : "Laporan dari siswa tentang soal yang bermasalah."}
+          </p>
         </div>
 
         <div className="flex gap-2">

@@ -39,7 +39,7 @@ export default function GuruDashboardPage() {
       <header>
         <p className="text-sm font-semibold text-brand-primary">Ruang kerja akademik</p>
         <h1 className="mt-1 text-3xl font-bold text-heading-dark">Dashboard Guru</h1>
-        <p className="mt-1 text-sm text-text-muted">Kelola soal, paket ujian, dan penilaian sesuai penugasan Anda.</p>
+        <p className="mt-1 text-sm text-text-muted">Kelola soal, bagian paket mapel, dan penilaian sesuai mapel yang Anda ampu.</p>
       </header>
 
       {error && <div className="rounded-input border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
@@ -58,11 +58,11 @@ export default function GuruDashboardPage() {
           <p className="mt-1 text-sm text-body-light">Buat draft, ajukan review, dan perbaiki soal dari satu tempat.</p>
           <span className="mt-5 inline-flex items-center gap-1 text-sm font-semibold">Buka soal <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" /></span>
         </Link>
-        <Card title="Penugasan Saya">
+        <Card title="Mapel yang Diampu">
           {scopes.length === 0 ? (
-            <p className="text-sm text-text-muted">Belum ada mata pelajaran yang ditugaskan. Hubungi admin.</p>
+            <p className="text-sm text-text-muted">Belum ada mata pelajaran yang diampu. Hubungi admin.</p>
           ) : (
-            <div className="space-y-2">
+            <div className="max-h-[360px] space-y-2 overflow-y-auto rounded-card border border-card-border p-2 pr-1">
               {scopes.map((scope) => (
                 <div key={scope.id} className="flex items-start gap-3 rounded-input border border-card-border p-3">
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-primary/10 text-brand-primary"><BookOpen className="h-4 w-4" /></span>
@@ -72,11 +72,6 @@ export default function GuruDashboardPage() {
             </div>
           )}
         </Card>
-      </section>
-      <section className="grid gap-3 sm:grid-cols-3">
-        <Link href="/guru/paket-ujian" className="rounded-card border border-card-border bg-card-bg p-4 shadow-card transition hover:border-brand-primary hover:shadow-card-hover"><p className="font-bold text-heading-dark">Paket Ujian Saya</p><p className="mt-1 text-sm text-text-muted">Susun paket dari soal yang sudah approved.</p></Link>
-        <Link href="/guru/jadwal" className="rounded-card border border-card-border bg-card-bg p-4 shadow-card transition hover:border-brand-primary hover:shadow-card-hover"><p className="font-bold text-heading-dark">Draft Jadwal</p><p className="mt-1 text-sm text-text-muted">Buat jadwal dan ajukan untuk diterbitkan.</p></Link>
-        <Link href="/guru/koreksi-esai" className="rounded-card border border-card-border bg-card-bg p-4 shadow-card transition hover:border-brand-primary hover:shadow-card-hover"><p className="font-bold text-heading-dark">Koreksi Esai</p><p className="mt-1 text-sm text-text-muted">Nilai jawaban uraian siswa.</p></Link>
       </section>
     </div>
   );

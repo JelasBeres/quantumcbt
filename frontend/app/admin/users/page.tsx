@@ -36,7 +36,7 @@ export default function UsersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("semua");
   const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState({ username: "", password: "", role: "siswa" });
+  const [formData, setFormData] = useState({ username: "", password: "", role: "guru" });
   const [guruForm, setGuruForm] = useState({ nama_lengkap: "", nip: "", email: "", no_hp: "" });
   const [scopeRows, setScopeRows] = useState<GuruScopeInput[]>([{ pelajaran_id: "", program_id: "", kelas_id: "" }]);
   const [guruProfiles, setGuruProfiles] = useState<GuruProfile[]>([]);
@@ -66,7 +66,7 @@ export default function UsersPage() {
       const [usersRes, profilesRes, programRes, kelasRes, pelajaranRes] = await Promise.all([
         api.get("/users/"), api.get("/guru-scope/profiles"), api.get("/program/"), api.get("/kelas/"), api.get("/pelajaran/")
       ]);
-      setUsers(usersRes.data); setGuruProfiles(profilesRes.data ?? []); setProgramList(programRes.data ?? []); setKelasList(kelasRes.data ?? []); setPelajaranList(pelajaranRes.data ?? []);
+      setUsers((usersRes.data as User[]).filter((item) => item.role !== "siswa")); setGuruProfiles(profilesRes.data ?? []); setProgramList(programRes.data ?? []); setKelasList(kelasRes.data ?? []); setPelajaranList(pelajaranRes.data ?? []);
     } catch (error) {
       console.error("Failed to load users:", error);
     } finally {
@@ -99,7 +99,7 @@ export default function UsersPage() {
         await api.post("/auth/register", formData);
       }
       loadUsers();
-      setFormData({ username: "", password: "", role: "siswa" });
+      setFormData({ username: "", password: "", role: "guru" });
       setGuruForm({ nama_lengkap: "", nip: "", email: "", no_hp: "" });
       setScopeRows([{ pelajaran_id: "", program_id: "", kelas_id: "" }]);
       setShowForm(false);
@@ -168,15 +168,7 @@ export default function UsersPage() {
   };
 
   const updateScopeRow = (index: number, patch: Partial<GuruScopeInput>) => {
-    setScopeRows((prev) => prev.map((scope, i) => {
-      if (i !== index) return scope;
-      const next = { ...scope, ...patch };
-      if (patch.program_id !== undefined) {
-        const selected = pelajaranList.find((p) => p.id === Number(next.pelajaran_id));
-        if (selected?.program_id && String(selected.program_id) !== patch.program_id) next.pelajaran_id = "";
-      }
-      return next;
-    }));
+    setScopeRows((prev) => prev.map((scope, i) => i === index ? { ...scope, ...patch } : scope));
   };
 
   const openGuruDetail = (profile: GuruProfile | null) => {
@@ -192,7 +184,7 @@ export default function UsersPage() {
   };
 
   const updateEditScopeRow = (index: number, patch: Partial<GuruScopeInput>) => {
-    setEditScopeRows((prev) => prev.map((scope, i) => i === index ? { ...scope, ...patch, ...(patch.program_id !== undefined ? { pelajaran_id: "" } : {}) } : scope));
+    setEditScopeRows((prev) => prev.map((scope, i) => i === index ? { ...scope, ...patch } : scope));
   };
 
   const saveGuruProfile = async () => {
@@ -224,7 +216,7 @@ export default function UsersPage() {
   };
 
   const roleCounts = useMemo(() => {
-    const counts: Record<string, number> = { siswa: 0, admin: 0, guru: 0 };
+    const counts: Record<string, number> = { admin: 0, guru: 0 };
     users.forEach((u) => {
       if (u.role in counts) counts[u.role] += 1;
     });
@@ -234,7 +226,6 @@ export default function UsersPage() {
   const roleOptions = useMemo(
     () => [
       { value: "semua", label: "Semua", jumlah: users.length },
-      { value: "siswa", label: "Siswa", jumlah: roleCounts.siswa },
       { value: "guru", label: "Guru", jumlah: roleCounts.guru },
       { value: "admin", label: "Admin", jumlah: roleCounts.admin },
     ].filter((item) => item.value === "semua" || item.jumlah > 0),
@@ -307,7 +298,7 @@ export default function UsersPage() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-3xl font-bold text-heading-dark">Users</h1>
-          <p className="mt-1 text-sm text-text-muted">Kelola akun user</p>
+          <p className="mt-1 text-sm text-text-muted">Kelola akun guru dan admin. Akun siswa dikelola di menu Data Siswa.</p>
         </div>
         {!showForm && (
           <Button onClick={() => setShowForm(true)}>
@@ -351,14 +342,13 @@ export default function UsersPage() {
               value={formData.role}
               onChange={(e) => setFormData({ ...formData, role: e.target.value })}
               options={[
-                { value: "siswa", label: "Siswa" },
                 { value: "guru", label: "Guru" },
                 { value: "admin", label: "Admin" }
               ]}
             />
             {formData.role === "guru" && (
               <div className="space-y-5 rounded-card border border-card-border bg-neutral/30 p-4">
-                <div><h3 className="font-bold text-heading-dark">Profil Guru</h3><p className="text-sm text-text-muted">Data guru dan penugasan akademik dibuat bersama akun.</p></div>
+                <div><h3 className="font-bold text-heading-dark">Profil Guru</h3><p className="text-sm text-text-muted">Data guru dan mapel yang diampu dibuat bersama akun. Program dan kelas adalah filter audiens opsional; tanpa filter berarti semua.</p></div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Input label="Nama Lengkap" required value={guruForm.nama_lengkap} onChange={(e) => setGuruForm({ ...guruForm, nama_lengkap: e.target.value })} />
                   <Input label="NIP / No. Identitas" value={guruForm.nip} onChange={(e) => setGuruForm({ ...guruForm, nip: e.target.value })} />
@@ -366,15 +356,17 @@ export default function UsersPage() {
                   <Input label="Nomor HP" value={guruForm.no_hp} onChange={(e) => setGuruForm({ ...guruForm, no_hp: e.target.value })} />
                 </div>
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between"><h4 className="text-sm font-bold text-heading-dark">Penugasan Guru</h4><Button type="button" size="sm" variant="outline" onClick={() => setScopeRows((prev) => [...prev, { pelajaran_id: "", program_id: "", kelas_id: "" }])}><Plus className="mr-1 h-4 w-4" /> Tambah Scope</Button></div>
+                  <div className="flex items-center justify-between"><div><h4 className="text-sm font-bold text-heading-dark">Mapel yang Diampu</h4><p className="text-xs text-text-muted">Program dan kelas membatasi audiens paket, bukan kepemilikan mata pelajaran.</p></div><Button type="button" size="sm" variant="outline" onClick={() => setScopeRows((prev) => [...prev, { pelajaran_id: "", program_id: "", kelas_id: "" }])}><Plus className="mr-1 h-4 w-4" /> Tambah Scope</Button></div>
+                  <div className="max-h-[360px] space-y-2 overflow-y-auto rounded-card border border-card-border bg-neutral/30 p-2">
                   {scopeRows.map((scope, index) => (
                     <div key={index} className="grid gap-3 rounded-input border border-card-border bg-card-bg p-3 sm:grid-cols-[1fr_1fr_1fr_auto] sm:items-end">
                       <Select label="Program" value={scope.program_id} onChange={(e) => updateScopeRow(index, { program_id: e.target.value })} options={[{ value: "", label: "Semua program" }, ...programList.map((p) => ({ value: p.id, label: p.nama }))]} />
-                      <Select label="Mata Pelajaran" required value={scope.pelajaran_id} onChange={(e) => updateScopeRow(index, { pelajaran_id: e.target.value })} options={[{ value: "", label: "Pilih pelajaran" }, ...pelajaranList.filter((p) => !scope.program_id || p.program_id == null || p.program_id === Number(scope.program_id)).map((p) => ({ value: p.id, label: p.nama }))]} />
+                      <Select label="Mata Pelajaran" required value={scope.pelajaran_id} onChange={(e) => updateScopeRow(index, { pelajaran_id: e.target.value })} options={[{ value: "", label: "Pilih pelajaran" }, ...pelajaranList.map((p) => ({ value: p.id, label: p.nama }))]} />
                       <Select label="Kelas" value={scope.kelas_id} onChange={(e) => updateScopeRow(index, { kelas_id: e.target.value })} options={[{ value: "", label: "Semua kelas" }, ...kelasList.map((k) => ({ value: k.id, label: k.nama }))]} />
                       <Button type="button" size="sm" variant="danger" disabled={scopeRows.length === 1} onClick={() => setScopeRows((prev) => prev.filter((_, i) => i !== index))}><Trash2 className="h-4 w-4" /></Button>
                     </div>
                   ))}
+                  </div>
                 </div>
               </div>
             )}
@@ -443,10 +435,10 @@ export default function UsersPage() {
               {editingGuru ? (
                 <>
                   <div className="grid gap-4 sm:grid-cols-2"><Input label="Nama Lengkap" required value={editGuruForm.nama_lengkap} onChange={(e) => setEditGuruForm({ ...editGuruForm, nama_lengkap: e.target.value })} /><Input label="NIP / Identitas" value={editGuruForm.nip} onChange={(e) => setEditGuruForm({ ...editGuruForm, nip: e.target.value })} /><Input label="Email" type="email" value={editGuruForm.email} onChange={(e) => setEditGuruForm({ ...editGuruForm, email: e.target.value })} /><Input label="Nomor HP" value={editGuruForm.no_hp} onChange={(e) => setEditGuruForm({ ...editGuruForm, no_hp: e.target.value })} /></div>
-                  <div className="space-y-3"><div className="flex items-center justify-between"><h3 className="text-sm font-bold text-heading-dark">Penugasan</h3><Button type="button" size="sm" variant="outline" onClick={() => setEditScopeRows((prev) => [...prev, { pelajaran_id: "", program_id: "", kelas_id: "" }])}><Plus className="mr-1 h-4 w-4" /> Tambah</Button></div>{editScopeRows.map((scope, index) => <div key={index} className="grid gap-3 rounded-input border border-card-border p-3 sm:grid-cols-[1fr_1fr_1fr_auto] sm:items-end"><Select label="Program" value={scope.program_id} onChange={(e) => updateEditScopeRow(index, { program_id: e.target.value })} options={[{ value: "", label: "Semua program" }, ...programList.map((p) => ({ value: p.id, label: p.nama }))]} /><Select label="Mata Pelajaran" required value={scope.pelajaran_id} onChange={(e) => updateEditScopeRow(index, { pelajaran_id: e.target.value })} options={[{ value: "", label: "Pilih pelajaran" }, ...pelajaranList.filter((p) => !scope.program_id || p.program_id == null || p.program_id === Number(scope.program_id)).map((p) => ({ value: p.id, label: p.nama }))]} /><Select label="Kelas" value={scope.kelas_id} onChange={(e) => updateEditScopeRow(index, { kelas_id: e.target.value })} options={[{ value: "", label: "Semua kelas" }, ...kelasList.map((k) => ({ value: k.id, label: k.nama }))]} /><Button type="button" size="sm" variant="danger" disabled={editScopeRows.length === 1} onClick={() => setEditScopeRows((prev) => prev.filter((_, i) => i !== index))}><Trash2 className="h-4 w-4" /></Button></div>)}</div>
+                  <div className="space-y-3"><div className="flex items-center justify-between"><h3 className="text-sm font-bold text-heading-dark">Mapel yang Diampu</h3><Button type="button" size="sm" variant="outline" onClick={() => setEditScopeRows((prev) => [...prev, { pelajaran_id: "", program_id: "", kelas_id: "" }])}><Plus className="mr-1 h-4 w-4" /> Tambah</Button></div><div className="max-h-[360px] space-y-2 overflow-y-auto rounded-card border border-card-border bg-neutral/30 p-2">{editScopeRows.map((scope, index) => <div key={index} className="grid gap-3 rounded-input border border-card-border bg-card-bg p-3 sm:grid-cols-[1fr_1fr_1fr_auto] sm:items-end"><Select label="Program" value={scope.program_id} onChange={(e) => updateEditScopeRow(index, { program_id: e.target.value })} options={[{ value: "", label: "Semua program" }, ...programList.map((p) => ({ value: p.id, label: p.nama }))]} /><Select label="Mata Pelajaran" required value={scope.pelajaran_id} onChange={(e) => updateEditScopeRow(index, { pelajaran_id: e.target.value })} options={[{ value: "", label: "Pilih pelajaran" }, ...pelajaranList.map((p) => ({ value: p.id, label: p.nama }))]} /><Select label="Kelas" value={scope.kelas_id} onChange={(e) => updateEditScopeRow(index, { kelas_id: e.target.value })} options={[{ value: "", label: "Semua kelas" }, ...kelasList.map((k) => ({ value: k.id, label: k.nama }))]} /><Button type="button" size="sm" variant="danger" disabled={editScopeRows.length === 1} onClick={() => setEditScopeRows((prev) => prev.filter((_, i) => i !== index))}><Trash2 className="h-4 w-4" /></Button></div>)}</div></div>
                 </>
               ) : (
-                <><dl className="grid gap-3 text-sm sm:grid-cols-2"><div><dt className="text-text-muted">Nama Lengkap</dt><dd className="font-semibold text-heading-dark">{guruDetail.nama_lengkap}</dd></div><div><dt className="text-text-muted">NIP / Identitas</dt><dd className="font-semibold text-heading-dark">{guruDetail.nip || "-"}</dd></div><div><dt className="text-text-muted">Email</dt><dd className="font-semibold text-heading-dark">{guruDetail.email || "-"}</dd></div><div><dt className="text-text-muted">Nomor HP</dt><dd className="font-semibold text-heading-dark">{guruDetail.no_hp || "-"}</dd></div></dl><div><h3 className="mb-2 text-sm font-bold text-heading-dark">Penugasan</h3><div className="space-y-2">{guruDetail.scopes.map((scope) => <div key={scope.id} className="rounded-input border border-card-border p-3"><p className="text-sm font-bold text-heading-dark">{scope.pelajaran_nama}</p><p className="text-xs text-text-muted">{scope.program_nama || "Semua program"} · {scope.kelas_nama || "Semua kelas"}</p></div>)}</div></div></>
+                <><dl className="grid gap-3 text-sm sm:grid-cols-2"><div><dt className="text-text-muted">Nama Lengkap</dt><dd className="font-semibold text-heading-dark">{guruDetail.nama_lengkap}</dd></div><div><dt className="text-text-muted">NIP / Identitas</dt><dd className="font-semibold text-heading-dark">{guruDetail.nip || "-"}</dd></div><div><dt className="text-text-muted">Email</dt><dd className="font-semibold text-heading-dark">{guruDetail.email || "-"}</dd></div><div><dt className="text-text-muted">Nomor HP</dt><dd className="font-semibold text-heading-dark">{guruDetail.no_hp || "-"}</dd></div></dl><div><h3 className="mb-2 text-sm font-bold text-heading-dark">Mapel yang Diampu</h3><div className="max-h-[360px] space-y-2 overflow-y-auto rounded-card border border-card-border bg-neutral/30 p-2">{guruDetail.scopes.map((scope) => <div key={scope.id} className="rounded-input border border-card-border bg-card-bg p-3"><p className="text-sm font-bold text-heading-dark">{scope.pelajaran_nama}</p><p className="text-xs text-text-muted">{scope.program_nama || "Semua program"} · {scope.kelas_nama || "Semua kelas"}</p></div>)}</div></div></>
               )}
             </div>
             <div className="flex justify-end gap-3 border-t border-card-border px-5 py-4">{editingGuru ? <><Button variant="outline" disabled={savingGuru} onClick={() => setEditingGuru(false)}>Batal</Button><Button disabled={savingGuru} onClick={saveGuruProfile}>{savingGuru ? "Menyimpan..." : "Simpan Perubahan"}</Button></> : <><Button variant="outline" onClick={() => setGuruDetail(null)}>Tutup</Button><Button onClick={startEditGuru}>Edit Profil & Scope</Button></>}</div>

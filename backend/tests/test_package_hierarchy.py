@@ -5,6 +5,7 @@ from app.db.database import SessionLocal
 from app.main import app
 from app.models.guru_scope import GuruScope
 from app.models.bagian_paket import BagianPaket
+from app.models.kelas import Kelas
 from app.models.pelajaran import Pelajaran
 from app.models.program import Program
 from app.models.paket_soal import PaketSoal
@@ -113,6 +114,81 @@ def test_section_subject_required_unique_active_and_cross_program_allowed(isolat
     assert client.get(f"/paket-ujian/{paket_id}", headers=headers).json()["durasi_menit"] == 0
 
 
+def test_scope_drives_package_and_section_visibility(isolated_database):
+    program_id, first_id, second_id, _, _, admin_name = _setup()
+    with SessionLocal() as db:
+        other_program = Program(nama=f"Program Scope Other {uuid4().hex[:6]}", is_active=True)
+        kelas = Kelas(nama=f"Kelas Scope {uuid4().hex[:6]}")
+        other_kelas = Kelas(nama=f"Kelas Scope Other {uuid4().hex[:6]}")
+        db.add_all([other_program, kelas, other_kelas])
+        db.flush()
+        scoped = User(username=f"scoped-{uuid4().hex[:8]}", password_hash=get_password_hash("Guru123"), role="guru")
+        wildcard = User(username=f"wildcard-{uuid4().hex[:8]}", password_hash=get_password_hash("Guru123"), role="guru")
+        assigned_only = User(username=f"assigned-only-{uuid4().hex[:8]}", password_hash=get_password_hash("Guru123"), role="guru")
+        db.add_all([scoped, wildcard, assigned_only])
+        db.flush()
+        db.add_all([
+            GuruScope(user_id=scoped.id, pelajaran_id=first_id, program_id=program_id, kelas_id=kelas.id),
+            GuruScope(user_id=wildcard.id, pelajaran_id=first_id),
+        ])
+        package = PaketUjian(nama="Scoped sections", program_id=program_id, kelas_id=kelas.id, kategori="utbk", tipe="ujian", assigned_guru_ids=[assigned_only.id])
+        mismatch_program = PaketUjian(nama="Wrong program", program_id=other_program.id, kelas_id=kelas.id, kategori="utbk", tipe="ujian")
+        mismatch_class = PaketUjian(nama="Wrong class", program_id=program_id, kelas_id=other_kelas.id, kategori="utbk", tipe="ujian")
+        legacy = PaketUjian(nama="Legacy scoped", program_id=program_id, kelas_id=kelas.id, pelajaran_id=first_id, kategori=None, tipe="ujian")
+        db.add_all([package, mismatch_program, mismatch_class, legacy])
+        db.flush()
+        matching_section = BagianPaket(paket_ujian_id=package.id, nama="Matematika", urutan=1, pelajaran_id=first_id)
+        other_section = BagianPaket(paket_ujian_id=package.id, nama="Bahasa", urutan=2, pelajaran_id=second_id)
+        db.add_all([
+            matching_section,
+            other_section,
+            BagianPaket(paket_ujian_id=mismatch_program.id, nama="Matematika", urutan=1, pelajaran_id=first_id),
+            BagianPaket(paket_ujian_id=mismatch_class.id, nama="Matematika", urutan=1, pelajaran_id=first_id),
+        ])
+        db.commit()
+        ids = {
+            "package": package.id,
+            "matching_section": matching_section.id,
+            "other_section": other_section.id,
+            "legacy": legacy.id,
+            "mismatch_program": mismatch_program.id,
+            "mismatch_class": mismatch_class.id,
+        }
+        usernames = scoped.username, wildcard.username, assigned_only.username
+
+    admin_headers = _headers(admin_name)
+    scoped_headers = _headers(usernames[0], "Guru123")
+    wildcard_headers = _headers(usernames[1], "Guru123")
+    assigned_only_headers = _headers(usernames[2], "Guru123")
+
+    assert {row["id"] for row in client.get("/paket-ujian/", headers=scoped_headers).json()} == {ids["package"], ids["legacy"]}
+    assert ids["package"] in {row["id"] for row in client.get("/paket-ujian/", headers=wildcard_headers).json()}
+    assert client.get(f"/paket-ujian/{ids['package']}", headers=assigned_only_headers).status_code == 403
+    assert client.get(f"/paket-ujian/{ids['mismatch_program']}", headers=scoped_headers).status_code == 403
+    assert client.get(f"/paket-ujian/{ids['mismatch_class']}", headers=scoped_headers).status_code == 403
+    sections = client.get(f"/paket-ujian/{ids['package']}/bagian/", headers=scoped_headers)
+    assert [row["id"] for row in sections.json()] == [ids["matching_section"]]
+    assert client.get(f"/paket-ujian/{ids['package']}/bagian/{ids['other_section']}", headers=scoped_headers).status_code == 403
+    assert len(client.get(f"/paket-ujian/{ids['package']}/bagian/", headers=admin_headers).json()) == 2
+
+
+def test_scope_program_is_audience_filter_not_subject_program(isolated_database):
+    program_id, _, _, foreign_id, _, admin_name = _setup()
+    with SessionLocal() as db:
+        guru = User(username=f"cross-program-{uuid4().hex[:8]}", password_hash=get_password_hash("Guru123"), role="guru")
+        db.add(guru)
+        db.commit()
+        guru_id = guru.id
+        guru_name = guru.username
+    response = client.post(
+        f"/guru-scope/user/{guru_id}",
+        json={"pelajaran_id": foreign_id, "program_id": program_id, "kelas_id": None},
+        headers=_headers(admin_name),
+    )
+    assert response.status_code == 200
+    assert client.get("/guru-scope/me", headers=_headers(guru_name, "Guru123")).json()[0]["program_id"] == program_id
+
+
 def test_section_question_assignment_is_guru_only_and_scoped(isolated_database):
     program_id, first_id, _, _, _, admin_name = _setup()
     admin_headers = _headers(admin_name)
@@ -121,7 +197,7 @@ def test_section_question_assignment_is_guru_only_and_scoped(isolated_database):
         db.add(guru)
         db.flush()
         db.add(GuruScope(user_id=guru.id, pelajaran_id=first_id, program_id=program_id))
-        package = PaketUjian(nama="Section ownership", program_id=program_id, kategori="utbk", tipe="ujian", assigned_guru_ids=[guru.id])
+        package = PaketUjian(nama="Section ownership", program_id=program_id, kategori="utbk", tipe="ujian", assigned_guru_ids=[])
         db.add(package)
         db.flush()
         section = BagianPaket(paket_ujian_id=package.id, nama="Matematika", urutan=1, pelajaran_id=first_id)
@@ -132,6 +208,7 @@ def test_section_question_assignment_is_guru_only_and_scoped(isolated_database):
 
     endpoint = f"/paket-ujian/{package_id}/bagian/{section_id}/soal"
     assert client.get(f"/paket-ujian/{package_id}/bagian/{section_id}", headers=admin_headers).status_code == 200
+    # Admin tidak mengubah isi bagian secara langsung; hanya guru pengampu yang bisa.
     assert client.put(endpoint, json={"soal_ids": [question_id]}, headers=admin_headers).status_code == 403
     guru_headers = _headers(guru_name, "Guru123")
     assigned = client.put(endpoint, json={"soal_ids": [question_id]}, headers=guru_headers)
@@ -160,8 +237,10 @@ def test_categorized_section_duration_required_and_teacher_security(isolated_dat
     assert foreign_section_response.status_code == 200
     foreign_section = foreign_section_response.json()
     assert client.put(f"/paket-ujian/{paket_id}/bagian/{section['id']}", json={"durasi_menit": 20}, headers=headers).status_code == 422
+    # Admin tidak mengubah durasi bagian secara langsung; hanya guru pengampu yang bisa.
     assert client.patch(f"/paket-ujian/{paket_id}/bagian/{section['id']}/durasi", json={"durasi_menit": 35}, headers=headers).status_code == 403
-    assert client.put(f"/paket-ujian/{paket_id}/penugasan", json=[assigned_id], headers=headers).status_code == 200
+    assert client.put(f"/paket-ujian/{paket_id}/penugasan", json=[assigned_id], headers=headers).status_code == 410
+
     assigned_headers = _headers(assigned_name, "Guru123")
     unassigned_headers = _headers(unassigned_name, "Guru123")
     out_of_scope_headers = _headers(out_of_scope_name, "Guru123")
@@ -173,7 +252,7 @@ def test_categorized_section_duration_required_and_teacher_security(isolated_dat
     foreign_endpoint = f"/paket-ujian/{paket_id}/bagian/{foreign_section['id']}/durasi"
     foreign_duration = client.patch(foreign_endpoint, json={"durasi_menit": 30}, headers=assigned_headers)
     assert foreign_duration.status_code == 403
-    assert foreign_duration.json()["detail"] == "Pelajaran, program, atau kelas berada di luar penugasan guru"
+    assert foreign_duration.json()["detail"] == "Bagian berada di luar mapel yang diampu"
     with SessionLocal() as db:
         foreign_question = Soal(pelajaran_id=foreign_id, teks_soal="Soal mapel lintas program", tipe="esai", status="approved")
         db.add(foreign_question)
@@ -185,7 +264,7 @@ def test_categorized_section_duration_required_and_teacher_security(isolated_dat
         headers=assigned_headers,
     )
     assert foreign_questions.status_code == 403
-    assert foreign_questions.json()["detail"] == "Pelajaran, program, atau kelas berada di luar penugasan guru"
+    assert foreign_questions.json()["detail"] == "Bagian berada di luar mapel yang diampu"
     package = client.get(f"/paket-ujian/{paket_id}", headers=headers).json()
     assert package["durasi_menit"] == 35
     assert package["siap_dipublikasikan"] is False

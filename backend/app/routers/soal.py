@@ -224,11 +224,13 @@ def serialize_soal_detail_admin(soal: Soal, db: Session) -> SoalDetailAdminOut:
 @router.post("/", response_model=SoalOut)
 def create_soal(payload: SoalCreate, db: Session = Depends(get_db), current_user=Depends(require_roles(["admin", "guru"]))):
     if payload.paket_ujian_id is not None and current_user.role == "guru":
-        from app.routers.paket_ujian import _require_paket_owner, _ensure_paket_mutable
+        from app.routers.paket_ujian import _require_paket_access, _ensure_paket_mutable
+
         paket = db.query(PaketUjian).filter(PaketUjian.id == payload.paket_ujian_id).first()
         if not paket:
             raise HTTPException(status_code=404, detail="Paket tidak ditemukan")
-        _require_paket_owner(paket, current_user)
+        _require_paket_access(paket, current_user, db)
+
         _ensure_paket_mutable(paket, db)
     if current_user.role == "guru":
         if payload.pelajaran_id is None:
@@ -327,8 +329,7 @@ def generate_kandidat_soal(
 ):
     if not db.query(Pelajaran.id).filter(Pelajaran.id == payload.pelajaran_id).first():
         raise HTTPException(status_code=404, detail="Pelajaran not found")
-    pelajaran = db.query(Pelajaran).filter(Pelajaran.id == payload.pelajaran_id).first()
-    require_guru_scope(db, current_user, payload.pelajaran_id, pelajaran.program_id, payload.kelas_id)
+    require_guru_scope(db, current_user, payload.pelajaran_id, payload.program_id, payload.kelas_id)
     if payload.kelas_id is not None and not db.query(Kelas.id).filter(Kelas.id == payload.kelas_id).first():
         raise HTTPException(status_code=404, detail="Kelas not found")
     if payload.topik_id is not None:
@@ -772,6 +773,8 @@ def create_soal_revision(
     if source.status != "approved":
         raise HTTPException(status_code=409, detail="Revisi hanya dibuat dari soal approved")
     if current_user.role == "guru":
+        if source.created_by == current_user.id:
+            raise HTTPException(status_code=403, detail="Guru tidak dapat merevisi soal miliknya sendiri; revisi dilakukan oleh guru lain")
         if source.pelajaran_id is None:
             raise HTTPException(status_code=403, detail="Soal belum memiliki penugasan mata pelajaran")
         subject = db.query(Pelajaran).filter(Pelajaran.id == source.pelajaran_id).first()

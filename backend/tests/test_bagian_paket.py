@@ -1,30 +1,23 @@
-from support import default_program_id
 """Test fitur Bagian Paket (sub-ujian dalam satu paket ujian).
 
-Satu paket_ujian dapat memiliki N bagian. Setiap bagian punya daftar soal,
-durasi opsional, dan seluruhnya dinilai sebagai satu kesatuan.
+Satu paket_ujian dapat memiliki N bagian. Admin membuat bagian per mata pelajaran;
+guru pengampu mengisi soal dan durasi. Total soal dan durasi paket selalu mengikuti
+jumlah seluruh bagian.
 """
-from datetime import datetime, timedelta, timezone
+from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from app.main import app
-from app.db.database import SessionLocal
-from app.models.user import User
-from app.models.soal import Soal
-
 from app.core.security import get_password_hash
-import pytest
+from app.db.database import SessionLocal
+from app.main import app
+from app.models.guru_scope import GuruScope
+from app.models.pelajaran import Pelajaran
+from app.models.program import Program
+from app.models.soal import Soal
+from app.models.user import User
 
 client = TestClient(app)
-
-
-@pytest.fixture(autouse=True)
-def bank_soal(isolated_database):
-    with SessionLocal() as db:
-        db.add(User(username="admin", password_hash=get_password_hash("admin123"), role="admin"))
-        db.add_all([Soal(teks_soal=f"Soal bagian {i}", status="approved") for i in range(6)])
-        db.commit()
 
 
 def _login(username, password):
@@ -33,86 +26,85 @@ def _login(username, password):
     return {"Authorization": f"Bearer {r.json()['access_token']}"}
 
 
-def _soal_items(response):
-    payload = response.json()
-    return payload if isinstance(payload, list) else payload.get("items", [])
+def _setup():
+    suffix = uuid4().hex[:8]
+    with SessionLocal() as db:
+        program = Program(nama=f"Program {suffix}", is_active=True)
+        admin = User(username=f"admin-bagian-{suffix}", password_hash=get_password_hash("Admin123"), role="admin")
+        guru = User(username=f"guru-bagian-{suffix}", password_hash=get_password_hash("Guru123"), role="guru")
+        db.add_all([program, admin, guru])
+        db.flush()
+        subjects = [Pelajaran(nama=f"{nama} {suffix}", program_id=program.id) for nama in ("Matematika", "Fisika")]
+        db.add_all(subjects)
+        db.flush()
+        soal_ids = {}
+        for subject in subjects:
+            db.add(GuruScope(user_id=guru.id, pelajaran_id=subject.id, program_id=program.id))
+            questions = [Soal(pelajaran_id=subject.id, teks_soal=f"Soal {i} {subject.nama}", status="approved") for i in range(3)]
+            db.add_all(questions)
+            db.flush()
+            soal_ids[subject.id] = [q.id for q in questions]
+        db.commit()
+        return {
+            "admin": _login(admin.username, "Admin123"),
+            "guru": _login(guru.username, "Guru123"),
+            "program_id": program.id,
+            "subjects": [s.id for s in subjects],
+            "soal_ids": soal_ids,
+        }
+
+
+def _paket_dengan_dua_bagian(data):
+    admin = data["admin"]
+    r = client.post("/paket-ujian/", json={"program_id": data["program_id"], "kategori": "utbk", "nama": "Test Bagian", "jumlah_soal": 0}, headers=admin)
+    assert r.status_code == 200, r.text
+    paket_id = r.json()["id"]
+    bagian_ids = []
+    for urutan, pelajaran_id in enumerate(data["subjects"], start=1):
+        r = client.post(f"/paket-ujian/{paket_id}/bagian/", json={"nama": f"Bagian {urutan}", "urutan": urutan, "pelajaran_id": pelajaran_id}, headers=admin)
+        assert r.status_code == 200, r.text
+        bagian_ids.append(r.json()["id"])
+    return paket_id, bagian_ids
 
 
 def test_bagian_paket_flow():
-    headers = _login("admin", "admin123")
+    data = _setup()
+    admin, guru = data["admin"], data["guru"]
+    paket_id, (b1, b2) = _paket_dengan_dua_bagian(data)
+    s1, s2 = data["subjects"]
 
-    # Bank soal untuk dipakai
-    r = client.get("/soal/", params={"limit": "10"}, headers=headers)
-    soal_items = _soal_items(r)
-    assert len(soal_items) >= 4, "butuh minimal 4 soal di bank soal"
-    soal_ids = [s["id"] for s in soal_items[:6]]
-
-    # 1. Buat paket
-    r = client.post(
-        "/paket-ujian/",
-        json={"program_id": default_program_id(), "nama": "Test Bagian Flow", "durasi_menit": 60, "jumlah_soal": 0, "is_random_soal": True, "is_random_opsi": True},
-        headers=headers,
-    )
-    assert r.status_code == 200, r.text
-    paket_id = r.json()["id"]
-
-    # 2. Buat 2 bagian
-    r = client.post(f"/paket-ujian/{paket_id}/bagian/", json={"nama": "Matematika", "urutan": 1, "durasi_menit": 30}, headers=headers)
-    assert r.status_code == 200, r.text
-    b1 = r.json()["id"]
-    r = client.post(f"/paket-ujian/{paket_id}/bagian/", json={"nama": "Fisika", "urutan": 2, "durasi_menit": 30}, headers=headers)
-    assert r.status_code == 200, r.text
-    b2 = r.json()["id"]
-
-    # 3. Isi soal per bagian
-    r = client.put(f"/paket-ujian/{paket_id}/bagian/{b1}/soal", json={"soal_ids": soal_ids[:3]}, headers=headers)
+    # Guru mengisi soal per bagian sesuai mapelnya.
+    r = client.put(f"/paket-ujian/{paket_id}/bagian/{b1}/soal", json={"soal_ids": data["soal_ids"][s1]}, headers=guru)
     assert r.status_code == 200, r.text
     assert r.json()["jumlah_soal"] == 3
-    r = client.put(f"/paket-ujian/{paket_id}/bagian/{b2}/soal", json={"soal_ids": soal_ids[3:6]}, headers=headers)
+    r = client.put(f"/paket-ujian/{paket_id}/bagian/{b2}/soal", json={"soal_ids": data["soal_ids"][s2]}, headers=guru)
     assert r.status_code == 200, r.text
     assert r.json()["jumlah_soal"] == 3
 
-    # 4. List bagian
-    r = client.get(f"/paket-ujian/{paket_id}/bagian/", headers=headers)
-    assert r.status_code == 200
-    bagian_list = r.json()
+    bagian_list = client.get(f"/paket-ujian/{paket_id}/bagian/", headers=admin).json()
     assert len(bagian_list) == 2
-    total_soal = sum(b["jumlah_soal"] for b in bagian_list)
-    assert total_soal == 6
+    assert sum(b["jumlah_soal"] for b in bagian_list) == 6
+    assert client.get(f"/paket-ujian/{paket_id}", headers=admin).json()["jumlah_soal"] == 6
 
-    # 5. Jumlah soal paket tersinkron
-    r = client.get(f"/paket-ujian/{paket_id}", headers=headers)
-    assert r.json()["jumlah_soal"] == 6
-
-    # 6. Update bagian
-    r = client.put(f"/paket-ujian/{paket_id}/bagian/{b1}", json={"nama": "Matematika Wajib", "durasi_menit": 20}, headers=headers)
-    assert r.status_code == 200
+    # Admin boleh mengganti nama bagian, tetapi tidak mengatur durasi.
+    r = client.put(f"/paket-ujian/{paket_id}/bagian/{b1}", json={"nama": "Matematika Wajib"}, headers=admin)
+    assert r.status_code == 200, r.text
     assert r.json()["nama"] == "Matematika Wajib"
 
-    # 7. Hapus bagian kedua -> total soal jadi 3
-    r = client.delete(f"/paket-ujian/{paket_id}/bagian/{b2}", headers=headers)
-    assert r.status_code == 200
-    r = client.get(f"/paket-ujian/{paket_id}", headers=headers)
-    assert r.json()["jumlah_soal"] == 3
-
-    # Bersihkan
-    client.delete(f"/paket-ujian/{paket_id}", headers=headers)
+    # Hapus bagian kedua -> total soal paket ikut turun.
+    assert client.delete(f"/paket-ujian/{paket_id}/bagian/{b2}", headers=admin).status_code == 200
+    assert client.get(f"/paket-ujian/{paket_id}", headers=admin).json()["jumlah_soal"] == 3
 
 
 def test_bagian_durasi_menentukan_timer():
-    """Durasi efektif = jumlah durasi bagian bila ada."""
-    headers = _login("admin", "admin123")
-    r = client.get("/soal/", params={"limit": "10"}, headers=headers)
-    soal_items = _soal_items(r)
-    if len(soal_items) < 4:
-        return
-    soal_ids = [s["id"] for s in soal_items[:4]]
+    """Durasi paket = jumlah durasi seluruh bagian."""
+    data = _setup()
+    admin, guru = data["admin"], data["guru"]
+    paket_id, (b1, b2) = _paket_dengan_dua_bagian(data)
 
-    r = client.post("/paket-ujian/", json={"program_id": default_program_id(), "nama": "Test Bagian Timer", "durasi_menit": 10, "jumlah_soal": 0, "is_random_soal": False, "is_random_opsi": False}, headers=headers)
-    paket_id = r.json()["id"]
-    b1 = client.post(f"/paket-ujian/{paket_id}/bagian/", json={"nama": "Bagian A", "urutan": 1, "durasi_menit": 20}, headers=headers).json()["id"]
-    b2 = client.post(f"/paket-ujian/{paket_id}/bagian/", json={"nama": "Bagian B", "urutan": 2, "durasi_menit": 25}, headers=headers).json()["id"]
-    client.put(f"/paket-ujian/{paket_id}/bagian/{b1}/soal", json={"soal_ids": soal_ids[:2]}, headers=headers)
-    client.put(f"/paket-ujian/{paket_id}/bagian/{b2}/soal", json={"soal_ids": soal_ids[2:4]}, headers=headers)
+    assert client.patch(f"/paket-ujian/{paket_id}/bagian/{b1}/durasi", json={"durasi_menit": 20}, headers=guru).status_code == 200
+    assert client.patch(f"/paket-ujian/{paket_id}/bagian/{b2}/durasi", json={"durasi_menit": 25}, headers=guru).status_code == 200
+    assert client.get(f"/paket-ujian/{paket_id}", headers=admin).json()["durasi_menit"] == 45
 
-    client.delete(f"/paket-ujian/{paket_id}", headers=headers)
+    assert client.delete(f"/paket-ujian/{paket_id}/bagian/{b2}", headers=admin).status_code == 200
+    assert client.get(f"/paket-ujian/{paket_id}", headers=admin).json()["durasi_menit"] == 20

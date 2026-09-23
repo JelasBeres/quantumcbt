@@ -4,7 +4,6 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  Archive,
   ArrowLeft,
   BookOpen,
   CalendarClock,
@@ -12,6 +11,7 @@ import {
   ClipboardList,
   Search,
 } from "lucide-react";
+import Badge from "@/components/Badge";
 import Button from "@/components/Button";
 import Card from "@/components/Card";
 import Input from "@/components/Input";
@@ -21,6 +21,7 @@ import Textarea from "@/components/Textarea";
 import { useAppDialog } from "@/components/Dialog";
 import { api, getErrorMessage } from "@/lib/api";
 import { getUser } from "@/lib/auth";
+import { labelBagianStatus, toneBagianStatus } from "@/lib/bagian-status";
 import {
   BagianPaket,
   KategoriPaket,
@@ -33,13 +34,20 @@ import {
 } from "@/lib/types";
 import { labelTipeSoal } from "@/lib/tipe-soal";
 
+const LAPORAN_SOAL_PRESET = [
+  "Soal tidak sesuai mapel",
+  "Tingkat kesulitan tidak sesuai",
+  "Soal duplikat",
+  "Soal harus diganti",
+  "Komposisi tipe soal perlu diperbaiki",
+];
+
 type TipePaket = "ujian" | "latihan";
 type GuruScope = {
   pelajaran_id: number;
   program_id?: number | null;
   kelas_id?: number | null;
 };
-type GrupTryout = { id: number; nama: string; is_active: boolean };
 type KategoriKey = number | "belum";
 
 const tipeCards = [
@@ -76,7 +84,6 @@ export default function PaketUjianPage() {
   const [kelasList, setKelasList] = useState<Kelas[]>([]);
   const [programList, setProgramList] = useState<Program[]>([]);
   const [topikList, setTopikList] = useState<Topik[]>([]);
-  const [grupList, setGrupList] = useState<GrupTryout[]>([]);
   const [kategoriList, setKategoriList] = useState<KategoriPaket[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
@@ -92,17 +99,11 @@ export default function PaketUjianPage() {
   const [bagianSaving, setBagianSaving] = useState(false);
   const [bagianPicker, setBagianPicker] = useState<BagianPaket | null>(null);
   const [bagianQuestions, setBagianQuestions] = useState<Soal[]>([]);
-  const [assignmentTarget, setAssignmentTarget] = useState<PaketUjian | null>(
-    null,
-  );
-  const [teachers, setTeachers] = useState<{ id: number; username: string }[]>(
-    [],
-  );
-  const [assigned, setAssigned] = useState<number[]>([]);
-  const [assignmentError, setAssignmentError] = useState("");
+  const [reviewNote, setReviewNote] = useState("");
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [reviewError, setReviewError] = useState("");
   const [scheduleTarget, setScheduleTarget] = useState<PaketUjian | null>(null);
   const [scheduleMulai, setScheduleMulai] = useState("");
-  const [scheduleGrup, setScheduleGrup] = useState("");
   const [scheduleSaving, setScheduleSaving] = useState(false);
   const [scheduleError, setScheduleError] = useState("");
   const [scheduleSuccess, setScheduleSuccess] = useState("");
@@ -117,7 +118,6 @@ export default function PaketUjianPage() {
         pelajaranRes,
         kelasRes,
         topikRes,
-        grupRes,
          programRes,
          scopeRes,
          kategoriRes,
@@ -127,7 +127,6 @@ export default function PaketUjianPage() {
         api.get("/pelajaran/"),
         api.get("/kelas/"),
         api.get("/topik/"),
-        api.get("/grup-tryout/", { params: { is_active: true } }),
          api.get("/program/"),
          scopeRequest,
          api.get("/kategori-paket/"),
@@ -144,7 +143,6 @@ export default function PaketUjianPage() {
       );
       setKelasList(kelasRes.data);
       setTopikList(topikRes.data);
-      setGrupList(grupRes.data);
       setProgramList(programRes.data);
       setKategoriList(kategoriRes.data);
     } catch (error) {
@@ -210,7 +208,7 @@ export default function PaketUjianPage() {
           ).length,
         ]),
       ),
-    [paket, activeTipe],
+    [kategoriCards, paket, activeTipe],
   );
 
   const loadBagian = async (paketId: number) => {
@@ -335,6 +333,22 @@ export default function PaketUjianPage() {
     }
   };
 
+  const submitBagianReview = async (bagian: BagianPaket) => {
+    if (!activePaket) return;
+    try {
+      await api.post(`/paket-ujian/${activePaket.id}/bagian/${bagian.id}/submit-review`, {});
+      await refreshPaketDetail();
+    } catch (error) {
+      await showAlert({
+        title: "Gagal Mengajukan Review",
+        description: getErrorMessage(
+          error,
+          "Pastikan durasi & soal bagian sudah diisi, dan semua soal berstatus approved.",
+        ),
+      });
+    }
+  };
+
   const openBagianPicker = async (bagian: BagianPaket) => {
     if (isGuru) {
       const kategoriId = activePaket?.kategori_id == null ? "belum" : String(activePaket.kategori_id);
@@ -344,6 +358,8 @@ export default function PaketUjianPage() {
     const assignedIds = bagian.soal_ids ?? [];
     setBagianPicker(bagian);
     setBagianQuestions([]);
+    setReviewNote("");
+    setReviewError("");
     try {
       const details = await Promise.all(
         assignedIds.map((soalId) => api.get(`/soal/${soalId}`)),
@@ -354,28 +370,69 @@ export default function PaketUjianPage() {
     }
   };
 
-  const handleArchive = async (item: PaketUjian) => {
-    if (
-      !(await showConfirm({
-        title: "Arsipkan Paket",
-        description:
-          "Paket tidak muncul untuk jadwal baru, tetapi data lama tetap tersimpan.",
-        confirmLabel: "Arsipkan",
-        confirmVariant: "danger",
-      }))
-    )
-      return;
+  const approveBagian = async () => {
+    if (!activePaket || !bagianPicker) return;
+    setReviewSubmitting(true);
+    setReviewError("");
     try {
-      await api.post(`/paket-ujian/${item.id}/archive`);
-      setActivePaket(null);
-      await loadAll();
+      await api.post(
+        `/paket-ujian/${activePaket.id}/bagian/${bagianPicker.id}/setujui`,
+        { note: reviewNote.trim() || undefined },
+      );
+      setBagianPicker(null);
+      await refreshPaketDetail();
+    } catch (error) {
+      setReviewError(getErrorMessage(error, "Gagal menyetujui bagian."));
+    } finally {
+      setReviewSubmitting(false);
+    }
+  };
+
+  const requestBagianRevision = async () => {
+    if (!activePaket || !bagianPicker) return;
+    if (reviewNote.trim().length < 3) {
+      setReviewError("Alasan revisi wajib diisi (minimal 3 karakter).");
+      return;
+    }
+    setReviewSubmitting(true);
+    setReviewError("");
+    try {
+      await api.post(
+        `/paket-ujian/${activePaket.id}/bagian/${bagianPicker.id}/minta-revisi`,
+        { note: reviewNote.trim() },
+      );
+      setBagianPicker(null);
+      await refreshPaketDetail();
+    } catch (error) {
+      setReviewError(getErrorMessage(error, "Gagal meminta revisi."));
+    } finally {
+      setReviewSubmitting(false);
+    }
+  };
+
+  const flagSoal = async (soal: Soal) => {
+    const preset = await showPrompt({
+      title: `Laporkan Soal #${soal.id}`,
+      description: `Alasan umum: ${LAPORAN_SOAL_PRESET.join(", ")}. Bisa juga tulis alasan lain.`,
+      inputLabel: "Alasan laporan",
+      required: true,
+      minLength: 3,
+    });
+    if (!preset) return;
+    try {
+      await api.post("/laporan-soal/", { soal_id: soal.id, alasan: preset });
+      await showAlert({
+        title: "Laporan terkirim",
+        description: "Soal ini akan muncul di antrean Laporan Soal.",
+      });
     } catch (error) {
       await showAlert({
-        title: "Gagal Mengarsipkan",
-        description: getErrorMessage(error, "Paket gagal diarsipkan."),
+        title: "Gagal melaporkan soal",
+        description: getErrorMessage(error, "Laporan soal gagal dikirim."),
       });
     }
   };
+
   const handleDelete = async (item: PaketUjian) => {
     if (
       !(await showConfirm({
@@ -396,17 +453,6 @@ export default function PaketUjianPage() {
         title: "Gagal Menghapus",
         description: getErrorMessage(error, "Paket gagal dihapus."),
       });
-    }
-  };
-  const openAssignment = async (item: PaketUjian) => {
-    setAssignmentTarget(item);
-    setAssigned(item.assigned_guru_ids ?? []);
-    setAssignmentError("");
-    try {
-      const { data } = await api.get("/users/");
-      setTeachers(data.filter((u: { role: string }) => u.role === "guru"));
-    } catch (error) {
-      setAssignmentError(getErrorMessage(error, "Guru gagal dimuat."));
     }
   };
   const openSchedule = async (item: PaketUjian) => {
@@ -447,9 +493,16 @@ export default function PaketUjianPage() {
       });
       return;
     }
+    const notApproved = sections.filter((b) => b.status !== "approved");
+    if (notApproved.length) {
+      await showAlert({
+        title: "Tryout belum siap",
+        description: `Semua bagian harus disetujui admin terlebih dahulu: ${notApproved.map((b) => b.nama).join(", ")}.`,
+      });
+      return;
+    }
     setScheduleTarget(item);
     setScheduleMulai("");
-    setScheduleGrup("");
     setScheduleError("");
     setScheduleSuccess("");
   };
@@ -469,7 +522,6 @@ export default function PaketUjianPage() {
           mulai.getTime() + scheduleTarget.durasi_menit * 60000,
         ).toISOString(),
         is_published: !isGuru,
-        grup_tryout_id: scheduleGrup ? Number(scheduleGrup) : null,
       });
       setScheduleSuccess(
         isGuru
@@ -504,8 +556,8 @@ export default function PaketUjianPage() {
         <h1 className="text-3xl font-bold text-heading-dark">Ujian</h1>
         <p className="mt-1 text-sm text-text-muted">
           {isGuru
-            ? "Buka paket yang ditugaskan, atur durasi, lalu isi soal setiap mata pelajaran."
-            : "Admin menentukan mata pelajaran dan menugaskan guru; guru mengatur durasi dan mengisi soal."}
+            ? "Buka paket sesuai mapel yang Anda ampu, atur durasi, lalu isi soal bagian tersebut."
+            : "Admin menentukan bagian mapel. Bagian otomatis tersedia bagi guru pengampu mapel yang sesuai program dan kelas."}
         </p>
       </header>
       <div className="flex flex-wrap items-center gap-2 text-sm text-text-muted">
@@ -527,56 +579,6 @@ export default function PaketUjianPage() {
           </span>
         ))}
       </div>
-
-      {assignmentTarget && (
-        <Card title={`Penugasan: ${assignmentTarget.nama}`}>
-          {assignmentError && (
-            <p className="mb-3 text-red-600">{assignmentError}</p>
-          )}
-          <p className="mb-3 text-sm">
-            Pilih guru yang dapat mengisi paket ini.
-          </p>
-          {teachers.map((teacher) => (
-            <label key={teacher.id} className="mb-2 flex gap-2">
-              <input
-                type="checkbox"
-                checked={assigned.includes(teacher.id)}
-                onChange={(e) =>
-                  setAssigned(
-                    e.target.checked
-                      ? [...assigned, teacher.id]
-                      : assigned.filter((id) => id !== teacher.id),
-                  )
-                }
-              />
-              {teacher.username}
-            </label>
-          ))}
-          <div className="mt-3 flex gap-2">
-            <Button
-              onClick={async () => {
-                try {
-                  await api.put(
-                    `/paket-ujian/${assignmentTarget.id}/penugasan`,
-                    assigned,
-                  );
-                  setAssignmentTarget(null);
-                  await loadAll();
-                } catch (error) {
-                  setAssignmentError(
-                    getErrorMessage(error, "Penugasan gagal."),
-                  );
-                }
-              }}
-            >
-              Simpan
-            </Button>
-            <Button variant="outline" onClick={() => setAssignmentTarget(null)}>
-              Batal
-            </Button>
-          </div>
-        </Card>
-      )}
 
       {!activeTipe && (
         <Card title="Pilih Jenis">
@@ -752,13 +754,6 @@ export default function PaketUjianPage() {
                   >
                     Edit Paket
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => openAssignment(activePaket)}
-                  >
-                    Tugaskan Guru
-                  </Button>
                   {activePaket.tipe === "ujian" && (
                     <Button
                       size="sm"
@@ -768,13 +763,6 @@ export default function PaketUjianPage() {
                       <CalendarClock className="mr-1 h-4 w-4" /> Jadwalkan
                     </Button>
                   )}
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleArchive(activePaket)}
-                  >
-                    <Archive className="mr-1 h-4 w-4" /> Arsipkan
-                  </Button>
                   <Button
                     size="sm"
                     variant="danger"
@@ -794,7 +782,8 @@ export default function PaketUjianPage() {
               <p className="text-sm text-text-muted">
                 {isGuru
                   ? "Atur durasi dan isi soal setiap bagian mapel dalam lingkup Anda."
-                  : "Tentukan mapel dan tugaskan guru. Guru akan mengatur durasi serta mengisi soal."}
+                   : "Tentukan mapel dan bagian. Bagian otomatis tersedia bagi guru pengampu mapel; guru mengatur durasi serta mengisi soal."}
+
               </p>
             </div>
             {!isGuru && !bagianFormOpen && (
@@ -803,6 +792,12 @@ export default function PaketUjianPage() {
               </Button>
             )}
           </div>
+          {!isGuru && bagianList.length > 0 && (
+            <p className="mb-4 text-sm text-text-muted">
+              {activePaket.jumlah_bagian_approved ?? 0} dari {activePaket.jumlah_bagian ?? bagianList.length} bagian disetujui
+              {!activePaket.siap_dipublikasikan && " · Paket belum siap dijadwalkan"}
+            </p>
+          )}
           {bagianFormOpen && (
             <form
               onSubmit={submitBagian}
@@ -882,9 +877,13 @@ export default function PaketUjianPage() {
                   key={bagian.id}
                   className="rounded-card border border-card-border p-4"
                 >
-                  <h4 className="font-bold text-heading-dark">{bagian.nama}</h4>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h4 className="font-bold text-heading-dark">{bagian.nama}</h4>
+                    <Badge tone={toneBagianStatus(bagian.status)}>{labelBagianStatus(bagian.status)}</Badge>
+                  </div>
                   <p className="mt-1 text-sm text-text-muted">
                     {getNama(pelajaranList, bagian.pelajaran_id)}
+                    {!isGuru && bagian.guru_pengampu && ` · ${bagian.guru_pengampu}`}
                   </p>
                   <p className="mt-2 text-sm">
                     {bagian.durasi_menit
@@ -892,17 +891,31 @@ export default function PaketUjianPage() {
                       : "Durasi menunggu guru"}{" "}
                     · {bagian.jumlah_soal} soal
                   </p>
+                  {bagian.status === "revision_required" && (
+                    <p className="mt-2 rounded-input border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs text-red-700">
+                      Perlu revisi: {bagian.review_note || "Tidak ada catatan tambahan."}
+                    </p>
+                  )}
                   <div className="mt-4 flex flex-wrap gap-2">
                     <Button size="sm" onClick={() => openBagianPicker(bagian)}>
-                      {isGuru ? "Isi Soal" : "Lihat Soal"}
+                      {isGuru ? "Isi Soal" : bagian.status === "pending_review" ? "Periksa Bagian" : "Lihat Soal"}
                     </Button>
-                    {isGuru && (
+                    {isGuru && bagian.status !== "pending_review" && (
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => updateBagianDuration(bagian)}
                       >
                         Atur Durasi
+                      </Button>
+                    )}
+                    {isGuru && (bagian.status === "draft" || bagian.status === "revision_required") && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => submitBagianReview(bagian)}
+                      >
+                        Ajukan Review
                       </Button>
                     )}
                     {!isGuru && (
@@ -946,15 +959,6 @@ export default function PaketUjianPage() {
                 value={scheduleMulai}
                 onChange={(e) => setScheduleMulai(e.target.value)}
               />
-              <Select
-                label="Gelombang (opsional)"
-                value={scheduleGrup}
-                onChange={(e) => setScheduleGrup(e.target.value)}
-                options={[
-                  { value: "", label: "Tanpa gelombang" },
-                  ...grupList.map((g) => ({ value: g.id, label: g.nama })),
-                ]}
-              />
               {scheduleError && (
                 <p className="text-sm text-red-600">{scheduleError}</p>
               )}
@@ -992,12 +996,19 @@ export default function PaketUjianPage() {
         <div className="fixed inset-0 z-[80] flex items-start justify-center overflow-y-auto bg-heading-dark/50 p-4">
           <div className="my-6 w-full max-w-2xl rounded-modal bg-card-bg shadow-modal">
             <div className="border-b border-card-border p-5">
-              <h2 className="text-lg font-bold">Lihat Soal — {bagianPicker.nama}</h2>
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-lg font-bold">
+                  {!isGuru && bagianPicker.status === "pending_review" ? "Periksa Bagian" : "Lihat Soal"} — {bagianPicker.nama}
+                </h2>
+                <Badge tone={toneBagianStatus(bagianPicker.status)}>{labelBagianStatus(bagianPicker.status)}</Badge>
+              </div>
               <p className="text-sm text-text-muted">
                 Soal {getNama(pelajaranList, bagianPicker.pelajaran_id)} yang telah ditambahkan guru.
+                {!isGuru && bagianPicker.guru_pengampu && ` Guru pengampu: ${bagianPicker.guru_pengampu}.`}
               </p>
             </div>
-            <div className="max-h-[32rem] space-y-3 overflow-y-auto p-5">
+            <div className="p-5">
+            <div className="max-h-[32rem] space-y-3 overflow-y-auto rounded-card border border-card-border bg-neutral/30 p-3">
               {bagianQuestions.length === 0 ? (
                 <p className="py-8 text-center text-sm text-text-muted">
                   Guru belum menambahkan soal pada bagian ini.
@@ -1006,18 +1017,30 @@ export default function PaketUjianPage() {
                 bagianQuestions.map((soal, index) => (
                   <article
                     key={soal.id}
-                    className="rounded-input border border-card-border p-4"
+                    className="rounded-input border border-card-border bg-card-bg p-4"
                   >
-                    <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-text-muted">
-                      <span className="font-semibold text-heading-dark">
-                        Soal {index + 1}
-                      </span>
-                      <span>#{soal.id}</span>
-                      <span>{labelTipeSoal(soal.tipe)}</span>
-                      <span>{getNama(topikList, soal.topik_id)}</span>
-                      {soal.subbab && <span>{soal.subbab}</span>}
-                      {soal.tingkat_kesulitan && (
-                        <span>Kesulitan {soal.tingkat_kesulitan}</span>
+                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex flex-wrap items-center gap-2 text-xs text-text-muted">
+                        <span className="font-semibold text-heading-dark">
+                          Soal {index + 1}
+                        </span>
+                        <span>#{soal.id}</span>
+                        <span>{labelTipeSoal(soal.tipe)}</span>
+                        <span>{getNama(topikList, soal.topik_id)}</span>
+                        {soal.subbab && <span>{soal.subbab}</span>}
+                        {soal.tingkat_kesulitan && (
+                          <span>Kesulitan {soal.tingkat_kesulitan}</span>
+                        )}
+                        {soal.poin != null && <span>{soal.poin} poin</span>}
+                      </div>
+                      {!isGuru && (
+                        <button
+                          type="button"
+                          onClick={() => flagSoal(soal)}
+                          className="text-xs font-semibold text-red-600 underline underline-offset-2 hover:text-red-700"
+                        >
+                          Laporkan
+                        </button>
                       )}
                     </div>
                     <MathContent
@@ -1037,11 +1060,39 @@ export default function PaketUjianPage() {
                 ))
               )}
             </div>
-            <div className="border-t border-card-border p-5">
-              <Button variant="outline" onClick={() => setBagianPicker(null)}>
-                Tutup
-              </Button>
             </div>
+            {!isGuru && bagianPicker.status === "pending_review" ? (
+              <div className="space-y-3 border-t border-card-border p-5">
+                <Textarea
+                  label="Catatan Review"
+                  value={reviewNote}
+                  onChange={(e) => setReviewNote(e.target.value)}
+                  placeholder="Wajib diisi bila meminta revisi"
+                />
+                {reviewError && <p className="text-sm text-red-600">{reviewError}</p>}
+                <div className="flex flex-wrap justify-end gap-2">
+                  <Button variant="outline" onClick={() => setBagianPicker(null)}>
+                    Tutup
+                  </Button>
+                  <Button
+                    variant="danger"
+                    disabled={reviewSubmitting}
+                    onClick={requestBagianRevision}
+                  >
+                    Minta Revisi
+                  </Button>
+                  <Button disabled={reviewSubmitting} onClick={approveBagian}>
+                    Setujui Bagian
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="border-t border-card-border p-5">
+                <Button variant="outline" onClick={() => setBagianPicker(null)}>
+                  Tutup
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       )}

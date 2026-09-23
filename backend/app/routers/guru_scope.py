@@ -64,12 +64,14 @@ def _validate_references(db: Session, payload: GuruScopeCreate) -> None:
     pelajaran = db.query(Pelajaran).filter(Pelajaran.id == payload.pelajaran_id).first()
     if not pelajaran:
         raise HTTPException(status_code=404, detail="Pelajaran not found")
+    if not pelajaran.is_active:
+        raise HTTPException(status_code=400, detail="Pelajaran tidak aktif")
     if payload.program_id is not None:
         program = db.query(Program).filter(Program.id == payload.program_id).first()
         if not program:
             raise HTTPException(status_code=404, detail="Program not found")
-        if pelajaran.program_id is not None and pelajaran.program_id != payload.program_id:
-            raise HTTPException(status_code=400, detail="Pelajaran tidak sesuai dengan program")
+        if not program.is_active:
+            raise HTTPException(status_code=400, detail="Program tidak aktif")
     if payload.kelas_id is not None and not db.query(Kelas.id).filter(Kelas.id == payload.kelas_id).first():
         raise HTTPException(status_code=404, detail="Kelas not found")
 

@@ -164,7 +164,7 @@ def test_siswa_crud():
 def test_paket_ujian_crud():
     headers = {"Authorization": f"Bearer {get_token()}"}
 
-    data = {"program_id": default_program_id(), "nama": "Paket B", "deskripsi": "Ujian", "durasi_menit": 45, "jumlah_soal": 20, "is_random_soal": True, "is_random_opsi": True}
+    data = {"program_id": default_program_id(), "kategori": "utbk", "nama": "Paket B", "deskripsi": "Ujian", "durasi_menit": 45, "jumlah_soal": 20, "is_random_soal": True, "is_random_opsi": True}
     r = client.post("/paket-ujian/", json=data, headers=headers)
     assert r.status_code == 200
     paket = r.json()
@@ -172,7 +172,7 @@ def test_paket_ujian_crud():
     r = client.get(f"/paket-ujian/{paket['id']}", headers=headers)
     assert r.status_code == 200
 
-    r = client.put(f"/paket-ujian/{paket['id']}", json={"program_id": default_program_id(), "nama": "Paket B Updated", "deskripsi": "Ujian Lengkap", "durasi_menit": 50, "jumlah_soal": 25, "is_random_soal": False, "is_random_opsi": False}, headers=headers)
+    r = client.put(f"/paket-ujian/{paket['id']}", json={"program_id": default_program_id(), "kategori": "utbk", "nama": "Paket B Updated", "deskripsi": "Ujian Lengkap", "durasi_menit": 50, "jumlah_soal": 25, "is_random_soal": False, "is_random_opsi": False}, headers=headers)
     assert r.status_code == 200
     assert r.json()["nama"] == "Paket B Updated"
 
@@ -210,7 +210,7 @@ def test_paket_ujian_crud():
 def test_soal_crud():
     headers = {"Authorization": f"Bearer {get_token()}"}
 
-    r = client.post("/paket-ujian/", json={"program_id": default_program_id(), "nama": "Paket C", "deskripsi": "TPA", "durasi_menit": 60, "jumlah_soal": 10, "is_random_soal": True, "is_random_opsi": True}, headers=headers)
+    r = client.post("/paket-ujian/", json={"program_id": default_program_id(), "kategori": "utbk", "nama": "Paket C", "deskripsi": "TPA", "durasi_menit": 60, "jumlah_soal": 10, "is_random_soal": True, "is_random_opsi": True}, headers=headers)
     assert r.status_code == 200
     paket_id = r.json()["id"]
 
@@ -272,7 +272,7 @@ def test_soal_crud():
 def test_opsi_jawaban_crud():
     headers = {"Authorization": f"Bearer {get_token()}"}
 
-    r = client.post("/paket-ujian/", json={"program_id": default_program_id(), "nama": "Paket D", "deskripsi": "Tryout", "durasi_menit": 30, "jumlah_soal": 5, "is_random_soal": True, "is_random_opsi": True}, headers=headers)
+    r = client.post("/paket-ujian/", json={"program_id": default_program_id(), "kategori": "utbk", "nama": "Paket D", "deskripsi": "Tryout", "durasi_menit": 30, "jumlah_soal": 5, "is_random_soal": True, "is_random_opsi": True}, headers=headers)
     assert r.status_code == 200
     paket_id = r.json()["id"]
 

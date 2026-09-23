@@ -333,6 +333,9 @@ def _cohort_attempts(db: Session, target: UjianSiswa, package: PaketUjian) -> li
         .filter(
             UjianSiswa.paket_ujian_id == package.id,
             UjianSiswa.is_submitted == True,
+            # Latihan per-mapel (scoped ke satu bagian, lihat mulai-latihan)
+            # bukan pengerjaan penuh & tidak boleh ikut mencemari benchmark kohort.
+            UjianSiswa.latihan_bagian_id.is_(None),
         )
         .all()
     )
@@ -482,6 +485,14 @@ def _compute_cohort(db: Session, target: UjianSiswa, package: PaketUjian) -> Has
 
 def compute_and_store_hasil(db: Session, ujian: UjianSiswa) -> HasilUjian:
     package = db.query(PaketUjian).filter(PaketUjian.id == ujian.paket_ujian_id).first()
-    if package and package.tipe == "ujian" and package.metode_penilaian == "kohort":
+    # Attempt yang scoped ke satu bagian (latihan per-mapel dari paket tryout,
+    # lihat /mulai-latihan) selalu dinilai biasa, tidak pernah masuk kohort,
+    # meskipun paket induknya pakai metode_penilaian="kohort".
+    if (
+        package
+        and package.tipe == "ujian"
+        and package.metode_penilaian == "kohort"
+        and ujian.latihan_bagian_id is None
+    ):
         return _compute_cohort(db, ujian, package)
     return _compute_ordinary(db, ujian)

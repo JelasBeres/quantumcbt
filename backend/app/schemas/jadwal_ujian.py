@@ -12,7 +12,6 @@ class JadwalUjianCreate(BaseModel):
     is_published: bool = False
     program_id: Optional[int] = None
     kelas_id: Optional[int] = None
-    grup_tryout_id: Optional[int] = None
     durasi_menit_paket: Optional[int] = None
 
     @field_validator("mulai", "selesai")
@@ -33,7 +32,6 @@ class JadwalUjianOut(BaseModel):
     is_published: bool
     program_id: Optional[int] = None
     kelas_id: Optional[int] = None
-    grup_tryout_id: Optional[int] = None
     durasi_menit_paket: Optional[int] = None
     nama_paket: Optional[str] = None
     status: str = "draft"
@@ -44,6 +42,13 @@ class JadwalUjianOut(BaseModel):
     rejection_reason: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("mulai", "selesai", "submitted_for_review_at", "reviewed_at")
+    @classmethod
+    def as_utc(cls, value: Optional[datetime]) -> Optional[datetime]:
+        # SQLite mengembalikan waktu tanpa zona; tandai sebagai UTC agar browser tidak
+        # membacanya sebagai waktu lokal (bergeser 7 jam di WIB).
+        return ensure_utc(value)
 
 
 class JadwalReviewAction(BaseModel):

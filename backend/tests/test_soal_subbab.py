@@ -52,7 +52,7 @@ def test_subbab_roundtrip_filter_generate_and_revision():
     filtered = client.get("/soal/", headers=admin, params={"subbab": "Pertidaksamaan", "topik_id": chapter})
     assert len(filtered.json()) == 1
     response = client.post("/soal/generate-kandidat", headers=admin, json={
-        "pelajaran_id": subject, "topik_id": chapter, "subbab": "Persamaan", "kesulitan": "mudah", "jumlah": 5})
+        "pelajaran_id": subject, "topik_id": chapter, "subbab": "Persamaan", "tipe": "esai", "kesulitan": "mudah", "jumlah": 5})
     assert response.status_code == 200
     assert response.json()["available"] == 1
     assert response.json()["items"][0]["id"] == soal_id

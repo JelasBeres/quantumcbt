@@ -1,4 +1,4 @@
-from support import default_program_id
+from support import default_program_id, make_paket_ready
 from datetime import datetime, timedelta
 from uuid import uuid4
 
@@ -93,6 +93,7 @@ def test_jadwal_ujian_crud_and_participants():
     r = client.post(
         "/paket-ujian/",
         json={"program_id": default_program_id(), 
+            "kategori": "utbk",
             "nama": "Paket Phase 4",
             "deskripsi": "Paket untuk jadwal ujian",
             "durasi_menit": 90,
@@ -105,6 +106,7 @@ def test_jadwal_ujian_crud_and_participants():
     assert r.status_code == 200
     paket_id = r.json()["id"]
 
+    make_paket_ready(paket_id)
     duration = timedelta(hours=2)
     existing_intervals = get_existing_jadwal_intervals(headers)
     mulai, selesai = find_non_overlapping_interval(utc_now() + timedelta(days=365), duration, existing_intervals)
@@ -201,6 +203,7 @@ def test_jadwal_ujian_overlap_validation():
     r = client.post(
         "/paket-ujian/",
         json={"program_id": default_program_id(), 
+            "kategori": "utbk",
             "nama": "Paket Overlap",
             "deskripsi": "Paket overlap",
             "durasi_menit": 30,
@@ -213,6 +216,7 @@ def test_jadwal_ujian_overlap_validation():
     assert r.status_code == 200
     paket_id = r.json()["id"]
 
+    make_paket_ready(paket_id)
     duration = timedelta(hours=1)
     existing_intervals = get_existing_jadwal_intervals(headers)
     mulai, selesai = find_non_overlapping_interval(utc_now() + timedelta(days=366), duration, existing_intervals)

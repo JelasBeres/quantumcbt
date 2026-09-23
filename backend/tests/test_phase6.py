@@ -49,7 +49,7 @@ def test_phase6_submit_score_breakdown_and_recompute():
     ).json()
     paket = client.post(
         "/paket-ujian/",
-        json={"program_id": default_program_id(), "nama": "Paket Phase 6", "durasi_menit": 30, "jumlah_soal": 2},
+        json={"program_id": default_program_id(), "kategori": "utbk", "nama": "Paket Phase 6", "durasi_menit": 30, "jumlah_soal": 2},
         headers=headers,
     ).json()
 

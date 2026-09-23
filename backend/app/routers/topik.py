@@ -5,7 +5,7 @@ from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.core.security import require_roles
+from app.core.security import get_current_active_user, require_roles
 from app.db.database import get_db
 from app.models.pelajaran import Pelajaran
 from app.models.soal import Soal
@@ -51,6 +51,7 @@ def create_topik(payload: TopikCreate, db: Session = Depends(get_db), current_us
 def list_topik(
     pelajaran_id: Optional[int] = None,
     db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
 ):
     query = db.query(Topik)
     if pelajaran_id is not None:

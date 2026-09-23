@@ -17,6 +17,9 @@ def _authorize_ujian_log(ujian_siswa_id: int, db: Session, current_user) -> Ujia
     ujian = db.query(UjianSiswa).filter(UjianSiswa.id == ujian_siswa_id).first()
     if not ujian:
         raise HTTPException(status_code=404, detail="Ujian Siswa not found")
+    if current_user.role not in ("admin", "siswa"):
+        # Monitoring/log kecurangan hanya untuk admin.
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
     if current_user.role == "siswa":
         linked = (
             db.query(Siswa)
@@ -58,8 +61,10 @@ def list_log_kecurangan(
             .join(Siswa, UjianSiswa.siswa_id == Siswa.id)
             .filter(Siswa.user_id == current_user.id)
         )
-    else:
+    elif current_user.role == "admin":
         query = db.query(LogKecurangan)
+    else:
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
     return query.all()
 
 

@@ -8,11 +8,13 @@ import Input from "@/components/Input";
 import Button from "@/components/Button";
 
 type PilihanJurusan = { jurusan: string; universitas: string };
+type Akademik = { no_induk?: string | null; program_nama?: string | null; kelas_nama?: string | null };
 
 export default function ProfilSiswaPage() {
   const [nama, setNama] = useState("");
   const [sekolah, setSekolah] = useState("");
   const [choices, setChoices] = useState<PilihanJurusan[]>([]);
+  const [akademik, setAkademik] = useState<Akademik>({});
   const [loading, setLoading] = useState(true);
   const [ready, setReady] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -27,6 +29,7 @@ export default function ProfilSiswaPage() {
       setNama(data.nama_lengkap);
       setSekolah(data.sekolah || "");
       setChoices(data.pilihan_jurusan ?? []);
+      setAkademik({ no_induk: data.no_induk, program_nama: data.program_nama, kelas_nama: data.kelas_nama });
       setReady(true);
     } catch (err) {
       setError(getErrorMessage(err, "Profil belum dapat dimuat. Silakan coba lagi."));
@@ -88,15 +91,30 @@ export default function ProfilSiswaPage() {
   }
 
   return (
-    <main className="mx-auto max-w-2xl space-y-5 px-4 py-6 sm:px-6 sm:py-8">
+    <main className="mx-auto max-w-2xl space-y-5 px-4 py-6 sm:px-6 sm:py-8 lg:max-w-5xl">
       <h1 className="text-2xl font-bold text-heading-dark">Profil Saya</h1>
-      <Card title="Data diri dan pilihan jurusan">
+      <div className="space-y-5 lg:flex lg:items-start lg:gap-5 lg:space-y-0">
+        <Card className="lg:min-w-0 lg:flex-1" title="Data diri dan pilihan jurusan">
         {error && <p role="alert" className="mb-4 text-sm text-red-700">{error}</p>}
         {success && <p role="status" className="mb-4 text-sm text-green-700">{success}</p>}
         {loading ? <p role="status">Memuat profil...</p> : !ready ? (
           <Button onClick={() => void load()}>Coba lagi</Button>
         ) : (
           <form onSubmit={save} className="space-y-5">
+            <div className="grid gap-3 rounded-input border border-card-border bg-neutral p-3 sm:grid-cols-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">No. Induk</p>
+                <p className="mt-0.5 text-sm font-medium text-heading-dark">{akademik.no_induk || "-"}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Program</p>
+                <p className="mt-0.5 text-sm font-medium text-heading-dark">{akademik.program_nama || "-"}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Kelas</p>
+                <p className="mt-0.5 text-sm font-medium text-heading-dark">{akademik.kelas_nama || "-"}</p>
+              </div>
+            </div>
             <Input label="Nama lengkap" aria-label="Nama lengkap" autoComplete="name" required maxLength={200}
               value={nama} onChange={(e) => { setNama(e.target.value); setSuccess(""); }} disabled={saving} />
             <Input label="Sekolah" aria-label="Sekolah" placeholder="Nama sekolah Anda" maxLength={200}
@@ -124,11 +142,12 @@ export default function ProfilSiswaPage() {
             <Button type="submit" disabled={saving}>{saving ? "Menyimpan..." : "Simpan profil"}</Button>
           </form>
         )}
-      </Card>
-      <Card title="Password">
-        <p className="mb-3 text-sm text-text-muted">Password adalah pengaturan yang dapat Anda ubah melalui halaman keamanan akun.</p>
-        <Link href="/change-password" className="font-semibold text-brand-primary underline">Ganti password</Link>
-      </Card>
+        </Card>
+        <Card className="lg:w-80 lg:flex-none" title="Password">
+          <p className="mb-3 text-sm text-text-muted">Password adalah pengaturan yang dapat Anda ubah melalui halaman keamanan akun.</p>
+          <Link href="/change-password" className="font-semibold text-brand-primary underline">Ganti password</Link>
+        </Card>
+      </div>
     </main>
   );
 }

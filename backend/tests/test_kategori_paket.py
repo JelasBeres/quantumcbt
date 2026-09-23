@@ -79,3 +79,15 @@ def test_package_legacy_code_and_grouping_data(isolated_database):
     listed = client.get("/paket-ujian/", headers=admin).json()
     item = next(row for row in listed if row["id"] == by_code.json()["id"])
     assert item["kategori_id"] == tka["id"]
+
+
+def test_deleted_default_category_stays_deleted(isolated_database):
+    admin_name, _, _ = setup_users()
+    admin = headers(admin_name, "Admin123")
+    categories = client.get("/kategori-paket/", headers=admin).json()
+    utbk = next(item for item in categories if item["kode"] == "utbk")
+    assert utbk["jumlah_paket"] == 0
+    assert client.delete(f"/kategori-paket/{utbk['id']}", headers=admin).status_code == 200
+    reloaded = client.get("/kategori-paket/", headers=admin).json()
+    assert "utbk" not in [item["kode"] for item in reloaded]
+    assert len(reloaded) == len(categories) - 1

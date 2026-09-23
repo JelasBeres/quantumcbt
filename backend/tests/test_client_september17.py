@@ -59,22 +59,25 @@ def test_practice_anytime_repeat_resume_and_no_history():
     assert client.post("/ujian-siswa/mulai-latihan", headers=headers, json=payload).status_code == 403
 
 
-def test_tryout_sections_allow_return_with_shared_timer():
+def test_tryout_sections_are_locked_sequentially():
+    """Tryout dengan bagian mengunci navigasi per-bagian: soal bagian
+    berikutnya baru terbuka setelah lanjut-bagian, dan bagian yang sudah
+    dilewati tidak bisa diakses lagi."""
     headers, paket, ids = setup_exam("ujian", sections=True)
     jadwal = active_schedule_id(paket)
     response = client.post("/ujian-siswa/mulai", headers=headers, json={"jadwal_ujian_id": jadwal})
     assert response.status_code == 200, response.text
     attempt = response.json()["ujian_siswa_id"]
     state = client.get(f"/ujian-siswa/{attempt}/state", headers=headers).json()
-    assert state["soal_aktif_ids"] == ids
-    assert client.get(f"/ujian-siswa/{attempt}/soal/2", headers=headers).status_code == 200
-    assert client.post(f"/ujian-siswa/{attempt}/jawab", headers=headers, json={"soal_id": ids[1], "jawaban_teks": "no"}).status_code == 200
+    assert state["soal_aktif_ids"] == [ids[0]]
+    assert client.get(f"/ujian-siswa/{attempt}/soal/2", headers=headers).status_code == 409
+    assert client.post(f"/ujian-siswa/{attempt}/jawab", headers=headers, json={"soal_id": ids[1], "jawaban_teks": "no"}).status_code == 409
     result = client.post(f"/ujian-siswa/{attempt}/lanjut-bagian?bagian_aktif=0", headers=headers)
     assert result.status_code == 200, result.text
-    assert result.json()["soal_aktif_ids"] == ids
-    assert client.post(f"/ujian-siswa/{attempt}/lanjut-bagian?bagian_aktif=0", headers=headers).status_code == 409
-    assert client.get(f"/ujian-siswa/{attempt}/soal/1", headers=headers).status_code == 200
+    assert result.json()["soal_aktif_ids"] == [ids[1]]
+    assert client.get(f"/ujian-siswa/{attempt}/soal/1", headers=headers).status_code == 409
     assert client.get(f"/ujian-siswa/{attempt}/soal/2", headers=headers).status_code == 200
+    assert client.post(f"/ujian-siswa/{attempt}/lanjut-bagian?bagian_aktif=1", headers=headers).status_code == 409
     assert client.patch(f"/ujian-siswa/{attempt}/submit", headers=headers).status_code == 200
     assert len(client.get("/siswa/riwayat-ujian", headers=headers).json()) == 1
     assert client.post("/ujian-siswa/mulai", headers=headers, json={"jadwal_ujian_id": jadwal}).status_code == 400

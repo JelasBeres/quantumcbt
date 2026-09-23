@@ -11,6 +11,7 @@ from app.db.database import get_db
 from app.models.hasil_ujian import HasilUjian
 from app.models.jadwal_ujian import JadwalUjian
 from app.models.jawaban_siswa import JawabanSiswa
+from app.models.kategori_paket import KategoriPaket
 from app.models.log_kecurangan import LogKecurangan
 from app.models.paket_ujian import PaketUjian
 from app.models.siswa import Siswa
@@ -25,6 +26,19 @@ from app.schemas.dashboard import (
 )
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
+
+
+def _is_latihan(ujian: UjianSiswa, paket: PaketUjian) -> bool:
+    # Latihan mandiri (paket latihan atau latihan per-mapel dari paket tryout)
+    # tidak diawasi, jadi tidak ikut monitoring ujian.
+    return paket.tipe == "latihan" or ujian.latihan_bagian_id is not None
+
+
+def _kategori_label(paket: PaketUjian, kategori_map: dict) -> tuple[Optional[int], Optional[str]]:
+    kategori = kategori_map.get(paket.kategori_id)
+    if kategori:
+        return kategori.id, kategori.nama
+    return paket.kategori_id, paket.kategori
 
 
 @router.get("/admin", response_model=DashboardAdminOut)
@@ -88,10 +102,11 @@ def get_dashboard_statistik(
 @router.get("/monitoring-ujian", response_model=List[MonitoringUjianOut])
 def get_monitoring_ujian(
     db: Session = Depends(get_db),
-    current_user=Depends(require_roles(["admin", "guru"])),
+    current_user=Depends(require_roles(["admin"])),
 ):
     siswa_map = {siswa.id: siswa for siswa in db.query(Siswa).all()}
     paket_map = {paket.id: paket for paket in db.query(PaketUjian).all()}
+    kategori_map = {kategori.id: kategori for kategori in db.query(KategoriPaket).all()}
     jawaban_count = {}
     ragu_count = {}
     for ujian in db.query(UjianSiswa).all():
@@ -107,8 +122,9 @@ def get_monitoring_ujian(
     for ujian in db.query(UjianSiswa).all():
         siswa = siswa_map.get(ujian.siswa_id)
         paket = paket_map.get(ujian.paket_ujian_id)
-        if siswa is None or paket is None:
+        if siswa is None or paket is None or _is_latihan(ujian, paket):
             continue
+        kategori_id, kategori_nama = _kategori_label(paket, kategori_map)
         sisa_waktu = _sisa_waktu_detik(ujian, paket)
         status = _status_ujian(ujian, paket)
         rows.append(
@@ -126,6 +142,8 @@ def get_monitoring_ujian(
                 jumlah_soal=len(ujian.soal_urutan or []),
                 terjawab=jawaban_count.get(ujian.id, 0),
                 jumlah_ragu=ragu_count.get(ujian.id, 0),
+                kategori_id=kategori_id,
+                kategori_nama=kategori_nama,
             )
         )
     return rows
@@ -135,7 +153,7 @@ def get_monitoring_ujian(
 def get_dashboard_log_kecurangan(
     ujian_siswa_id: Optional[int] = None,
     db: Session = Depends(get_db),
-    current_user=Depends(require_roles(["admin", "guru"])),
+    current_user=Depends(require_roles(["admin"])),
 ):
     query = db.query(LogKecurangan)
     if ujian_siswa_id is not None:
@@ -143,10 +161,16 @@ def get_dashboard_log_kecurangan(
 
     ujian_map = {ujian.id: ujian for ujian in db.query(UjianSiswa).all()}
     siswa_map = {siswa.id: siswa for siswa in db.query(Siswa).all()}
+    paket_map = {paket.id: paket for paket in db.query(PaketUjian).all()}
+    kategori_map = {kategori.id: kategori for kategori in db.query(KategoriPaket).all()}
     rows: List[DashboardLogKecuranganOut] = []
     for log in query.order_by(LogKecurangan.created_at.desc()).all():
         ujian = ujian_map.get(log.ujian_siswa_id)
         siswa = siswa_map.get(ujian.siswa_id) if ujian else None
+        paket = paket_map.get(ujian.paket_ujian_id) if ujian else None
+        if ujian and paket and _is_latihan(ujian, paket):
+            continue
+        kategori_id, kategori_nama = _kategori_label(paket, kategori_map) if paket else (None, None)
         rows.append(
             DashboardLogKecuranganOut(
                 id=log.id,
@@ -156,6 +180,10 @@ def get_dashboard_log_kecurangan(
                 tipe_kecurangan=log.tipe_kecurangan,
                 deskripsi=log.deskripsi,
                 created_at=log.created_at,
+                paket_ujian_id=paket.id if paket else None,
+                nama_paket=paket.nama if paket else None,
+                kategori_id=kategori_id,
+                kategori_nama=kategori_nama,
             )
         )
     return rows

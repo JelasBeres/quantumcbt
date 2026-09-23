@@ -1,10 +1,16 @@
 "use client";
-import LatihanList from "@/components/LatihanList";
-
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, BookOpen, ClipboardList, Clock3, FileText, Sparkles, CalendarClock, Award, CheckCircle2, History, User, Play } from "lucide-react";
+import { ArrowRight, BookOpen, ClipboardList, Clock3, FileText, Sparkles, CalendarClock, Award, CheckCircle2, History, User, Play, Calculator, Languages, BookText, Atom, FlaskConical, Leaf, Globe, Landmark, Wallet, Users, Brain, GraduationCap, Sunrise, Sun, Sunset, Moon } from "lucide-react";
+
+function salamWaktu() {
+  const jam = new Date().getHours();
+  if (jam >= 4 && jam < 11) return { label: "Pagi", Icon: Sunrise };
+  if (jam >= 11 && jam < 15) return { label: "Siang", Icon: Sun };
+  if (jam >= 15 && jam < 18) return { label: "Sore", Icon: Sunset };
+  return { label: "Malam", Icon: Moon };
+}
 import { api, getErrorMessage } from "@/lib/api";
 import { getUser } from "@/lib/auth";
 import Skeleton from "@/components/Skeleton";
@@ -28,9 +34,24 @@ type Riwayat = {
   nama_paket: string;
   started_at?: string | null;
   is_submitted: boolean;
-  nama_grup_tryout?: string | null;
   skor?: number | null;
 };
+
+function subjectIcon(pelajaran?: string | null) {
+  const n = (pelajaran || "").toLowerCase();
+  if (n.includes("matemati") || n.includes("kuantitatif")) return Calculator;
+  if (n.includes("inggris")) return Languages;
+  if (n.includes("bacaan") || n.includes("menulis") || n.includes("indonesia")) return BookText;
+  if (n.includes("fisika")) return Atom;
+  if (n.includes("kimia")) return FlaskConical;
+  if (n.includes("biologi")) return Leaf;
+  if (n.includes("geografi")) return Globe;
+  if (n.includes("sejarah")) return Landmark;
+  if (n.includes("ekonomi")) return Wallet;
+  if (n.includes("sosiologi")) return Users;
+  if (n.includes("penalaran") || n.includes("umum")) return Brain;
+  return GraduationCap;
+}
 
 type Jadwal = {
   jadwal_ujian_id: number;
@@ -39,8 +60,6 @@ type Jadwal = {
   mulai: string;
   selesai: string;
   status: "mendatang" | "berlangsung" | "berakhir";
-  grup_tryout_id?: number | null;
-  nama_grup_tryout?: string | null;
   durasi_menit?: number;
   jumlah_soal?: number;
   pelajaran?: string | null;
@@ -67,7 +86,7 @@ export default function SiswaHomePage() {
   const [jadwal, setJadwal] = useState<Jadwal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [activeTipe, setActiveTipe] = useState<"ujian" | "latihan">("ujian");
+  const activeTipe = "ujian";
 
   useEffect(() => {
     const user = getUser();
@@ -136,6 +155,7 @@ export default function SiswaHomePage() {
   }
 
   const nama = data?.siswa?.nama_lengkap ?? "";
+  const { label: waktuLabel, Icon: WaktuIcon } = salamWaktu();
 
   const ujianSelesai = riwayat.filter((r) => r.is_submitted);
   const skorTerkumpul = ujianSelesai
@@ -152,32 +172,28 @@ export default function SiswaHomePage() {
   ];
 
   return (
-    <main className="student-home">
-      <section className="student-hero">
-        <p className="student-eyebrow">QUANTUM RESEARCH · RUANG BELAJARMU</p>
-        <h1>Siap selangkah lebih maju?</h1>
-        <p>Halo, {nama || "teman Quantum"}. Mulai latihan, raih targetmu.<br />
-          {[data?.program_name, data?.kelas_name].filter(Boolean).join(" · ")}
-        </p>
-      </section>
+    <main>
+      <header className="student-hero">
+        <GraduationCap className="student-hero-icon" strokeWidth={1.5} aria-hidden="true" />
+        <div className="student-hero-inner">
+          <span className="student-hero-badge"><WaktuIcon size={13} aria-hidden="true" /> {new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long" })}</span>
+          <h1>Selamat {waktuLabel}, {nama || "Siswa"}</h1>
+          {[data?.program_name, data?.kelas_name].filter(Boolean).length > 0 && <p>{[data?.program_name, data?.kelas_name].filter(Boolean).join(" · ")}</p>}
+        </div>
+      </header>
 
+      <div className="student-home">
       <nav className="student-categories" aria-label="Menu belajar">
-        <button type="button" className="student-category" aria-pressed={activeTipe === "ujian"} onClick={() => setActiveTipe("ujian")}>
-          <span className="student-category-icon"><ClipboardList size={25} aria-hidden="true" /></span>Tryout
-        </button>
-        <button type="button" className="student-category" aria-pressed={activeTipe === "latihan"} onClick={() => setActiveTipe("latihan")}>
-          <span className="student-category-icon"><BookOpen size={25} aria-hidden="true" /></span>Latihan
-        </button>
-        {[
-          { href: "/siswa/jadwal-ujian", label: "Jadwal", icon: CalendarClock },
-          { href: "/siswa/ujian-aktif", label: "Ujian Aktif", icon: Play },
-          { href: "/siswa/riwayat", label: "Riwayat", icon: History },
-          { href: "/siswa/profil", label: "Profil Saya", icon: User }
-        ].map((item) => (
-          <Link key={item.href} href={item.href} className="student-category">
-            <span className="student-category-icon"><item.icon size={25} aria-hidden="true" /></span>{item.label}
-          </Link>
-        ))}
+        <Link href="/siswa/tryout" className="student-category">
+          <span className="student-category-icon"><ClipboardList size={24} aria-hidden="true" /></span>
+          <span className="student-category-text"><strong>Tryout</strong></span>
+          <ArrowRight size={18} className="student-category-arrow" aria-hidden="true" />
+        </Link>
+        <Link href="/siswa/latihan" className="student-category">
+          <span className="student-category-icon"><BookOpen size={24} aria-hidden="true" /></span>
+          <span className="student-category-text"><strong>Latihan</strong></span>
+          <ArrowRight size={18} className="student-category-arrow" aria-hidden="true" />
+        </Link>
       </nav>
 
       {error && <p role="alert" className="student-notice">{error}</p>}
@@ -186,8 +202,7 @@ export default function SiswaHomePage() {
         <section className="student-section" aria-label="Lanjutkan pengerjaan">
           {sedangDikerjakan.map((item) => (
             <div key={item.ujian_siswa_id} className="student-notice mb-3 flex flex-wrap items-center justify-between gap-4">
-              <div><p className="student-eyebrow">LANJUTKAN PERJALANANMU</p>
-                <h2 className="mt-2 font-bold">{item.nama_paket}</h2>
+              <div><h2 className="font-bold">{item.nama_paket}</h2>
                 <p className="student-muted">Mulai {formatTanggal(item.started_at)}</p>
               </div>
               <Link className="student-primary-link" href={`/siswa/ujian/${item.ujian_siswa_id}`}>Lanjutkan <ArrowRight size={16} aria-hidden="true" /></Link>
@@ -196,26 +211,31 @@ export default function SiswaHomePage() {
         </section>
       )}
 
-      {activeTipe === "latihan" ? <section className="student-section"><LatihanList /></section> : (
+      {(
         <section className="student-section" aria-labelledby="tryout-heading">
           <div className="student-section-heading">
-            <div><p className="student-eyebrow">SIMULASI UJIAN</p><h2 id="tryout-heading">Tryout Terbaru</h2>
-              <p className="student-muted">Ukur kemampuanmu, siapkan langkah berikutnya.</p>
-            </div>
-            <Link className="student-outline-link" href="/siswa/jadwal-ujian">Semua <ArrowRight size={13} aria-hidden="true" /></Link>
+            <h2 id="tryout-heading">Tryout</h2>
+            <Link className="student-outline-link" href="/siswa/tryout">Semua <ArrowRight size={13} aria-hidden="true" /></Link>
           </div>
           {jadwalTersedia.length === 0 ? (
-            <div className="student-notice">Belum ada Tryout tersedia. Sambil menunggu jadwal, yuk buka menu Latihan.</div>
+            <div className="student-notice">Belum ada tryout.</div>
           ) : (
             <div className="student-tryouts">
               {[...jadwalTersedia].sort((a, b) => b.jadwal_ujian_id - a.jadwal_ujian_id).map((item) => {
                 const selesai = jadwalSelesaiSet.has(item.jadwal_ujian_id);
+                const SubjectIcon = subjectIcon(item.pelajaran);
                 return (
                   <article key={item.jadwal_ujian_id} className="student-tryout">
                     <div className="student-tryout-cover">
-                      <span className="student-pill">{selesai ? "Sudah dikerjakan" : item.status === "berlangsung" ? "Sedang berlangsung" : "Segera hadir"}</span>
-                      <h3>{item.nama_paket}</h3>
-                      <p className="mt-2 text-xs text-white/80">{item.nama_grup_tryout || item.pelajaran || "Quantum Research"}</p>
+                      <SubjectIcon className="student-tryout-icon" strokeWidth={1.5} aria-hidden="true" />
+                      <div className="student-tryout-top">
+                        {item.pelajaran ? <span className="student-pill">{item.pelajaran}</span> : <span />}
+                        <span className={`student-pill ${selesai ? "student-pill-muted" : item.status === "berlangsung" ? "student-pill-green" : "student-pill-amber"}`}>{selesai ? "Selesai" : item.status === "berlangsung" ? "Berlangsung" : "Segera"}</span>
+                      </div>
+                      <div>
+                        <h3>{item.nama_paket}</h3>
+                        <p className="student-tryout-sub">Quantum Research</p>
+                      </div>
                     </div>
                     <div className="student-tryout-body">
                       <div className="student-meta">
@@ -239,7 +259,7 @@ export default function SiswaHomePage() {
 
       <section className="student-section" aria-labelledby="progress-heading">
         <div className="student-section-heading">
-          <div><p className="student-eyebrow">SETIAP LANGKAH BERARTI</p><h2 id="progress-heading">Progres Belajarmu</h2></div>
+          <h2 id="progress-heading">Ringkasan</h2>
           <Link href="/siswa/riwayat" className="student-outline-link">Riwayat <ArrowRight size={13} aria-hidden="true" /></Link>
         </div>
         <div className="student-stat-grid">
@@ -251,6 +271,7 @@ export default function SiswaHomePage() {
           ))}
         </div>
       </section>
+      </div>
     </main>
   );
 }

@@ -7,7 +7,6 @@ import { JadwalUjian, KategoriPaket, Kelas, PaketUjian, Program } from "@/lib/ty
 import Input from "@/components/Input";
 import Select from "@/components/Select";
 
-type GrupTryout = { id: number; nama: string; is_active: boolean };
 type TimeStatus = "berlangsung" | "akan_datang" | "selesai" | "tidak_valid";
 type GroupItem = { key: string; label: string; count: number; packageCount: number };
 type ScheduleFilters = {
@@ -19,7 +18,7 @@ type ScheduleFilters = {
 };
 type PackageFilters = { q: string; kategori: string; program: string; kelas: string };
 
-const initialForm = { paket_ujian_id: "", grup_tryout_id: "", mulai: "", selesai: "" };
+const initialForm = { paket_ujian_id: "", mulai: "", selesai: "" };
 const initialScheduleFilters: ScheduleFilters = {
   q: "",
   program: "",
@@ -79,8 +78,6 @@ export default function JadwalUjianPage() {
   const [programList, setProgramList] = useState<Program[]>([]);
   const [kelasList, setKelasList] = useState<Kelas[]>([]);
   const [kategoriList, setKategoriList] = useState<KategoriPaket[]>([]);
-  const [grup, setGrup] = useState<GrupTryout[]>([]);
-  const [selectedGrup, setSelectedGrup] = useState("");
   const [filters, setFilters] = useState<ScheduleFilters>(initialScheduleFilters);
   const [period, setPeriod] = useState({ from: "", to: "" });
   const [form, setForm] = useState(initialForm);
@@ -102,7 +99,6 @@ export default function JadwalUjianPage() {
   const programById = useMemo(() => new Map(programList.map((item) => [item.id, item])), [programList]);
   const kelasById = useMemo(() => new Map(kelasList.map((item) => [item.id, item])), [kelasList]);
   const kategoriById = useMemo(() => new Map(kategoriList.map((item) => [item.id, item])), [kategoriList]);
-  const grupById = useMemo(() => new Map(grup.map((item) => [item.id, item])), [grup]);
 
   const getCategoryIdentity = (paket?: PaketUjian) => {
     if (paket?.kategori_id != null) {
@@ -125,17 +121,15 @@ export default function JadwalUjianPage() {
   const load = async () => {
     setLoading(true);
     try {
-      const [jadwalRes, paketRes, grupRes, programRes, kelasRes, kategoriRes] = await Promise.all([
+      const [jadwalRes, paketRes, programRes, kelasRes, kategoriRes] = await Promise.all([
         api.get("/jadwal-ujian"),
         api.get("/paket-ujian"),
-        api.get("/grup-tryout"),
         api.get("/program/"),
         api.get("/kelas/"),
         api.get("/kategori-paket/")
       ]);
       setJadwal(jadwalRes.data ?? []);
       setPaketList((paketRes.data ?? []).filter((item: PaketUjian) => item.tipe === "ujian"));
-      setGrup(grupRes.data ?? []);
       setProgramList(programRes.data ?? []);
       setKelasList(kelasRes.data ?? []);
       setKategoriList(kategoriRes.data ?? []);
@@ -162,7 +156,6 @@ export default function JadwalUjianPage() {
   }, [
     period.from,
     period.to,
-    selectedGrup,
     filters.q,
     filters.program,
     filters.kategori,
@@ -220,7 +213,6 @@ export default function JadwalUjianPage() {
     try {
       const payload = {
         paket_ujian_id: Number(form.paket_ujian_id),
-        grup_tryout_id: form.grup_tryout_id ? Number(form.grup_tryout_id) : null,
         program_id: selectedPackage?.program_id ?? null,
         kelas_id: selectedPackage?.kelas_id ?? null,
         mulai: new Date(form.mulai).toISOString(),
@@ -246,7 +238,6 @@ export default function JadwalUjianPage() {
     setEditingId(item.id);
     setForm({
       paket_ujian_id: String(item.paket_ujian_id),
-      grup_tryout_id: item.grup_tryout_id ? String(item.grup_tryout_id) : "",
       mulai: toLocalDateTime(item.mulai),
       selesai: toLocalDateTime(item.selesai)
     });
@@ -306,13 +297,9 @@ export default function JadwalUjianPage() {
         const effectiveProgram = getEffectiveProgramId(item, paket);
         const effectiveClass = getEffectiveClassId(item, paket);
         const category = getCategoryIdentity(paket);
-        const matchesGroup = !selectedGrup || (selectedGrup === "tanpa-gelombang"
-          ? item.grup_tryout_id == null
-          : String(item.grup_tryout_id) === selectedGrup);
         return (
           (from === null || start >= from) &&
           (to === null || start <= to) &&
-          matchesGroup &&
           (!query || `${paket?.nama || ""} ${item.paket_ujian_id} ${item.id}`.toLowerCase().includes(query)) &&
           (!filters.program || String(effectiveProgram ?? "semua-program") === filters.program) &&
           (!filters.kategori || category.key === filters.kategori) &&
@@ -327,7 +314,6 @@ export default function JadwalUjianPage() {
     paketById,
     period.from,
     period.to,
-    selectedGrup,
     kategoriById
   ]);
 
@@ -564,26 +550,6 @@ export default function JadwalUjianPage() {
           </div>
           <p className="text-xs text-text-muted">Program dan kelas jadwal mengikuti paket yang dipilih secara otomatis.</p>
 
-          <details className="rounded-input border border-card-border p-3">
-            <summary className="cursor-pointer text-sm font-semibold text-body-dark">
-              Pengaturan lanjutan · {form.grup_tryout_id ? grupById.get(Number(form.grup_tryout_id))?.nama || "Gelombang dipilih" : "Tanpa gelombang"}
-            </summary>
-            <div className="mt-3">
-              <label htmlFor="schedule-group" className="mb-1.5 block text-sm font-semibold text-body-dark">Gelombang (opsional)</label>
-              <select
-                id="schedule-group"
-                value={form.grup_tryout_id}
-                onChange={(event) => setForm((current) => ({ ...current, grup_tryout_id: event.target.value }))}
-                className={fieldClass}
-              >
-                <option value="">Tanpa gelombang</option>
-                {grup.filter((item) => item.is_active).map((item) => (
-                  <option key={item.id} value={item.id}>{item.nama}</option>
-                ))}
-              </select>
-            </div>
-          </details>
-
           <div className="flex flex-wrap gap-2">
             <button disabled={saving} className={primaryButtonClass}>
               {saving ? "Menyimpan..." : editingId ? "Perbarui Jadwal" : "Simpan Jadwal"}
@@ -652,16 +618,6 @@ export default function JadwalUjianPage() {
                 { value: "", label: "Semua status" },
                 { value: "true", label: "Aktif" },
                 { value: "false", label: "Tersimpan" }
-              ]}
-            />
-            <Select
-              label="Gelombang"
-              value={selectedGrup}
-              onChange={(event) => setSelectedGrup(event.target.value)}
-              options={[
-                { value: "", label: "Semua gelombang" },
-                { value: "tanpa-gelombang", label: "Tanpa gelombang" },
-                ...grup.map((item) => ({ value: item.id, label: item.nama }))
               ]}
             />
           </div>
@@ -811,7 +767,6 @@ export default function JadwalUjianPage() {
                 const category = getCategoryIdentity(paket).label;
                 const programName = getProgramName(getEffectiveProgramId(item, paket));
                 const className = getClassName(getEffectiveClassId(item, paket));
-                const groupName = item.grup_tryout_id ? grupById.get(item.grup_tryout_id)?.nama || `Gelombang #${item.grup_tryout_id}` : "Tanpa gelombang";
                 const temporalStatus = getTimeStatus(item, now);
                 const temporalLabel = statusCards.find((status) => status.key === temporalStatus)?.label || "Waktu Tidak Valid";
                 return (
@@ -830,7 +785,7 @@ export default function JadwalUjianPage() {
                           {new Date(item.mulai).toLocaleString("id-ID")} - {new Date(item.selesai).toLocaleString("id-ID")}
                         </p>
                         <div className="mt-3 flex flex-wrap gap-2">
-                          {[category, programName, className, groupName].map((label) => (
+                          {[category, programName, className].map((label) => (
                             <span key={label} className="rounded-full border border-card-border bg-neutral/60 px-2.5 py-1 text-xs font-medium text-body-dark">{label}</span>
                           ))}
                         </div>

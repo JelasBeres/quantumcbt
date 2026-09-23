@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { CheckCircle2, ClipboardCheck, Filter } from "lucide-react";
 import { api } from "@/lib/api";
+import { getUser } from "@/lib/auth";
 import Button from "@/components/Button";
 import Card from "@/components/Card";
 import MathContent from "@/components/MathContent";
@@ -22,6 +23,7 @@ type JawabanEsai = {
 };
 
 export default function KoreksiEsaiPage() {
+  const isGuru = getUser()?.role === "guru";
   const [items, setItems] = useState<JawabanEsai[]>([]);
   const [paketList, setPaketList] = useState<PaketUjian[]>([]);
   const [selectedPaket, setSelectedPaket] = useState("");
@@ -85,7 +87,9 @@ export default function KoreksiEsaiPage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-heading-dark">Koreksi Esai</h1>
-          <p className="mt-1 text-sm text-text-muted">Beri nilai jawaban esai dan isian siswa (skala 0-100)</p>
+          <p className="mt-1 text-sm text-text-muted">
+            {isGuru ? "Beri nilai jawaban esai dan isian sesuai mapel yang diampu (skala 0-100)" : "Beri nilai jawaban esai dan isian siswa (skala 0-100)"}
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <div className="w-full sm:w-56">

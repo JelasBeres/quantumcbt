@@ -1,4 +1,4 @@
-"""
+r"""
 Auto-submit expired ujian script
 Run this script periodically (every 1-5 minutes) dengan cronjob atau scheduler
 

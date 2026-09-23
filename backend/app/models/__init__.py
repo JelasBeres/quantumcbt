@@ -15,7 +15,6 @@ from . import paket_soal
 from . import soal
 from . import pernyataan_benar_salah
 from . import opsi_jawaban
-from . import grup_tryout
 from . import jadwal_ujian
 from . import ujian_siswa
 from . import jawaban_siswa

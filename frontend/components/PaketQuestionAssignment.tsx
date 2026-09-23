@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Search } from "lucide-react";
 import QuestionMetaFilters, { emptyMetaFilter, matchesMeta } from "@/components/QuestionMetaFilters";
+import Badge from "@/components/Badge";
 import Button from "@/components/Button";
 import Card from "@/components/Card";
 import Input from "@/components/Input";
@@ -12,6 +13,7 @@ import MathContent from "@/components/MathContent";
 import Select from "@/components/Select";
 import { api, getErrorMessage } from "@/lib/api";
 import { getUser } from "@/lib/auth";
+import { labelBagianStatus, toneBagianStatus } from "@/lib/bagian-status";
 import { BagianPaket, Kelas, PaketUjian, Pelajaran, Program, Soal, Subbab, Topik } from "@/lib/types";
 import { labelTipeSoal } from "@/lib/tipe-soal";
 
@@ -52,21 +54,20 @@ function scopeMatches(
   kelasId: number | null
 ) {
   return scope.pelajaran_id === pelajaranId &&
-    (scope.program_id == null || programId == null || scope.program_id === programId) &&
-    (scope.kelas_id == null || kelasId == null || scope.kelas_id === kelasId);
+    (scope.program_id == null || scope.program_id === programId) &&
+    (scope.kelas_id == null || scope.kelas_id === kelasId);
 }
 
 function questionIsEligible(
   soal: Soal,
   paket: PaketUjian,
   bagian: BagianPaket,
-  scopes: GuruScope[],
-  pelajaranProgramId: number | null
+  scopes: GuruScope[]
 ) {
   if (bagian.pelajaran_id == null || soal.pelajaran_id !== bagian.pelajaran_id || soal.status !== "approved") return false;
   if (paket.kelas_id != null && soal.kelas_id !== paket.kelas_id) return false;
-  const programId = paket.program_id ?? pelajaranProgramId;
-  const kelasId = paket.kelas_id ?? soal.kelas_id ?? null;
+  const programId = paket.program_id ?? null;
+  const kelasId = paket.kelas_id ?? null;
   return scopes.some((scope) => scopeMatches(scope, bagian.pelajaran_id as number, programId ?? null, kelasId));
 }
 
@@ -133,7 +134,7 @@ export default function PaketQuestionAssignment() {
         if (nextBagian.paket_ujian_id !== nextPaket.id || !nextBagian.pelajaran_id || !sectionSubject) {
           throw new Error("INVALID_SECTION");
         }
-        const effectiveProgramId = nextPaket.program_id ?? sectionSubject.program_id ?? null;
+        const effectiveProgramId = nextPaket.program_id ?? null;
         if (!nextScopes.some((scope) => scopeMatches(scope, nextBagian.pelajaran_id as number, effectiveProgramId, nextPaket.kelas_id ?? null))) {
           throw new Error("OUT_OF_SCOPE");
         }
@@ -145,7 +146,7 @@ export default function PaketQuestionAssignment() {
           }
         });
         if (!active) return;
-        const eligibleQuestions = (bankRes.data as Soal[]).filter((soal) => questionIsEligible(soal, nextPaket, nextBagian, nextScopes, sectionSubject.program_id ?? null));
+        const eligibleQuestions = (bankRes.data as Soal[]).filter((soal) => questionIsEligible(soal, nextPaket, nextBagian, nextScopes));
         const eligibleIds = new Set(eligibleQuestions.map((soal) => soal.id));
         const assignedIds = (nextBagian.soal_ids ?? []).filter((id) => eligibleIds.has(id));
         const unavailableCount = (nextBagian.soal_ids ?? []).length - assignedIds.length;
@@ -259,6 +260,7 @@ export default function PaketQuestionAssignment() {
       const responses = await Promise.all(requests.filter((item) => item.jumlah > 0).map(async ({ kesulitan, jumlah }) => {
         const response = await api.post<GenerateResponse>("/soal/generate-kandidat", {
           pelajaran_id: bagian.pelajaran_id,
+          program_id: paket.program_id ?? null,
           kelas_id: paket.kelas_id ?? null,
           topik_id: autoForm.topik_id ? Number(autoForm.topik_id) : null,
           subbab: autoForm.subbab || null,
@@ -268,7 +270,7 @@ export default function PaketQuestionAssignment() {
           exclude_ids: selectedIds
         });
         const items = (response.data.items ?? []).filter((soal) =>
-          questionIsEligible(soal, paket, bagian, scopes, selectedPelajaran.program_id ?? null) &&
+          questionIsEligible(soal, paket, bagian, scopes) &&
           soal.tipe === autoForm.tipe &&
           soal.tingkat_kesulitan === kesulitan &&
           (!autoForm.topik_id || soal.topik_id === Number(autoForm.topik_id)) &&
@@ -293,19 +295,28 @@ export default function PaketQuestionAssignment() {
     }
   };
 
-  const saveSelection = async () => {
-    if (!paket || !bagian) return;
+  const isLocked = bagian?.status === "pending_review";
+
+  const persistSelection = async (): Promise<BagianPaket | null> => {
+    if (!paket || !bagian) return null;
     const eligibleIds = new Set(bankSoal.map((soal) => soal.id));
     const uniqueIds = Array.from(new Set(selectedIds));
     if (uniqueIds.some((id) => !eligibleIds.has(id))) {
       setSaveError("Pilihan memuat soal yang tidak lagi sesuai mapel, kelas, status approved, atau scope bagian. Muat ulang halaman lalu pilih kembali.");
-      return;
+      return null;
     }
+    const { data } = await api.put(`/paket-ujian/${paket.id}/bagian/${bagian.id}/soal`, { soal_ids: uniqueIds });
+    setBagian(data as BagianPaket);
+    return data as BagianPaket;
+  };
+
+  const saveSelection = async () => {
+    if (!paket || !bagian || isLocked) return;
     setSaving(true);
     setSaveError("");
     try {
-      await api.put(`/paket-ujian/${paket.id}/bagian/${bagian.id}/soal`, { soal_ids: uniqueIds });
-      router.push(listHref);
+      const saved = await persistSelection();
+      if (saved) router.push(listHref);
     } catch (error) {
       setSaveError(getErrorMessage(error, "Gagal menyimpan pilihan soal bagian."));
     } finally {
@@ -328,11 +339,15 @@ export default function PaketQuestionAssignment() {
     <div className="space-y-6">
       <header>
         <Link href={listHref} className="mb-3 inline-flex items-center gap-2 text-sm font-semibold text-brand-primary hover:underline"><ArrowLeft className="h-4 w-4" /> Kembali ke Daftar Paket</Link>
-        <h1 className="text-3xl font-bold text-heading-dark">Isi Soal Bagian</h1>
+        <h1 className="text-2xl font-bold text-heading-dark sm:text-3xl">Isi Soal Bagian</h1>
         <p className="mt-1 text-sm text-text-muted">Pilih soal approved dari Bank Soal sesuai penugasan bagian.</p>
       </header>
 
       <Card>
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          <Badge tone={toneBagianStatus(bagian.status)}>{labelBagianStatus(bagian.status)}</Badge>
+          {(bagian.revision_number ?? 0) > 0 && <span className="text-xs text-text-muted">Revisi ke-{bagian.revision_number}</span>}
+        </div>
         <dl className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-5">
           <div><dt className="text-text-muted">Paket</dt><dd className="mt-1 font-semibold text-heading-dark">{paket.nama}</dd></div>
           <div><dt className="text-text-muted">Bagian</dt><dd className="mt-1 font-semibold text-heading-dark">{bagian.nama}</dd></div>
@@ -340,12 +355,27 @@ export default function PaketQuestionAssignment() {
           <div><dt className="text-text-muted">Program / Kelas</dt><dd className="mt-1 font-semibold text-heading-dark">{selectedProgram} / {selectedKelas}</dd></div>
           <div><dt className="text-text-muted">Durasi Bagian</dt><dd className="mt-1 font-semibold text-heading-dark">{bagian.durasi_menit ? `${bagian.durasi_menit} menit` : "Belum diatur"}</dd></div>
         </dl>
+        {bagian.status === "revision_required" && (
+          <div className="mt-4 rounded-input border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            <p className="font-semibold">Admin meminta revisi:</p>
+            <p className="mt-0.5">{bagian.review_note || "Tidak ada catatan tambahan."}</p>
+          </div>
+        )}
+        {bagian.status === "pending_review" && (
+          <div className="mt-4 rounded-input border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            Bagian ini sedang menunggu review admin. Isi soal terkunci sampai admin menyetujui atau meminta revisi.
+          </div>
+        )}
       </Card>
 
       <Card>
-        <div className="mb-5 inline-flex rounded-input border border-card-border bg-neutral p-1" aria-label="Mode pemilihan soal">
+        {isLocked ? (
+          <p className="py-8 text-center text-sm text-text-muted">Isi soal terkunci selagi bagian ini menunggu review admin. Kembali setelah admin menyetujui atau meminta revisi.</p>
+        ) : (
+        <>
+        <div className="mb-5 flex w-full rounded-input border border-card-border bg-neutral p-1 sm:inline-flex sm:w-auto" aria-label="Mode pemilihan soal">
           {([{"value":"manual","label":"Pilih Manual"},{"value":"auto","label":"Auto-Generate"}] as const).map((mode) => (
-            <button key={mode.value} type="button" onClick={() => setPickerMode(mode.value)} aria-pressed={pickerMode === mode.value} className={`min-h-11 rounded-btn border px-4 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 ${pickerMode === mode.value ? "border-brand-primary bg-card-bg text-brand-primary shadow-card" : "border-transparent text-text-muted hover:bg-card-bg hover:text-body-dark"}`}>{mode.label}</button>
+            <button key={mode.value} type="button" onClick={() => setPickerMode(mode.value)} aria-pressed={pickerMode === mode.value} className={`min-h-11 flex-1 rounded-btn sm:flex-none border px-4 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 ${pickerMode === mode.value ? "border-brand-primary bg-card-bg text-brand-primary shadow-card" : "border-transparent text-text-muted hover:bg-card-bg hover:text-body-dark"}`}>{mode.label}</button>
           ))}
         </div>
 
@@ -361,19 +391,19 @@ export default function PaketQuestionAssignment() {
               <Select label="Kesulitan" value={pickerFilter.kesulitan} onChange={(event) => setPickerFilter({ ...pickerFilter, kesulitan: event.target.value })} options={[{ value: "", label: "Semua tingkat" }, ...["mudah", "sedang", "sulit"].map((value) => ({ value, label: value }))]} />
             </div>
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <div className="relative w-full max-w-xs">
+              <div className="relative w-full sm:max-w-xs">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" aria-hidden="true" />
                 <input value={pickerFilter.q} onChange={(event) => setPickerFilter({ ...pickerFilter, q: event.target.value })} placeholder="Cari isi soal / ID..." className="w-full rounded-input border border-card-border bg-card-bg py-2 pl-9 pr-3 text-sm text-body-dark placeholder:text-text-muted outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/25" />
               </div>
-              <Button variant="outline" onClick={() => { setPickerFilter(emptyPickerFilter); setMetaFilter(emptyMetaFilter); }}>Reset filter</Button>
+              <Button variant="outline" className="w-full sm:w-auto" onClick={() => { setPickerFilter(emptyPickerFilter); setMetaFilter(emptyMetaFilter); }}>Reset filter</Button>
             </div>
-            <div className="mb-5 flex flex-wrap gap-2 border-b border-card-border pb-3">
+            <div className="-mx-5 mb-5 flex gap-2 overflow-x-auto border-b border-card-border px-5 pb-3 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
               {tipeList.map((tipe) => {
                 const active = activeTipe === tipe.value;
-                return <button key={tipe.value} type="button" onClick={() => setActiveTipe(tipe.value)} className={`flex items-center gap-1.5 rounded-btn border px-3 py-1.5 text-xs font-semibold transition ${active ? "border-brand-primary bg-card-bg text-brand-primary shadow-sm" : "border-transparent bg-neutral text-text-muted hover:bg-card-bg hover:text-body-dark"}`}><span>{tipe.label}</span><span className={`rounded-full px-1.5 py-0.2 text-[10px] ${active ? "bg-brand-primary/15 font-bold text-brand-primary" : "bg-card-border text-text-muted"}`}>{tipeCounts[tipe.value] || 0}</span></button>;
+                return <button key={tipe.value} type="button" onClick={() => setActiveTipe(tipe.value)} className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-btn border px-3 py-1.5 text-xs font-semibold transition ${active ? "border-brand-primary bg-card-bg text-brand-primary shadow-sm" : "border-transparent bg-neutral text-text-muted hover:bg-card-bg hover:text-body-dark"}`}><span>{tipe.label}</span><span className={`rounded-full px-1.5 py-0.2 text-[10px] ${active ? "bg-brand-primary/15 font-bold text-brand-primary" : "bg-card-border text-text-muted"}`}>{tipeCounts[tipe.value] || 0}</span></button>;
               })}
             </div>
-            {filteredSoal.length === 0 ? <p className="py-8 text-center text-sm text-text-muted">Tidak ada soal approved yang sesuai dengan bagian dan filter.</p> : <div className="max-h-[32rem] space-y-2 overflow-y-auto">{filteredSoal.map((soal) => <label key={soal.id} className="flex cursor-pointer items-start gap-3 rounded-input border border-card-border bg-card-bg p-3 transition hover:border-brand-primary/50 hover:bg-brand-primary/[0.02] focus-within:ring-2 focus-within:ring-brand-primary/25"><input type="checkbox" checked={selectedIds.includes(soal.id)} onChange={() => toggleSelect(soal.id)} className="mt-1 h-4 w-4 rounded border-card-border text-brand-primary focus:ring-brand-primary" /><div className="min-w-0 flex-1"><div className="mb-1 flex flex-wrap gap-2 text-xs text-text-muted"><span>#{soal.id}</span><span>{labelTipeSoal(soal.tipe)}</span><span>{getNama(topikList, soal.topik_id)}</span>{soal.subbab && <span>{soal.subbab}</span>}<span>Kesulitan {soal.tingkat_kesulitan ?? "-"}</span></div><MathContent className="prose prose-sm max-w-none" html={soal.teks_soal} /></div></label>)}</div>}
+            {filteredSoal.length === 0 ? <p className="py-8 text-center text-sm text-text-muted">Tidak ada soal approved yang sesuai dengan bagian dan filter.</p> : <div className="max-h-[65vh] space-y-1.5 overflow-y-auto overflow-x-hidden sm:max-h-[32rem]">{filteredSoal.map((soal) => <label key={soal.id} className="flex cursor-pointer items-start gap-2.5 rounded-input border border-card-border bg-card-bg px-3 py-2 transition sm:gap-3 sm:p-3 hover:border-brand-primary/50 hover:bg-brand-primary/[0.02] focus-within:ring-2 focus-within:ring-brand-primary/25"><input type="checkbox" checked={selectedIds.includes(soal.id)} onChange={() => toggleSelect(soal.id)} className="mt-0.5 h-4 w-4 shrink-0 rounded border-card-border text-brand-primary focus:ring-brand-primary" /><div className="min-w-0 flex-1 overflow-hidden break-words"><div className="mb-0.5 flex flex-wrap gap-x-2 gap-y-0.5 text-[11px] leading-tight text-text-muted sm:text-xs"><span>#{soal.id}</span><span>{labelTipeSoal(soal.tipe)}</span><span>{getNama(topikList, soal.topik_id)}</span>{soal.subbab && <span>{soal.subbab}</span>}<span>Kesulitan {soal.tingkat_kesulitan ?? "-"}</span></div><MathContent className="prose prose-sm mt-0.5 max-w-none break-words text-[13px] leading-snug sm:text-sm [&_p]:my-0 [&_ul]:my-1 [&_ol]:my-1 [&_img]:my-1 [&_img]:max-h-40 [&_img]:w-auto [&_img]:h-auto [&_img]:max-w-full [&_table]:block [&_table]:max-w-full [&_table]:overflow-x-auto" html={soal.teks_soal} /></div></label>)}</div>}
           </>
         ) : (
           <>
@@ -392,15 +422,19 @@ export default function PaketQuestionAssignment() {
               {autoError && <p className="mt-3 rounded-input border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{autoError}</p>}
               {autoResult && <div className={`mt-3 rounded-input border px-3 py-2 text-sm ${autoResult.shortage > 0 ? "border-amber-200 bg-amber-50 text-amber-800" : "border-card-border bg-card-bg text-body-dark"}`}>{autoResult.shortage > 0 ? `Diminta ${autoResult.requested} soal ${labelTipeSoal(autoForm.tipe)}; ${autoResult.selected} kandidat valid tersedia. Kekurangan tidak diganti dengan tipe atau tingkat lain.` : `${autoResult.selected} kandidat ${labelTipeSoal(autoForm.tipe)} berhasil ditambahkan dari ${autoResult.available} soal yang tersedia.`}</div>}
             </div>
-            {autoCandidates.length > 0 ? <div className="mt-4"><div className="mb-3 flex flex-wrap items-center justify-between gap-3"><p className="text-sm font-semibold text-heading-dark">Kandidat terbaru ({autoCandidates.length})</p><Button type="button" size="sm" variant="outline" onClick={() => setPickerMode("manual")}>Tambah dari Manual</Button></div><div className="max-h-80 space-y-2 overflow-y-auto">{autoCandidates.map((soal) => <label key={soal.id} className="flex cursor-pointer items-start gap-3 rounded-input border border-card-border bg-card-bg p-3 transition hover:border-brand-primary/50 hover:bg-brand-primary/[0.02] focus-within:ring-2 focus-within:ring-brand-primary/25"><input type="checkbox" checked={selectedIds.includes(soal.id)} onChange={() => toggleSelect(soal.id)} className="mt-1 h-4 w-4 rounded border-card-border text-brand-primary focus:ring-brand-primary" /><div className="min-w-0 flex-1"><span className="mr-2 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">{labelTipeSoal(soal.tipe)}</span><span className="text-xs text-text-muted">{selectedPelajaran?.nama} · Kesulitan {soal.tingkat_kesulitan ?? "-"}</span><MathContent className="prose prose-sm max-w-none" html={soal.teks_soal} /></div></label>)}</div></div> : <p className="py-8 text-center text-sm text-text-muted">Pilih kriteria lalu generate kandidat soal.</p>}
+            {autoCandidates.length > 0 ? <div className="mt-4"><div className="mb-3 flex flex-wrap items-center justify-between gap-3"><p className="text-sm font-semibold text-heading-dark">Kandidat terbaru ({autoCandidates.length})</p><Button type="button" size="sm" variant="outline" onClick={() => setPickerMode("manual")}>Tambah dari Manual</Button></div><div className="max-h-[65vh] space-y-1.5 overflow-y-auto overflow-x-hidden sm:max-h-80">{autoCandidates.map((soal) => <label key={soal.id} className="flex cursor-pointer items-start gap-2.5 rounded-input border border-card-border bg-card-bg px-3 py-2 transition sm:gap-3 sm:p-3 hover:border-brand-primary/50 hover:bg-brand-primary/[0.02] focus-within:ring-2 focus-within:ring-brand-primary/25"><input type="checkbox" checked={selectedIds.includes(soal.id)} onChange={() => toggleSelect(soal.id)} className="mt-0.5 h-4 w-4 shrink-0 rounded border-card-border text-brand-primary focus:ring-brand-primary" /><div className="min-w-0 flex-1 overflow-hidden break-words"><span className="mr-2 rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-medium text-blue-800 sm:text-xs">{labelTipeSoal(soal.tipe)}</span><span className="text-[11px] text-text-muted sm:text-xs">{selectedPelajaran?.nama} · Kesulitan {soal.tingkat_kesulitan ?? "-"}</span><MathContent className="prose prose-sm mt-0.5 max-w-none break-words text-[13px] leading-snug sm:text-sm [&_p]:my-0 [&_ul]:my-1 [&_ol]:my-1 [&_img]:my-1 [&_img]:max-h-40 [&_img]:w-auto [&_img]:h-auto [&_img]:max-w-full [&_table]:block [&_table]:max-w-full [&_table]:overflow-x-auto" html={soal.teks_soal} /></div></label>)}</div></div> : <p className="py-8 text-center text-sm text-text-muted">Pilih kriteria lalu generate kandidat soal.</p>}
           </>
         )}
 
         {saveError && <p className="mt-4 rounded-input border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{saveError}</p>}
-        <div className="mt-4 flex items-center gap-3 border-t border-card-border pt-4">
-          <Button disabled={saving} onClick={saveSelection}>{saving ? "Menyimpan..." : `Simpan (${selectedIds.length} soal)`}</Button>
-          <Button variant="outline" onClick={() => router.push(listHref)}>Batal</Button>
+        {!bagian.durasi_menit && <p className="mt-4 rounded-input border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">Atur durasi bagian pada kartu paket terlebih dahulu sebelum mengajukan review.</p>}
+        <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-card-border pt-4">
+          <Button className="w-full sm:w-auto" disabled={saving} onClick={saveSelection}>{saving ? "Menyimpan..." : `Simpan (${selectedIds.length} soal)`}</Button>
+          <Button className="w-full sm:w-auto" variant="outline" onClick={() => router.push(listHref)}>Batal</Button>
         </div>
+        <p className="mt-3 text-xs text-text-muted">Setelah soal disimpan, ajukan review dari tombol "Ajukan Review" pada kartu bagian di halaman daftar paket.</p>
+        </>
+        )}
       </Card>
     </div>
   );

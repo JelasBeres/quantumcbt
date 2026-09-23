@@ -48,7 +48,7 @@ def test_phase1_submission_and_autograde():
     headers = {"Authorization": f"Bearer {token}"}
 
     # create paket
-    r = client.post("/paket-ujian/", json={"program_id": default_program_id(), "nama": "Paket A", "durasi_menit": 30}, headers=headers)
+    r = client.post("/paket-ujian/", json={"program_id": default_program_id(), "kategori": "utbk", "nama": "Paket A", "durasi_menit": 30}, headers=headers)
     assert r.status_code == 200
     paket = r.json()
     paket_id = paket["id"]

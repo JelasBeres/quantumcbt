@@ -72,6 +72,13 @@ textarea {
   background: #2D3C8F;
 }
 
+/* Overlay modal (fixed inset-0) sering berada di dalam container space-y-*,
+   yang memberi margin-top ke anak-anaknya sehingga overlay turun dan
+   menyisakan celah di atas. Overlay layar penuh tidak boleh punya margin. */
+.fixed.inset-0 {
+  margin: 0 !important;
+}
+
 /* KaTeX math wrappers */
 .katex-display-wrap {
   display: block;

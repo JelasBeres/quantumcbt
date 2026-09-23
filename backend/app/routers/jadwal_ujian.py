@@ -7,12 +7,12 @@ from sqlalchemy.orm import Session
 
 from app.core.security import get_current_active_user, require_roles
 from app.db.database import get_db
-from app.models.grup_tryout import GrupTryout
 from app.models.jadwal_ujian import JadwalUjian
 from app.models.paket_soal import PaketSoal
 from app.models.paket_ujian import PaketUjian
 from app.models.bagian_paket import BagianPaket
 from app.models.siswa import Siswa
+from app.models.soal import Soal
 from app.schemas.jadwal_ujian import JadwalDeleteRequest, JadwalPublishUpdate, JadwalReviewAction, JadwalReviewReject, JadwalUjianCreate, JadwalUjianOut
 
 router = APIRouter(prefix="/jadwal-ujian", tags=["jadwal_ujian"])
@@ -55,16 +55,21 @@ def _validate_package_readiness(db: Session, paket: PaketUjian) -> None:
     sections_exist = db.query(BagianPaket.id).filter(BagianPaket.paket_ujian_id == paket.id).first()
     if sections_exist:
         readiness = (
-            db.query(BagianPaket.id, BagianPaket.durasi_menit, func.count(PaketSoal.id))
+            db.query(BagianPaket.id, BagianPaket.durasi_menit, BagianPaket.status, func.count(PaketSoal.id))
             .outerjoin(PaketSoal, PaketSoal.bagian_paket_id == BagianPaket.id)
             .filter(BagianPaket.paket_ujian_id == paket.id)
-            .group_by(BagianPaket.id, BagianPaket.durasi_menit)
+            .group_by(BagianPaket.id, BagianPaket.durasi_menit, BagianPaket.status)
             .all()
         )
-        if any(duration is None or not 1 <= duration <= 1440 for _, duration, _ in readiness):
+        if any(duration is None or not 1 <= duration <= 1440 for _, duration, _, _ in readiness):
             raise HTTPException(status_code=409, detail="Tryout belum siap dijadwalkan: isi durasi valid pada setiap bagian terlebih dahulu.")
-        if any(question_count == 0 for _, _, question_count in readiness) or sum(question_count for _, _, question_count in readiness) == 0:
+        if any(question_count == 0 for _, _, _, question_count in readiness) or sum(question_count for _, _, _, question_count in readiness) == 0:
             raise HTTPException(status_code=409, detail="Tryout belum siap dijadwalkan: isi soal pada setiap bagian/mata pelajaran terlebih dahulu.")
+        if any(status != "approved" for _, _, status, _ in readiness):
+            raise HTTPException(status_code=409, detail="Tryout belum siap dijadwalkan: semua bagian harus disetujui admin terlebih dahulu.")
+        soal_ids = [row[0] for row in db.query(PaketSoal.soal_id).filter(PaketSoal.paket_ujian_id == paket.id).distinct().all()]
+        if soal_ids and db.query(Soal.id).filter(Soal.id.in_(soal_ids), Soal.status != "approved").first():
+            raise HTTPException(status_code=409, detail="Tryout belum siap dijadwalkan: terdapat soal yang belum approved.")
     elif paket.kategori_id is not None or paket.kategori is not None:
         raise HTTPException(status_code=409, detail="Tryout belum siap dijadwalkan: tambahkan minimal satu bagian/mata pelajaran terlebih dahulu.")
 
@@ -73,21 +78,13 @@ def validate_jadwal(db: Session, payload: JadwalUjianCreate, ignore_id: Optional
     if payload.mulai >= payload.selesai:
         raise HTTPException(status_code=400, detail="Waktu mulai harus sebelum waktu selesai")
 
-    if payload.grup_tryout_id is not None:
-        grup = db.query(GrupTryout).filter(GrupTryout.id == payload.grup_tryout_id, GrupTryout.is_active == True).first()
-        if not grup:
-            raise HTTPException(status_code=400, detail="Grup tryout tidak ditemukan atau tidak aktif")
-
     paket = _ref_paket(db, payload.paket_ujian_id)
     if paket.tipe != "ujian" or paket.is_archived:
         raise HTTPException(status_code=409, detail="Jadwal hanya untuk Tryout aktif. Latihan tidak memerlukan jadwal.")
     _validate_package_readiness(db, paket)
     program_efektif, kelas_efektif = _program_kelas_efektif(payload, paket)
 
-    query = db.query(JadwalUjian).filter(
-        JadwalUjian.is_deleted == False,
-        JadwalUjian.grup_tryout_id == payload.grup_tryout_id,
-    )
+    query = db.query(JadwalUjian).filter(JadwalUjian.is_deleted == False)
     # Abaikan jadwal yang paket ujiannya sudah tidak ada (orphan dari paket yang
     # pernah dihapus). Jadwal orphan tidak boleh memblokir slot waktu yang valid.
     existing_paket_ids = {row[0] for row in db.query(PaketUjian.id).all()}
@@ -135,7 +132,6 @@ def create_jadwal_ujian(payload: JadwalUjianCreate, db: Session = Depends(get_db
         is_published=payload.is_published if current_user.role == "admin" else False,
         program_id=program_efektif,
         kelas_id=kelas_efektif,
-        grup_tryout_id=payload.grup_tryout_id,
         durasi_menit_paket=durasi_efektif,
         status="published" if current_user.role == "admin" and payload.is_published else "draft",
         created_by=current_user.id,
@@ -151,7 +147,6 @@ def list_jadwal_ujian(
     paket_ujian_id: Optional[int] = None,
     program_id: Optional[int] = None,
     kelas_id: Optional[int] = None,
-    grup_tryout_id: Optional[int] = None,
     is_published: Optional[bool] = None,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_active_user),
@@ -167,8 +162,6 @@ def list_jadwal_ujian(
         query = query.filter(JadwalUjian.program_id == program_id)
     if kelas_id is not None:
         query = query.filter(JadwalUjian.kelas_id == kelas_id)
-    if grup_tryout_id is not None:
-        query = query.filter(JadwalUjian.grup_tryout_id == grup_tryout_id)
     if is_published is not None:
         query = query.filter(JadwalUjian.is_published == is_published)
     return query.order_by(JadwalUjian.id.desc()).all()
@@ -203,7 +196,6 @@ def update_jadwal_ujian(jadwal_id: int, payload: JadwalUjianCreate, db: Session 
     # Program & kelas mengikuti paket ujian agar siswa dari program lain tidak melihat/mengerjakan.
     jadwal.program_id = program_efektif
     jadwal.kelas_id = kelas_efektif
-    jadwal.grup_tryout_id = payload.grup_tryout_id
     jadwal.durasi_menit_paket = durasi_efektif
     if jadwal.status == "rejected":
         jadwal.status = "draft"

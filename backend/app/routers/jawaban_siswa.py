@@ -3,10 +3,11 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.core.security import get_current_active_user, require_roles
+from app.core.security import guru_has_scope, guru_scope_audience_filter, require_roles
 from app.core.timeutils import utc_now
 from app.db.database import get_db
 from app.models.jawaban_siswa import JawabanSiswa
+from app.models.paket_ujian import PaketUjian
 from app.models.siswa import Siswa
 from app.models.soal import Soal
 from app.models.ujian_siswa import UjianSiswa
@@ -34,9 +35,12 @@ def list_jawaban_esai_koreksi(
         db.query(JawabanSiswa, Soal, UjianSiswa, Siswa)
         .join(Soal, JawabanSiswa.soal_id == Soal.id)
         .join(UjianSiswa, JawabanSiswa.ujian_siswa_id == UjianSiswa.id)
+        .join(PaketUjian, UjianSiswa.paket_ujian_id == PaketUjian.id)
         .join(Siswa, UjianSiswa.siswa_id == Siswa.id)
         .filter(Soal.tipe.in_(["esai", "isian"]))
     )
+    if current_user.role == "guru":
+        query = query.filter(guru_scope_audience_filter(current_user, Soal.pelajaran_id, PaketUjian.program_id, PaketUjian.kelas_id))
     if ujian_siswa_id is not None:
         query = query.filter(JawabanSiswa.ujian_siswa_id == ujian_siswa_id)
     if paket_ujian_id is not None:
@@ -77,8 +81,17 @@ def nilai_jawaban_esai(
     if not jawaban:
         raise HTTPException(status_code=404, detail="Jawaban Siswa not found")
     soal = db.query(Soal).filter(Soal.id == jawaban.soal_id).first()
-    if soal and soal.tipe == "pilihan_ganda":
-        raise HTTPException(status_code=400, detail="Soal pilihan ganda dinilai otomatis, tidak perlu koreksi manual")
+    ujian = db.query(UjianSiswa).filter(UjianSiswa.id == jawaban.ujian_siswa_id).first()
+    paket = db.query(PaketUjian).filter(PaketUjian.id == ujian.paket_ujian_id).first() if ujian else None
+    if current_user.role == "guru" and (
+        not soal
+        or soal.pelajaran_id is None
+        or not paket
+        or not guru_has_scope(db, current_user, soal.pelajaran_id, paket.program_id, paket.kelas_id)
+    ):
+        raise HTTPException(status_code=403, detail="Jawaban berada di luar penugasan guru")
+    if not soal or soal.tipe not in {"esai", "isian"}:
+        raise HTTPException(status_code=400, detail="Hanya soal esai atau isian yang dapat dinilai manual")
 
     jawaban.skor_manual = payload.skor_manual
     jawaban.dinilai_oleh = current_user.id
@@ -86,7 +99,6 @@ def nilai_jawaban_esai(
     db.commit()
     db.refresh(jawaban)
 
-    ujian = db.query(UjianSiswa).filter(UjianSiswa.id == jawaban.ujian_siswa_id).first()
     if ujian and ujian.is_submitted:
         compute_and_store_hasil(db, ujian)
         db.commit()
@@ -111,7 +123,7 @@ def create_jawaban_siswa(payload: JawabanSiswaCreate, db: Session = Depends(get_
 def list_jawaban_siswa(
     ujian_siswa_id: Optional[int] = None,
     db: Session = Depends(get_db),
-    current_user=Depends(require_roles(["admin", "guru"])),
+    current_user=Depends(require_roles(["admin"])),
 ):
     query = db.query(JawabanSiswa)
     if ujian_siswa_id is not None:
@@ -131,7 +143,7 @@ def update_jawaban_siswa(jawaban_id: int, payload: JawabanSiswaCreate, db: Sessi
 
 
 @router.get("/{jawaban_id}", response_model=JawabanSiswaOut)
-def get_jawaban_siswa(jawaban_id: int, db: Session = Depends(get_db), current_user=Depends(require_roles(["admin", "guru"]))):
+def get_jawaban_siswa(jawaban_id: int, db: Session = Depends(get_db), current_user=Depends(require_roles(["admin"]))):
     jawaban = db.query(JawabanSiswa).filter(JawabanSiswa.id == jawaban_id).first()
     if not jawaban:
         raise HTTPException(status_code=404, detail="Jawaban Siswa not found")

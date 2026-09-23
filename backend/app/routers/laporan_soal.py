@@ -3,7 +3,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.core.security import get_current_active_user, require_roles
+from app.core.security import guru_can_access_question_report, guru_scope_question_report_filter, get_current_active_user, require_roles
 from app.db.database import get_db
 from app.models.laporan_soal import LaporanSoal
 from app.models.soal import Soal
@@ -56,6 +56,8 @@ def list_laporan(
         .join(Soal, LaporanSoal.soal_id == Soal.id)
         .outerjoin(User, LaporanSoal.user_id == User.id)
     )
+    if current_user.role == "guru":
+        query = query.filter(guru_scope_question_report_filter(current_user, Soal.pelajaran_id, Soal.kelas_id))
     if status:
         query = query.filter(LaporanSoal.status == status)
     rows = (
@@ -88,6 +90,11 @@ def ubah_status_laporan(
     laporan = db.query(LaporanSoal).filter(LaporanSoal.id == laporan_id).first()
     if not laporan:
         raise HTTPException(status_code=404, detail="Laporan not found")
+    soal = db.query(Soal).filter(Soal.id == laporan.soal_id).first()
+    if not soal:
+        raise HTTPException(status_code=404, detail="Soal not found")
+    if not guru_can_access_question_report(db, current_user, soal.pelajaran_id, soal.kelas_id):
+        raise HTTPException(status_code=403, detail="Laporan berada di luar penugasan guru")
     laporan.status = payload.status
     db.commit()
     db.refresh(laporan)

@@ -103,6 +103,7 @@ class SoalGenerateRequest(BaseModel):
     subbab_id: Optional[int] = None
     subbab: Optional[str] = Field(default=None, max_length=150)
     pelajaran_id: int
+    program_id: Optional[int] = None
     kelas_id: Optional[int] = None
     topik_id: Optional[int] = None
     tipe: str
