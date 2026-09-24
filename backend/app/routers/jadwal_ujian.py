@@ -13,6 +13,7 @@ from app.models.paket_ujian import PaketUjian
 from app.models.bagian_paket import BagianPaket
 from app.models.siswa import Siswa
 from app.models.soal import Soal
+from app.services.pemberitahuan import sinkron_pemberitahuan_jadwal
 from app.schemas.jadwal_ujian import JadwalDeleteRequest, JadwalPublishUpdate, JadwalReviewAction, JadwalReviewReject, JadwalUjianCreate, JadwalUjianOut
 
 router = APIRouter(prefix="/jadwal-ujian", tags=["jadwal_ujian"])
@@ -137,6 +138,8 @@ def create_jadwal_ujian(payload: JadwalUjianCreate, db: Session = Depends(get_db
         created_by=current_user.id,
     )
     db.add(jadwal)
+    db.flush()
+    sinkron_pemberitahuan_jadwal(db, jadwal)
     db.commit()
     db.refresh(jadwal)
     return jadwal
@@ -203,6 +206,7 @@ def update_jadwal_ujian(jadwal_id: int, payload: JadwalUjianCreate, db: Session 
         jadwal.reviewed_by = None
         jadwal.reviewed_at = None
     db.add(jadwal)
+    sinkron_pemberitahuan_jadwal(db, jadwal)
     db.commit()
     db.refresh(jadwal)
     return jadwal
@@ -220,6 +224,7 @@ def publish_jadwal_ujian(jadwal_id: int, payload: JadwalPublishUpdate, db: Sessi
     jadwal.reviewed_by = current_user.id if payload.is_published else jadwal.reviewed_by
     jadwal.reviewed_at = datetime.now(timezone.utc) if payload.is_published else jadwal.reviewed_at
     db.add(jadwal)
+    sinkron_pemberitahuan_jadwal(db, jadwal)
     db.commit()
     db.refresh(jadwal)
     return jadwal
@@ -234,6 +239,7 @@ def submit_jadwal_review(jadwal_id: int, payload: JadwalReviewAction, db: Sessio
     jadwal.status = "pending_review"
     jadwal.submitted_for_review_at = datetime.now(timezone.utc)
     jadwal.rejection_reason = None
+    sinkron_pemberitahuan_jadwal(db, jadwal)
     db.commit()
     db.refresh(jadwal)
     return jadwal
@@ -269,6 +275,7 @@ def approve_jadwal(jadwal_id: int, payload: JadwalReviewAction, db: Session = De
     jadwal.reviewed_by = current_user.id
     jadwal.reviewed_at = datetime.now(timezone.utc)
     jadwal.rejection_reason = None
+    sinkron_pemberitahuan_jadwal(db, jadwal)
     db.commit()
     db.refresh(jadwal)
     return jadwal
@@ -286,6 +293,7 @@ def reject_jadwal(jadwal_id: int, payload: JadwalReviewReject, db: Session = Dep
     jadwal.reviewed_by = current_user.id
     jadwal.reviewed_at = datetime.now(timezone.utc)
     jadwal.rejection_reason = payload.note
+    sinkron_pemberitahuan_jadwal(db, jadwal)
     db.commit()
     db.refresh(jadwal)
     return jadwal
@@ -300,6 +308,7 @@ def delete_jadwal_ujian(jadwal_id: int, payload: JadwalDeleteRequest, db: Sessio
     jadwal.is_published = False
     jadwal.deletion_reason = payload.alasan.strip()
     db.add(jadwal)
+    sinkron_pemberitahuan_jadwal(db, jadwal)
     db.commit()
     return {"message": "Jadwal Ujian soft deleted successfully"}
 

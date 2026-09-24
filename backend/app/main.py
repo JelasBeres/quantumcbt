@@ -58,6 +58,8 @@ def create_app() -> FastAPI:
     app.include_router(jadwal_ujian.router)
     app.include_router(laporan_soal.router)
     app.include_router(guru_scope.router)
+    from app.routers import pemberitahuan
+    app.include_router(pemberitahuan.router)
     return app
 
 

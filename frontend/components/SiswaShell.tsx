@@ -3,9 +3,18 @@ import { ReactNode, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { LogOut } from "lucide-react";
+import { Bell, LogOut } from "lucide-react";
 import { logout } from "@/lib/auth";
 import SiswaBottomNav from "./SiswaBottomNav";
+import PemberitahuanProvider, { usePemberitahuan } from "./PemberitahuanProvider";
+
+const NAV = [["tryout", "Tryout"], ["latihan", "Latihan"], ["ujian-aktif", "Ujian Aktif"], ["riwayat", "Riwayat"], ["pemberitahuan", "Pemberitahuan"], ["profil", "Profil"]];
+
+function JumlahBelumDibaca({ className }: { className: string }) {
+  const { belumDibaca } = usePemberitahuan();
+  if (belumDibaca <= 0) return null;
+  return <span className={className} aria-label={`${belumDibaca} belum dibaca`}>{belumDibaca > 99 ? "99+" : belumDibaca}</span>;
+}
 
 export default function SiswaShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -15,13 +24,15 @@ export default function SiswaShell({ children }: { children: ReactNode }) {
   // Halaman hasil punya navigasi Sebelumnya/Berikutnya sendiri di bawah;
   // bottom-nav app disembunyikan di sini agar tidak numpuk dua bar.
   const hideBottomNav = pathname.startsWith("/siswa/hasil/");
-  return <div className={`student-shell${hideBottomNav ? " student-no-bottom-nav" : ""}`}>
+  const aktif = (route: string) => pathname === `/siswa/${route}` || pathname.startsWith(`/siswa/${route}/`);
+  return <div className={`student-shell${hideBottomNav ? " student-no-bottom-nav" : ""}`}><PemberitahuanProvider>
     <header className="student-header"><div className="student-header-inner">
       <Link href="/siswa/dashboard" className="student-brand"><Image src="/quantum-research-logo.png" alt="" width={40} height={40} className="shrink-0 object-contain" priority /><span>QUANTUM<span className="student-brand-sub">RESEARCH · LEARNING SPACE</span></span></Link>
-      <nav className="student-desktop-nav" aria-label="Navigasi siswa">{[["tryout", "Tryout"], ["latihan", "Latihan"], ["ujian-aktif", "Ujian Aktif"], ["riwayat", "Riwayat"], ["profil", "Profil"]].map(([route, label]) => <Link key={route} href={`/siswa/${route}`} aria-current={pathname === `/siswa/${route}` || pathname.startsWith(`/siswa/${route}/`) ? "page" : undefined}>{label}</Link>)}</nav>
+      <nav className="student-desktop-nav" aria-label="Navigasi siswa">{NAV.map(([route, label]) => <Link key={route} href={`/siswa/${route}`} aria-current={aktif(route) ? "page" : undefined}>{label}{route === "pemberitahuan" && <JumlahBelumDibaca className="student-nav-count" />}</Link>)}</nav>
+      <Link href="/siswa/pemberitahuan" className="student-bell" aria-label="Pemberitahuan" aria-current={aktif("pemberitahuan") ? "page" : undefined}><Bell size={19} /><JumlahBelumDibaca className="student-bell-count" /></Link>
       <button className="student-logout" disabled={leaving} onClick={async () => { setLeaving(true); await logout(); router.replace("/login"); }}><LogOut size={15} /><span>{leaving ? "Keluar…" : "Keluar"}</span></button>
     </div></header>
     {children}
     {!hideBottomNav && <SiswaBottomNav />}
-  </div>;
+  </PemberitahuanProvider></div>;
 }

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { getUser, logout } from "@/lib/auth";
 import { useEffect, useState } from "react";
-import { Home, BookOpen, ClipboardList, History, LogOut, KeyRound, LayoutDashboard, FileText, UserCog, CalendarClock, MonitorCheck, Award, AlertTriangle, Activity, Layers, BarChart3, Settings, ShieldCheck } from "lucide-react";
+import { Home, BookOpen, ClipboardList, History, LogOut, KeyRound, LayoutDashboard, FileText, UserCog, CalendarClock, MonitorCheck, Award, AlertTriangle, Activity, Layers, BarChart3, Settings, ShieldCheck, Bell } from "lucide-react";
 
 type NavItem = { href: string; label: string; icon: any; match?: string[] };
 type AdminGroup = { title: string; items: NavItem[] };
@@ -77,6 +77,7 @@ const ADMIN_NAV: AdminGroup[] = [
   {
     title: "Sistem",
     items: [
+      { href: "/admin/pemberitahuan", label: "Pemberitahuan Siswa", icon: Bell, match: ["/admin/pemberitahuan"] },
       { href: "/admin/pengaturan", label: "Pengaturan", icon: Settings, match: ["/admin/pengaturan"] }
     ]
   }

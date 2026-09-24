@@ -28,6 +28,7 @@ from . import login_attempt
 from . import guru_scope
 from . import guru
 from . import soal_review_history
+from . import pemberitahuan
 
 __all__ = [
     "Base",

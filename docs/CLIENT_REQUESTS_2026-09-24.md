@@ -26,3 +26,10 @@ Dokumen ini menggantikan aturan 17 September yang bertentangan.
 
 - Esai yang belum dikoreksi guru **sementara dihitung 0** (salah), termasuk pada paket Benchmark Kohort. Sebelumnya nilai kohort kosong ("Belum tersedia") sampai semua esai dikoreksi.
 - Nilai tetap berlabel **Sementara** selama masih ada esai yang belum dinilai, dan otomatis dihitung ulang saat guru mengoreksi.
+
+## Pemberitahuan siswa
+
+- Menu **Pemberitahuan** di navigasi siswa (desktop) dan ikon lonceng di header (HP), dengan badge jumlah belum dibaca. Halaman daftar punya filter Semua/Belum dibaca dan tombol tandai semua dibaca.
+- **Popup** saat siswa membuka aplikasi untuk pemberitahuan baru yang ditandai popup (maks. 5 antre, satu per satu). Ditutup/dilihat = ditandai dibaca, jadi tidak muncul lagi. Popup tidak tampil di ruang ujian.
+- Admin mengelola di **Sistem → Pemberitahuan Siswa**: judul, isi, jenis (Promo/Info/Paket Baru), tautan opsional (`/siswa/...` atau `https://`), target program/kelas, batas tayang, opsi popup, aktif/nonaktif, dan jumlah siswa yang sudah membaca.
+- **Otomatis**: saat jadwal tryout dipublikasikan (publish langsung atau ACC review) dibuat pemberitahuan "Paket ujian baru: …" untuk program/kelas jadwal itu, bertautan ke halaman paket dan tayang sampai jadwal selesai. Jadwal ditarik/ditolak/dihapus → pemberitahuan disembunyikan; publikasi ulang tidak membuat duplikat.

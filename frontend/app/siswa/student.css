@@ -290,3 +290,49 @@ a.student-kategori:hover { border-color: var(--st-accent-soft); }
 .student-exam footer button, .student-exam footer a { white-space: nowrap; }
 
 .student-shell svg circle[stroke="#E5E7EB"] { stroke: #2b3654; }
+
+/* ---------- Pemberitahuan ---------- */
+.student-desktop-nav a { position: relative; }
+.student-nav-count { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; margin-left: 6px; padding: 0 5px; border-radius: 9999px; background: var(--st-red); color: #fff; font-size: 10px; font-weight: 800; line-height: 1; vertical-align: 1px; }
+.student-bell { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; margin-left: auto; border-radius: 9999px; color: var(--st-muted); background: #ffffff0a; border: 1px solid var(--st-border); transition: color .2s, background .2s; }
+.student-bell:hover, .student-bell[aria-current=page] { color: var(--st-heading); background: #ffffff14; }
+.student-bell-count { position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px; padding: 0 5px; display: inline-flex; align-items: center; justify-content: center; border-radius: 9999px; background: var(--st-red); color: #fff; font-size: 10px; font-weight: 800; border: 2px solid var(--st-bg-soft); }
+@media (min-width: 1024px) { .student-bell { display: none; } }
+
+.student-notif-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.student-notif-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border-radius: 12px; padding: 11px 16px; font-size: 13px; font-weight: 700; color: var(--st-text); background: #ffffff0d; border: 1px solid var(--st-border-strong); transition: background .2s; }
+.student-notif-secondary:hover { background: #ffffff17; color: var(--st-heading); }
+.student-notif-tabs { display: flex; gap: 6px; margin-top: 18px; }
+.student-notif-tabs button { padding: 8px 14px; border-radius: 9999px; font-size: 13px; font-weight: 600; color: var(--st-muted); border: 1px solid var(--st-border); }
+.student-notif-tabs button[aria-selected=true] { color: var(--st-heading); background: var(--st-accent); border-color: var(--st-accent); }
+.student-notif-list { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+.student-notif-item { width: 100%; display: flex; gap: 14px; text-align: left; padding: 16px 18px; border-radius: 18px; background: var(--st-surface); border: 1px solid var(--st-border); transition: border-color .2s, background .2s; }
+.student-notif-item:hover { border-color: var(--st-border-strong); background: var(--st-surface-2); }
+.student-notif-item.unread { border-color: #7280c466; background: linear-gradient(90deg, #4b5aa81f, var(--st-surface) 45%); }
+.student-notif-icon { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 12px; background: #4b5aa833; color: #aeb9e6; }
+.student-notif-promo .student-notif-icon { background: #d9770633; color: #fbbf77; }
+.student-notif-paket_baru .student-notif-icon { background: #05966933; color: #6ee7b7; }
+.student-notif-body { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.student-notif-meta { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--st-subtle); }
+.student-notif-meta em { font-style: normal; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--st-muted); }
+.student-notif-dot { width: 8px; height: 8px; border-radius: 9999px; background: var(--st-red); }
+.student-notif-body strong { font-size: 15px; font-weight: 700; color: var(--st-heading); }
+.student-notif-isi { font-size: 13px; line-height: 1.55; color: #cbd5e1; white-space: pre-line; overflow-wrap: anywhere; }
+.student-notif-link { display: inline-flex; align-items: center; gap: 4px; margin-top: 2px; font-size: 12px; font-weight: 700; color: #aeb9e6; }
+
+.student-notif-overlay { position: fixed; inset: 0; z-index: 120; display: flex; align-items: center; justify-content: center; padding: 16px; background: #05080fb3; backdrop-filter: blur(6px); animation: student-notif-fade .2s var(--st-ease); }
+.student-notif-popup { position: relative; width: 100%; max-width: 420px; padding: 26px 22px 20px; border-radius: var(--st-radius-lg); background: var(--st-bg-soft); border: 1px solid var(--st-border-strong); box-shadow: 0 30px 60px -20px #000; animation: student-notif-pop .25s var(--st-ease); }
+.student-notif-close { position: absolute; top: 12px; right: 12px; display: inline-flex; padding: 6px; border-radius: 9999px; color: var(--st-muted); }
+.student-notif-close:hover { color: var(--st-heading); background: #ffffff12; }
+.student-notif-badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 9999px; font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; background: #4b5aa833; color: #aeb9e6; }
+.student-notif-promo .student-notif-badge { background: #d9770633; color: #fbbf77; }
+.student-notif-paket_baru .student-notif-badge { background: #05966933; color: #6ee7b7; }
+.student-notif-popup h2 { margin: 14px 0 0; padding-right: 20px; font-size: 20px; font-weight: 800; line-height: 1.3; color: var(--st-heading); }
+.student-notif-popup-isi { margin-top: 8px; font-size: 14px; line-height: 1.6; color: #cbd5e1; white-space: pre-line; overflow-wrap: anywhere; max-height: 40vh; overflow-y: auto; }
+.student-notif-popup-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 20px; }
+.student-notif-popup-actions .student-primary-link { width: 100%; }
+.student-notif-popup-foot { margin-top: 14px; text-align: center; font-size: 12px; color: var(--st-subtle); }
+.student-notif-popup-foot button { font-weight: 700; color: #aeb9e6; text-decoration: underline; }
+@keyframes student-notif-fade { from { opacity: 0; } }
+@keyframes student-notif-pop { from { opacity: 0; transform: translateY(12px) scale(.98); } }
+@media (max-width: 767px) { .student-notif-item { padding: 14px; gap: 12px; } .student-notif-head .student-notif-secondary { width: 100%; } }
