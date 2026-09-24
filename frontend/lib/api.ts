@@ -32,18 +32,39 @@ api.interceptors.request.use((config) => {
 
 let refreshing: Promise<string> | null = null;
 
-async function refreshAccessToken(): Promise<string> {
-  const refreshToken = getRefreshToken();
-  if (!refreshToken) {
-    throw new Error("Tidak ada refresh token");
+// Refresh token dirotasi dan server mencabut SEMUA sesi bila token lama dipakai
+// ulang (deteksi pencurian). Token disimpan di localStorage yang dipakai
+// bersama semua tab, jadi dua tab yang me-refresh bersamaan dengan token yang
+// sama akan saling me-logout (mis. tab dashboard + tab ujian). Karena itu
+// refresh diserialkan antar-tab dengan Web Locks, dan tab yang terlambat
+// memakai token yang sudah diperbarui tab lain alih-alih me-refresh lagi.
+async function refreshAccessToken(failedAccessToken: string | null): Promise<string> {
+  const run = async () => {
+    const current = getAccessToken();
+    if (current && current !== failedAccessToken) {
+      return current;
+    }
+    const refreshToken = getRefreshToken();
+    if (!refreshToken) {
+      throw new Error("Tidak ada refresh token");
+    }
+    const response = await api.post("/auth/refresh-token", {
+      refresh_token: refreshToken
+    });
+    const accessToken = response.data.access_token as string;
+    const nextRefreshToken = (response.data.refresh_token as string | undefined) || refreshToken;
+    setTokens(accessToken, nextRefreshToken);
+    return accessToken;
+  };
+  if (typeof navigator !== "undefined" && navigator.locks?.request) {
+    return navigator.locks.request("cbt-refresh-token", run);
   }
-  const response = await api.post("/auth/refresh-token", {
-    refresh_token: refreshToken
-  });
-  const accessToken = response.data.access_token as string;
-  const nextRefreshToken = (response.data.refresh_token as string | undefined) || refreshToken;
-  setTokens(accessToken, nextRefreshToken);
-  return accessToken;
+  return run();
+}
+
+function bearerToken(headers: unknown): string | null {
+  const raw = (headers as { Authorization?: unknown } | undefined)?.Authorization;
+  return typeof raw === "string" && raw.startsWith("Bearer ") ? raw.slice(7) : null;
 }
 
 function redirectToLogin() {
@@ -71,7 +92,7 @@ api.interceptors.response.use(
 
     try {
       if (!refreshing) {
-        refreshing = refreshAccessToken().finally(() => {
+        refreshing = refreshAccessToken(bearerToken(original.headers)).finally(() => {
           refreshing = null;
         });
       }
