@@ -38,6 +38,18 @@ type ExamState = {
   waktu_selesai?: string | null;
   waktu_mulai?: string | null;
   bagian_terakhir: boolean;
+  // Mode drilling: soal_id -> benar/salah untuk soal yang sudah dikonfirmasi.
+  hasil_drill?: Record<string, boolean | null>;
+};
+
+// Hasil konfirmasi satu soal pada mode drilling (ditampilkan sebagai warna, bukan pop-up).
+type DrillFeedback = {
+  soal_id: number;
+  benar: boolean | null;
+  kunci: string[];
+  kunci_opsi_ids: number[];
+  pernyataan: { pernyataan_id: number; jawaban_benar: boolean }[];
+  pembahasan: string;
 };
 
 type BagianUjian = {
@@ -61,6 +73,7 @@ type Question = {
   jawaban_user?: number | number[] | StatementAnswer[] | null;
   jawaban_teks?: string | null;
   is_ragu?: boolean;
+  drill_feedback?: DrillFeedback | null;
 };
 
 const isEssayType = (tipe: string) => tipe === "esai";
@@ -76,7 +89,7 @@ export default function ExamRoomPage() {
   const [state, setState] = useState<ExamState | null>(null);
   const [question, setQuestion] = useState<Question | null>(null);
   const [nomor, setNomor] = useState(1);
-  const [feedback, setFeedback] = useState<{ soal_id: number; benar: boolean | null; kunci: string[]; pembahasan: string } | null>(null);
+  const [feedback, setFeedback] = useState<DrillFeedback | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [remaining, setRemaining] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
@@ -161,7 +174,12 @@ export default function ExamRoomPage() {
       setSelected(typeof response.data.jawaban_user === "number" ? response.data.jawaban_user : null);
        setSelectedMulti(Array.isArray(response.data.jawaban_user) && response.data.jawaban_user.every((item: unknown) => typeof item === "number") ? response.data.jawaban_user : []);
        setStatementAnswers(Array.isArray(response.data.jawaban_user) && response.data.jawaban_user.every((item: unknown) => typeof item === "object") ? response.data.jawaban_user : []);
-      const draft = window.localStorage.getItem(`cbt_draft_${ujianId}_${response.data.soal_id}`);
+      // Drilling: soal yang sudah dikonfirmasi terkunci; tampilkan warnanya lagi.
+      const drill = (response.data.drill_feedback ?? null) as DrillFeedback | null;
+      setFeedback(drill);
+      const draftKey = `cbt_draft_${ujianId}_${response.data.soal_id}`;
+      if (drill) window.localStorage.removeItem(draftKey);
+      const draft = drill ? null : window.localStorage.getItem(draftKey);
       const loadedEssay = draft ?? response.data.jawaban_teks ?? "";
       setEssayText(loadedEssay);
       if (draft !== null) {
@@ -524,8 +542,17 @@ export default function ExamRoomPage() {
     const isAnswered = savedAnswer != null && savedAnswer !== "" && (!Array.isArray(savedAnswer) || savedAnswer.length > 0);
     const isRagu = state?.ragu_ragu?.[String(soalId)];
     const isCurrent = nomor === index + 1;
+    // Drilling: soal yang sudah dikonfirmasi hijau (benar) / merah (salah),
+    // tetap berwarna walau sedang dibuka (ditandai cincin).
+    const hasilDrill = state?.hasil_drill?.[String(soalId)];
+    if (hasilDrill === true || hasilDrill === false) {
+      const warna = hasilDrill
+        ? "border-green-600 bg-green-600 text-white hover:bg-green-700"
+        : "border-red-600 bg-red-600 text-white hover:bg-red-700";
+      return isCurrent ? `-translate-y-1 scale-110 ring-2 ring-brand-primary ring-offset-2 shadow-card-hover ${warna}` : warna;
+    }
     // Skema warna status (konsisten dengan halaman hasil):
-    // biru = terjawab/benar, kuning = ragu, abu-abu = belum dijawab.
+    // biru = terjawab, kuning = ragu, abu-abu = belum dijawab.
     let cls = "border-card-border bg-card-bg text-text-muted hover:border-brand-primary/60 hover:bg-brand-primary/5";
     if (isCurrent) {
       cls = "-translate-y-1 scale-110 border-brand-primary bg-brand-primary text-heading-light shadow-card-hover";
@@ -535,6 +562,14 @@ export default function ExamRoomPage() {
     if (isRagu && !isCurrent) cls = "border-amber-500 bg-amber-500 text-white hover:bg-amber-700";
     return cls;
   };
+
+  // Hasil konfirmasi drilling untuk soal yang sedang dibuka (jawaban terkunci & berwarna).
+  const drillAktif = feedback && question && feedback.soal_id === question.soal_id ? feedback : null;
+  const warnaIsian = !drillAktif || drillAktif.benar === null
+    ? ""
+    : drillAktif.benar
+      ? "border-green-600 bg-green-50 ring-2 ring-green-600/20"
+      : "border-red-600 bg-red-50 ring-2 ring-red-600/20";
 
   return (
     <main className="flex min-h-screen flex-col bg-transparent text-body-dark">
@@ -616,6 +651,10 @@ export default function ExamRoomPage() {
             <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-blue-600" /> Terjawab {answered}</span>
             <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-brand-primary" /> Sedang</span>
             <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-amber-500" /> Ragu-ragu</span>
+            {state?.mode_latihan === "drill" && <>
+              <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-green-600" /> Benar</span>
+              <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-red-600" /> Salah</span>
+            </>}
           </div>
         </div>
       </div>
@@ -671,10 +710,10 @@ export default function ExamRoomPage() {
                 <textarea
                   value={essayText}
                   onChange={(e) => handleEssayChange(e.target.value)}
-                  disabled={submitting}
+                  disabled={submitting || !!drillAktif}
                   placeholder="Tulis jawaban kamu di sini..."
                   rows={10}
-                  className="w-full rounded-input border border-card-border bg-card-bg p-4 text-base leading-relaxed text-body-dark placeholder:text-text-muted outline-none transition focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 disabled:cursor-not-allowed disabled:opacity-60"
+                  className={`w-full rounded-input border border-card-border bg-card-bg p-4 text-base leading-relaxed text-body-dark placeholder:text-text-muted outline-none transition focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 disabled:cursor-not-allowed ${drillAktif ? "" : "disabled:opacity-60"} ${warnaIsian}`}
                 />
               </div>
             ) : isIsianType(question.tipe) ? (
@@ -684,9 +723,9 @@ export default function ExamRoomPage() {
                   type="text"
                   value={essayText}
                   onChange={(e) => handleEssayChange(e.target.value)}
-                  disabled={submitting}
+                  disabled={submitting || !!drillAktif}
                   placeholder="Tulis jawaban singkat kamu di sini..."
-                  className="w-full rounded-input border border-card-border bg-card-bg p-4 text-base text-body-dark placeholder:text-text-muted outline-none transition focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 disabled:cursor-not-allowed disabled:opacity-60"
+                  className={`w-full rounded-input border border-card-border bg-card-bg p-4 text-base text-body-dark placeholder:text-text-muted outline-none transition focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 disabled:cursor-not-allowed ${drillAktif ? "" : "disabled:opacity-60"} ${warnaIsian}`}
                 />
               </div>
             ) : question.tipe === "benar_salah" && question.pernyataan && question.pernyataan.length > 0 ? (
@@ -698,6 +737,7 @@ export default function ExamRoomPage() {
                 labelSalah={question.label_salah}
                 disabled={saving || submitting}
                 onPilih={selectStatementAnswer}
+                kunci={drillAktif ? Object.fromEntries(drillAktif.pernyataan.map((row) => [row.pernyataan_id, row.jawaban_benar])) : null}
               />
             ) : isOpsiType(question.tipe) ? (
               <div key={question.soal_id} className="animate-question-in space-y-3">
@@ -705,28 +745,42 @@ export default function ExamRoomPage() {
                   const isSelected = isMultiSelectType(question.tipe)
                     ? selectedMulti.includes(option.opsi_id)
                     : selected === option.opsi_id;
+                  // Drilling setelah konfirmasi: kunci hijau, pilihan salah merah.
+                  const isKunci = !!drillAktif && drillAktif.kunci_opsi_ids.includes(option.opsi_id);
+                  const warnaBaris = drillAktif
+                    ? isKunci
+                      ? "border-green-600 bg-green-50 shadow-card"
+                      : isSelected
+                        ? "border-red-600 bg-red-50 shadow-card"
+                        : "border-card-border bg-card-bg"
+                    : isSelected
+                      ? "border-brand-primary bg-brand-primary/5 shadow-card"
+                      : "border-card-border bg-card-bg hover:border-brand-primary hover:bg-brand-primary/5";
+                  const warnaHuruf = drillAktif
+                    ? isKunci
+                      ? "border-green-600 bg-green-600 text-white"
+                      : isSelected
+                        ? "border-red-600 bg-red-600 text-white"
+                        : "border-card-border bg-neutral text-body-dark"
+                    : isSelected
+                      ? "border-brand-primary bg-brand-primary text-heading-light"
+                      : "border-card-border bg-neutral text-body-dark group-hover:border-brand-primary";
                   return (
                     <button
                       key={option.opsi_id}
                       onClick={() => isMultiSelectType(question.tipe) ? toggleMultiAnswer(option.opsi_id) : selectAnswer(option.opsi_id)}
-                      disabled={saving || submitting}
+                      disabled={saving || submitting || !!drillAktif}
                       style={{ animationDelay: `${index * 45}ms` }}
-                      className={`group animate-option-in flex w-full items-center gap-4 rounded-input border p-4 text-left transition-all duration-200 active:scale-[0.985] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary disabled:opacity-60 disabled:active:scale-100 ${
-                        isSelected
-                          ? "border-brand-primary bg-brand-primary/5 shadow-card"
-                          : "border-card-border bg-card-bg hover:border-brand-primary hover:bg-brand-primary/5"
-                      }`}
+                      className={`group animate-option-in flex w-full items-center gap-4 rounded-input border p-4 text-left transition-all duration-200 active:scale-[0.985] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary disabled:active:scale-100 ${drillAktif ? "" : "disabled:opacity-60"} ${warnaBaris}`}
                     >
                       <span
-                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-sm font-bold transition ${
-                          isSelected
-                            ? "border-brand-primary bg-brand-primary text-heading-light"
-                            : "border-card-border bg-neutral text-body-dark group-hover:border-brand-primary"
-                        }`}
+                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-sm font-bold transition ${warnaHuruf}`}
                       >
                         {isMultiSelectType(question.tipe) ? (isSelected ? "✓" : "") : String.fromCharCode(65 + index)}
                       </span>
                       <MathContent className="prose prose-sm max-w-none flex-1 text-body-dark prose-p:text-body-dark prose-li:text-body-dark" html={option.teks} />
+                      {drillAktif && isKunci && <span className="shrink-0 text-xs font-semibold text-green-700">{isSelected ? "Jawabanmu benar" : "Jawaban benar"}</span>}
+                      {drillAktif && !isKunci && isSelected && <span className="shrink-0 text-xs font-semibold text-red-700">Jawabanmu</span>}
                     </button>
                   );
                 })}
@@ -734,17 +788,34 @@ export default function ExamRoomPage() {
             ) : null}
 
             {state?.mode_latihan === "drill" && question && <div className="mt-5 space-y-3">
-              <Button disabled={saving || submitting || confirming} onClick={async () => {
+              {!drillAktif && <Button disabled={saving || submitting || confirming} onClick={async () => {
                 setConfirming(true); setError("");
-                try { await flushPendingEssay(); const { data } = await api.post(`/ujian-siswa/${ujianId}/konfirmasi-drill/${question.soal_id}`); setFeedback(data); }
+                try {
+                  await flushPendingEssay();
+                  const { data } = await api.post<DrillFeedback>(`/ujian-siswa/${ujianId}/konfirmasi-drill/${question.soal_id}`);
+                  setFeedback(data);
+                  setState((current) => current ? {
+                    ...current,
+                    hasil_drill: { ...(current.hasil_drill ?? {}), [String(question.soal_id)]: data.benar }
+                  } : current);
+                }
                 catch (err: any) { setError(err.response?.data?.detail || "Konfirmasi gagal"); }
                 finally { setConfirming(false); }
-              }}>Konfirmasi Jawaban</Button>
-              {feedback?.soal_id === question.soal_id && <div className="rounded border p-4">
-                <p className="font-bold">{feedback.benar === null ? "Bandingkan jawaban dengan pembahasan" : feedback.benar ? "Jawaban benar" : "Jawaban salah"}</p>
-                <p className="mt-2 font-semibold">Kunci jawaban</p>{feedback.kunci.map((k, i) => <MathContent key={i} html={k} />)}
-                <p className="mt-2 font-semibold">Pembahasan</p><MathContent html={feedback.pembahasan} />
-              </div>}
+              }}>Konfirmasi Jawaban</Button>}
+              {/* Hasil ditunjukkan lewat warna opsi & nomor soal (tanpa pop-up). Soal
+                  tanpa opsi (isian/esai) menampilkan kuncinya sebagai teks. */}
+              {drillAktif && (isEssayType(question.tipe) || isIsianType(question.tipe)) && (
+                <div className={`rounded-input border p-3.5 text-sm ${drillAktif.benar === null ? "border-card-border bg-neutral" : drillAktif.benar ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}`}>
+                  <p className="text-xs font-bold uppercase tracking-wider text-text-muted">Kunci jawaban</p>
+                  {drillAktif.kunci.map((k, i) => <MathContent key={i} className="prose prose-sm max-w-none" html={k} />)}
+                </div>
+              )}
+              {drillAktif && drillAktif.pembahasan && (
+                <div className="rounded-input border border-card-border bg-neutral p-3.5">
+                  <p className="mb-1.5 text-xs font-bold uppercase tracking-wider text-text-muted">Pembahasan</p>
+                  <MathContent className="prose prose-sm max-w-none" html={drillAktif.pembahasan} />
+                </div>
+              )}
             </div>}
             <div className="mt-4 flex items-center gap-2 text-sm text-text-muted">
               {saving ? (

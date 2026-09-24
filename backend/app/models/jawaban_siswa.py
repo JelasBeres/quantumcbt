@@ -18,3 +18,5 @@ class JawabanSiswa(Base):
     skor_manual = Column(Float, nullable=True)
     dinilai_oleh = Column(Integer, nullable=True)
     dinilai_at = Column(DateTime(timezone=True), nullable=True)
+    # Mode drilling: jawaban sudah dikonfirmasi (terkunci, hasil benar/salah ditampilkan).
+    dikonfirmasi_at = Column(DateTime(timezone=True), nullable=True)

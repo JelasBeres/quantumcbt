@@ -1,6 +1,6 @@
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field, model_validator
-from typing import Dict, List, Literal, Optional, Union
+from typing import Any, Dict, List, Literal, Optional, Union
 
 
 class BagianUjianOut(BaseModel):
@@ -105,10 +105,14 @@ class UjianSoalOut(BaseModel):
     jawaban_user: Optional[Union[int, List[int], List[JawabanPernyataan]]] = None
     jawaban_teks: Optional[str] = None
     is_ragu: bool = False
+    # Mode drilling, soal sudah dikonfirmasi: hasil, kunci opsi, dan pembahasan.
+    drill_feedback: Optional[Dict[str, Any]] = None
 
 
 class UjianSiswaStateOut(BaseModel):
     mode_latihan: Optional[str] = None
+    # Mode drilling: soal_id -> benar (True) / salah (False) / perlu cek manual (None).
+    hasil_drill: Dict[str, Optional[bool]] = Field(default_factory=dict)
     bagian_aktif: int = 0
     soal_aktif_ids: List[int] = Field(default_factory=list)
     ujian_siswa_id: int

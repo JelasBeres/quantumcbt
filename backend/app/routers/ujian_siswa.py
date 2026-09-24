@@ -39,7 +39,7 @@ from app.schemas.ujian_siswa import (
     LatihanStartRequest,
     UjianSiswaStateOut,
 )
-from app.services.scoring import compute_and_store_hasil
+from app.services.scoring import compute_and_store_hasil, evaluate_question, load_kunci
 
 router = APIRouter(prefix="/ujian-siswa", tags=["ujian_siswa"])
 
@@ -617,6 +617,10 @@ def get_ujian_soal(
         jawaban_user=jawaban_user,
         jawaban_teks=jawaban_teks,
         is_ragu=is_ragu,
+        # Drilling: soal yang sudah dikonfirmasi langsung tampil berwarna saat dibuka lagi.
+        drill_feedback=drill_feedback(db, soal, jawaban)
+        if ujian.mode_latihan == "drill" and jawaban is not None and jawaban.dikonfirmasi_at is not None
+        else None,
     )
 
 
@@ -697,6 +701,8 @@ def save_ujian_jawaban(
         .filter(JawabanSiswa.ujian_siswa_id == ujian.id, JawabanSiswa.soal_id == payload.soal_id)
         .first()
     )
+    if jawaban and jawaban.dikonfirmasi_at is not None:
+        raise HTTPException(status_code=409, detail="Jawaban sudah dikonfirmasi dan tidak dapat diubah")
     if jawaban:
         jawaban.jawaban = nilai_jawaban
         if soal.tipe not in ("pilihan_ganda", "benar_salah", "pilihan_lebih_dari_satu"):
@@ -731,6 +737,18 @@ def confirm_drill(ujian_id: int, soal_id: int, db: Session = Depends(get_db), cu
     if not jawaban or not jawaban.jawaban or not jawaban.jawaban.strip() or jawaban.jawaban == "[]":
         raise HTTPException(status_code=400, detail="Isi jawaban sebelum konfirmasi")
     soal = db.query(Soal).filter(Soal.id == soal_id).first()
+    if jawaban.dikonfirmasi_at is None:
+        # Setelah dikonfirmasi jawaban terkunci (lihat save_ujian_jawaban),
+        # supaya siswa tidak mencoba semua opsi sampai berwarna hijau.
+        jawaban.dikonfirmasi_at = utc_now()
+        db.commit()
+    return drill_feedback(db, soal, jawaban)
+
+
+def drill_feedback(db: Session, soal: Soal, jawaban: JawabanSiswa) -> dict:
+    """Hasil satu soal mode drilling: benar/salah, kunci (opsi yang benar untuk
+    diwarnai hijau), per-pernyataan, dan pembahasan."""
+    soal_id = soal.id
     pernyataan_rows = db.query(PernyataanBenarSalah).filter(PernyataanBenarSalah.soal_id == soal_id).order_by(PernyataanBenarSalah.urutan).all()
     opsi = db.query(OpsiJawaban).filter(OpsiJawaban.soal_id == soal_id, OpsiJawaban.is_benar == True).order_by(OpsiJawaban.urutan).all()
     correct = None
@@ -758,7 +776,14 @@ def confirm_drill(ujian_id: int, soal_id: int, db: Session = Depends(get_db), cu
     elif soal.tipe == "isian" and soal.kunci_jawaban:
         from app.services.scoring import _isian_cocok_kunci
         correct = _isian_cocok_kunci(soal.kunci_jawaban, jawaban.jawaban)
-    return {"soal_id": soal_id, "benar": correct, "kunci": kunci, "pernyataan": pernyataan_feedback, "pembahasan": soal.pembahasan or "Pembahasan belum tersedia"}
+    return {
+        "soal_id": soal_id,
+        "benar": correct,
+        "kunci": kunci,
+        "kunci_opsi_ids": [o.id for o in opsi] if not pernyataan_rows else [],
+        "pernyataan": pernyataan_feedback,
+        "pembahasan": soal.pembahasan or "Pembahasan belum tersedia",
+    }
 
 
 @router.patch("/{ujian_id}/ragu", response_model=JawabanSiswaOut)
@@ -882,12 +907,28 @@ def get_ujian_state(
         else:
             jawaban_tersimpan[str(jawaban.soal_id)] = jawaban.jawaban
 
+    # Drilling: warna nomor soal (hijau benar / merah salah) untuk soal yang sudah
+    # dikonfirmasi; None = perlu dibandingkan manual (esai / isian tanpa kunci).
+    hasil_drill: Dict[str, Optional[bool]] = {}
+    if ujian.mode_latihan == "drill":
+        confirmed = [jawaban for jawaban in jawaban_list if jawaban.dikonfirmasi_at is not None]
+        if confirmed:
+            soal_map = {soal.id: soal for soal in db.query(Soal).filter(Soal.id.in_([j.soal_id for j in confirmed])).all()}
+            kunci_map = load_kunci(db, soal_map)
+            for jawaban in confirmed:
+                soal = soal_map.get(jawaban.soal_id)
+                if soal is None:
+                    continue
+                correct, _, pending = evaluate_question(db, soal, jawaban, kunci_map.get(soal.id))
+                hasil_drill[str(soal.id)] = None if pending else correct
+
     sisa_waktu_detik, finish_at = calculate_display_time_info(ujian, paket)
     bagian_urutan_out: Optional[List[BagianUjianOut]] = None
     if ujian.bagian_urutan:
         bagian_urutan_out = [BagianUjianOut(**b) for b in ujian.bagian_urutan]
     return UjianSiswaStateOut(
         mode_latihan=ujian.mode_latihan,
+        hasil_drill=hasil_drill,
         bagian_aktif=ujian.bagian_aktif or 0,
         soal_aktif_ids=active_question_ids(ujian, paket),
         ujian_siswa_id=ujian.id,

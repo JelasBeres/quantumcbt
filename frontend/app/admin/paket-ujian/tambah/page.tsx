@@ -185,7 +185,7 @@ export default function TambahPaketUjianPage() {
                   />
                 )}
               </div>
-              {formData.metode_penilaian === "kohort" && <p className="mt-3 text-xs text-text-muted">Benchmark Kohort membandingkan jawaban dengan peserta terbaru dalam program yang sama. Nilai sementara hingga minimal 5 peserta dan belum tersedia jika seluruh soal dijawab benar atau koreksi esai belum selesai.</p>}
+              {formData.metode_penilaian === "kohort" && <p className="mt-3 text-xs text-text-muted">Benchmark Kohort membandingkan jawaban dengan peserta terbaru dalam program yang sama. Nilai sementara hingga minimal 5 peserta dan selama koreksi esai belum selesai (esai belum dinilai dihitung 0); belum tersedia jika seluruh soal dijawab benar.</p>}
             </div>
           )}
           <div className="grid gap-3 sm:grid-cols-2">

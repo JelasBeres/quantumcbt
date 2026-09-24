@@ -13,9 +13,12 @@ type Props = {
   labelSalah?: string | null;
   disabled?: boolean;
   onPilih: (pernyataanId: number, value: boolean) => void;
+  // Mode drilling setelah konfirmasi: pernyataan_id -> jawaban yang benar.
+  // Pilihan siswa diwarnai hijau (benar) / merah (salah), kunci ditandai hijau.
+  kunci?: Record<number, boolean> | null;
 };
 
-export default function TabelBenarSalah({ pernyataan, jawaban, labelBenar, labelSalah, disabled, onPilih }: Props) {
+export default function TabelBenarSalah({ pernyataan, jawaban, labelBenar, labelSalah, disabled, onPilih, kunci }: Props) {
   const label = (value: boolean) => (value ? labelBenar || "Benar" : labelSalah || "Salah");
 
   return (
@@ -41,19 +44,23 @@ export default function TabelBenarSalah({ pernyataan, jawaban, labelBenar, label
                 </td>
                 {[true, false].map((value) => {
                   const checked = selected === value;
+                  const isKunci = kunci != null && kunci[row.pernyataan_id] === value;
+                  const warna = kunci == null
+                    ? checked
+                      ? "border-brand-primary bg-brand-primary"
+                      : "border-card-border bg-card-bg hover:border-brand-primary"
+                    : checked
+                      ? isKunci ? "border-green-600 bg-green-600" : "border-red-600 bg-red-600"
+                      : isKunci ? "border-green-600 bg-green-50" : "border-card-border bg-card-bg";
                   return (
                     <td key={String(value)} className="px-2 py-3 text-center">
                       <button
                         type="button"
                         aria-pressed={checked}
-                        aria-label={`${label(value)} untuk pernyataan ${index + 1}`}
-                        disabled={disabled}
+                        aria-label={`${label(value)} untuk pernyataan ${index + 1}${isKunci ? " (kunci)" : ""}`}
+                        disabled={disabled || kunci != null}
                         onClick={() => onPilih(row.pernyataan_id, value)}
-                        className={`inline-flex h-8 w-8 items-center justify-center rounded-full border-2 transition-all duration-200 active:scale-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 disabled:opacity-60 ${
-                          checked
-                            ? "border-brand-primary bg-brand-primary"
-                            : "border-card-border bg-card-bg hover:border-brand-primary"
-                        }`}
+                        className={`inline-flex h-8 w-8 items-center justify-center rounded-full border-2 transition-all duration-200 active:scale-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 ${kunci == null ? "disabled:opacity-60" : ""} ${warna}`}
                       >
                         {checked && <span className="h-2.5 w-2.5 rounded-full bg-white" aria-hidden="true" />}
                       </button>

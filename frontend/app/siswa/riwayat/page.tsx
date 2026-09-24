@@ -2,45 +2,16 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { History } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import { api, getErrorMessage } from "@/lib/api";
-import Card from "@/components/Card";
+import { KATEGORI_LAINNYA, fetchRiwayatTryout, kategoriKey } from "@/lib/riwayat";
 
-type Riwayat = {
-  ujian_siswa_id: number;
-  nama_paket: string;
-  jadwal_ujian_id?: number | null;
-  started_at?: string | null;
-  finished_at?: string | null;
-  is_submitted: boolean;
-  skor?: number | null;
-  metode_penilaian?: "biasa" | "kohort";
-  kohort_status?: "sementara" | "final" | "kosong" | null;
-  skala?: "utbk" | "tka" | null;
-};
+// Riwayat langkah 1: pilih kategori (sama seperti menu Tryout), lalu tryout, lalu mapel.
+type Kategori = { kode: string; nama: string; tipe: "ujian" | "latihan" | "keduanya"; is_active: boolean };
 
-type StatusRingkasan = { benar: number; salah: number; kosong: number; menunggu: number; ditahan?: boolean };
-
-// Samakan logika status per soal dengan halaman hasil, supaya benar+salah+kosong+menunggu selalu = total soal.
-function statusSoal(soal: any): "benar" | "salah" | "kosong" | "menunggu" {
-  const kosong = soal.jawaban_user == null || (Array.isArray(soal.jawaban_user) && soal.jawaban_user.length === 0);
-  if (soal.tipe === "esai" || soal.tipe === "isian") {
-    if (kosong) return "kosong";
-    if (soal.is_correct != null) return soal.is_correct ? "benar" : "salah";
-    return "menunggu";
-  }
-  if (kosong) return "kosong";
-  return soal.is_correct ? "benar" : "salah";
-}
-
-function formatTanggal(value?: string | null): string {
-  if (!value) return "-";
-  return new Date(value).toLocaleString("id-ID");
-}
-
-export default function RiwayatPage() {
-  const [items, setItems] = useState<Riwayat[]>([]);
-  const [ringkasan, setRingkasan] = useState<Record<number, StatusRingkasan>>({});
+export default function RiwayatKategoriPage() {
+  const [kategori, setKategori] = useState<{ kode: string; nama: string }[]>([]);
+  const [jumlah, setJumlah] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -48,102 +19,64 @@ export default function RiwayatPage() {
     let cancelled = false;
     (async () => {
       try {
-        const response = await api.get("/siswa/riwayat-ujian");
-        // Riwayat hanya menampilkan tryout (terikat jadwal); latihan tidak ditampilkan.
-        const submitted = (response.data as Riwayat[]).filter((item) => item.is_submitted && item.jadwal_ujian_id != null);
+        const [katRes, riwayat] = await Promise.all([api.get<Kategori[]>("/kategori-paket"), fetchRiwayatTryout()]);
         if (cancelled) return;
-        setItems(submitted);
-
-        const summaries: Record<number, StatusRingkasan> = {};
-        await Promise.all(
-          submitted.map(async (item) => {
-            try {
-              const detail = await api.get(`/hasil-ujian/ujian/${item.ujian_siswa_id}/detail`);
-              const soal: any[] = detail.data?.soal ?? [];
-              summaries[item.ujian_siswa_id] = soal.reduce(
-                (acc, s) => {
-                  acc[statusSoal(s)] += 1;
-                  return acc;
-                },
-                { benar: 0, salah: 0, kosong: 0, menunggu: 0, ditahan: !!detail.data?.kunci_disembunyikan } as StatusRingkasan
-              );
-            } catch {
-              summaries[item.ujian_siswa_id] = { benar: 0, salah: 0, kosong: 0, menunggu: 0 };
-            }
-          })
-        );
-        if (!cancelled) setRingkasan(summaries);
-      } catch (err: any) {
-        if (!cancelled) setError(getErrorMessage(err, "Riwayat ujian belum bisa dimuat."));
+        const count: Record<string, number> = {};
+        const namaDariRiwayat: Record<string, string> = {};
+        for (const item of riwayat) {
+          const key = kategoriKey(item);
+          count[key] = (count[key] ?? 0) + 1;
+          if (item.kategori_nama) namaDariRiwayat[key] = item.kategori_nama;
+        }
+        const aktif = (katRes.data ?? [])
+          .filter((k) => k.is_active && (k.tipe === "keduanya" || k.tipe === "ujian"))
+          .map((k) => ({ kode: k.kode, nama: k.nama }));
+        // Kategori yang sudah nonaktif tetap tampil bila siswa punya riwayatnya.
+        const kodeAktif = new Set(aktif.map((k) => k.kode));
+        const tambahan = Object.keys(count)
+          .filter((kode) => kode !== KATEGORI_LAINNYA && !kodeAktif.has(kode))
+          .map((kode) => ({ kode, nama: namaDariRiwayat[kode] ?? kode.replace(/_/g, " ").toUpperCase() }));
+        const lainnya = count[KATEGORI_LAINNYA] ? [{ kode: KATEGORI_LAINNYA, nama: "Lainnya" }] : [];
+        setJumlah(count);
+        setKategori([...aktif, ...tambahan, ...lainnya]);
+      } catch (e) {
+        if (!cancelled) setError(getErrorMessage(e, "Riwayat gagal dimuat."));
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
   return (
-    <main className="min-h-screen bg-transparent px-4 py-8 sm:px-6">
-      <section className="mx-auto max-w-5xl space-y-6">
-        <div>
-          <h1 className="mt-1 text-3xl font-bold text-heading-dark">Riwayat Pengerjaan</h1>
+    <main className="student-home student-split-page">
+      <Link href="/siswa/dashboard" className="student-back"><ArrowLeft size={15} aria-hidden="true" /> Beranda</Link>
+      <header className="student-split-head">
+        <h1>Riwayat</h1>
+        <p className="student-muted mt-1">Pilih kategori untuk melihat tryout yang sudah kamu kerjakan.</p>
+      </header>
+
+      {error && <p role="alert" className="student-notice mt-4">{error}</p>}
+      {loading ? <p className="student-notice mt-6">Memuat…</p> : kategori.length === 0 && !error ? (
+        <p className="student-notice mt-6">Belum ada tryout yang selesai dikerjakan.</p>
+      ) : (
+        <div className="student-kategori-grid">
+          {kategori.map((k) => {
+            const n = jumlah[k.kode] ?? 0;
+            const inner = (
+              <>
+                <strong>{k.nama}</strong>
+                <span className="student-kategori-foot">
+                  {n > 0 ? <><em>{n} tryout selesai</em><ArrowRight size={16} aria-hidden="true" /></> : <em>Belum ada riwayat</em>}
+                </span>
+              </>
+            );
+            return n > 0
+              ? <Link key={k.kode} href={`/siswa/riwayat/${encodeURIComponent(k.kode)}`} className="student-kategori">{inner}</Link>
+              : <div key={k.kode} className="student-kategori student-kategori-off" aria-disabled="true">{inner}</div>;
+          })}
         </div>
-        {error && <div className="rounded-input border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
-        {loading ? (
-          <Card><p className="text-sm text-text-muted">Memuat riwayat...</p></Card>
-        ) : items.length === 0 ? (
-          <Card>
-            <div className="py-10 text-center">
-              <History className="mx-auto h-10 w-10 text-text-muted" aria-hidden="true" />
-              <p className="mt-3 text-text-muted">Belum ada ujian yang selesai.</p>
-            </div>
-          </Card>
-        ) : (
-          <div className="space-y-4">
-            {items.map((item) => {
-              const ringkas = ringkasan[item.ujian_siswa_id];
-              return (
-                <Card key={item.ujian_siswa_id}>
-                  <div className="flex flex-wrap items-center justify-between gap-4">
-                    <div className="min-w-0">
-                      <h2 className="truncate text-lg font-bold text-heading-dark">{item.nama_paket}</h2>
-                      <p className="mt-1 text-sm text-text-muted">
-                        Selesai {formatTanggal(item.finished_at)}
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-4">
-                      {ringkas?.ditahan && (
-                        <p className="text-xs font-semibold text-amber-700">Kunci & pembahasan tersedia setelah jadwal berakhir</p>
-                      )}
-                      {ringkas && !ringkas.ditahan && (
-                        <div className="flex items-center gap-3 text-xs text-text-muted">
-                          <span className="font-semibold text-green-700">✓ {ringkas.benar} benar</span>
-                          <span className="font-semibold text-red-700">× {ringkas.salah} salah</span>
-                          <span className="font-semibold text-text-muted">○ {ringkas.kosong} kosong</span>
-                          {ringkas.menunggu > 0 && <span className="font-semibold text-amber-700">⏳ {ringkas.menunggu} menunggu</span>}
-                        </div>
-                      )}
-                      <div className="text-right">
-                        <p className="text-xs text-text-muted">{item.metode_penilaian === "kohort" ? `Benchmark IRT · ${(item.skala ?? "utbk").toUpperCase()}` : "Nilai Biasa"}</p>
-                        <p className="text-2xl font-bold text-brand-primary">{item.skor != null ? item.skor.toFixed(item.metode_penilaian === "kohort" ? 0 : 1) : "Belum tersedia"}</p>
-                        {item.metode_penilaian === "kohort" && item.kohort_status === "sementara" && <p className="text-xs font-semibold text-amber-700">Sementara</p>}
-                      </div>
-                      <Link
-                        href={`/siswa/hasil/${item.ujian_siswa_id}`}
-                        className="rounded-btn border border-brand-primary px-4 py-2 text-sm font-semibold text-brand-primary transition hover:bg-brand-primary hover:text-heading-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2"
-                      >
-                        Lihat Hasil
-                      </Link>
-                    </div>
-                  </div>
-                </Card>
-              );
-            })}
-          </div>
-        )}
-      </section>
+      )}
     </main>
   );
 }

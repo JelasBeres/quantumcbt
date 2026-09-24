@@ -36,10 +36,19 @@ class HasilPernyataanDetail(BaseModel):
     is_correct: Optional[bool] = None
 
 
+class HasilBagianDetail(BaseModel):
+    bagian_id: Optional[int] = None
+    nama: str
+    urutan: int
+    pelajaran_id: Optional[int] = None
+    pelajaran_nama: Optional[str] = None
+
+
 class HasilSoalDetail(BaseModel):
     nomor: int
     # Nomor di dalam bagian (mulai lagi dari 1 tiap bagian), sama seperti saat mengerjakan.
     nomor_bagian: Optional[int] = None
+    bagian_id: Optional[int] = None
     bagian_nama: Optional[str] = None
     soal_id: int
     teks_soal: str
@@ -69,5 +78,7 @@ class HasilUjianDetailOut(BaseModel):
     metadata: Optional[Dict[str, Any]] = None
     # True bila kunci, status benar/salah, dan pembahasan ditahan untuk siswa
     # karena masih ada jadwal tryout paket ini yang belum berakhir.
+    # Bagian/set soal pada attempt ini (urut pengerjaan), untuk riwayat per mapel.
+    bagian: List[HasilBagianDetail] = []
     kunci_disembunyikan: bool = False
     kunci_tersedia_at: Optional[datetime] = None

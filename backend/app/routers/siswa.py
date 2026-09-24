@@ -357,6 +357,8 @@ def get_siswa_riwayat_ujian(db: Session = Depends(get_db), current_user=Depends(
                 ujian_siswa_id=ujian.id,
                 paket_ujian_id=paket.id,
                 nama_paket=paket.nama,
+                kategori=paket.kategori_ref.kode if paket.kategori_ref else paket.kategori,
+                kategori_nama=paket.kategori_ref.nama if paket.kategori_ref else None,
                 jadwal_ujian_id=ujian.jadwal_ujian_id,
                 started_at=ujian.started_at,
                 finished_at=ujian.finished_at,

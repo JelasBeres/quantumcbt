@@ -14,10 +14,12 @@ from app.models.jawaban_siswa import JawabanSiswa
 from app.models.opsi_jawaban import OpsiJawaban
 from app.models.pernyataan_benar_salah import PernyataanBenarSalah
 from app.models.paket_ujian import PaketUjian
+from app.models.pelajaran import Pelajaran
 from app.models.siswa import Siswa
 from app.models.soal import Soal
 from app.models.ujian_siswa import UjianSiswa
 from app.schemas.hasil_ujian import (
+    HasilBagianDetail,
     HasilPernyataanDetail,
     HasilSoalDetail,
     HasilSoalOpsi,
@@ -174,9 +176,24 @@ def get_hasil_detail(
     LABEL = ["A", "B", "C", "D", "E", "F", "G", "H"]
 
     posisi_bagian: Dict[int, tuple[int, str]] = {}
+    bagian_soal: Dict[int, Optional[int]] = {}
     for bagian in ujian.bagian_urutan or []:
         for i, sid in enumerate(bagian.get("soal_ids") or [], start=1):
             posisi_bagian[sid] = (i, bagian.get("nama") or "")
+            bagian_soal[sid] = bagian.get("bagian_id")
+    # Daftar bagian (set soal) + nama mapel untuk riwayat per mapel.
+    pelajaran_ids = {b.get("pelajaran_id") for b in ujian.bagian_urutan or [] if b.get("pelajaran_id") is not None}
+    pelajaran_nama = {p.id: p.nama for p in db.query(Pelajaran).filter(Pelajaran.id.in_(pelajaran_ids)).all()} if pelajaran_ids else {}
+    bagian_out = [
+        HasilBagianDetail(
+            bagian_id=b.get("bagian_id"),
+            nama=b.get("nama") or f"Bagian {index}",
+            urutan=index,
+            pelajaran_id=b.get("pelajaran_id"),
+            pelajaran_nama=pelajaran_nama.get(b.get("pelajaran_id")),
+        )
+        for index, b in enumerate(ujian.bagian_urutan or [], start=1)
+    ]
 
     for idx, soal_id in enumerate(ujian.soal_urutan, start=1):
         soal = soal_map.get(soal_id)
@@ -264,6 +281,7 @@ def get_hasil_detail(
             HasilSoalDetail(
                 nomor=idx,
                 nomor_bagian=posisi_bagian.get(soal.id, (None, None))[0],
+                bagian_id=bagian_soal.get(soal.id),
                 bagian_nama=posisi_bagian.get(soal.id, (None, None))[1] or None,
                 soal_id=soal.id,
                 teks_soal=soal.teks_soal,
@@ -301,6 +319,7 @@ def get_hasil_detail(
         skala=metadata.get("skala"),
         skor_mentah=metadata.get("skor_mentah"),
         metadata=metadata,
+        bagian=bagian_out,
         kunci_disembunyikan=sembunyikan,
         kunci_tersedia_at=kunci_tersedia_at,
     )

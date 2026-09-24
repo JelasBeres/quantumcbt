@@ -112,6 +112,9 @@ class SiswaRiwayatUjianOut(BaseModel):
     ujian_siswa_id: int
     paket_ujian_id: int
     nama_paket: str
+    # Kategori paket (kode & nama) untuk riwayat bertingkat: kategori -> tryout -> mapel.
+    kategori: Optional[str] = None
+    kategori_nama: Optional[str] = None
     jadwal_ujian_id: Optional[int] = None
     started_at: Optional[datetime] = None
     finished_at: Optional[datetime] = None

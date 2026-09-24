@@ -229,7 +229,7 @@ def _attempt_questions(db: Session, ujian: UjianSiswa) -> list[Soal]:
     return _questions_from_map(soal_map, question_ids)
 
 
-def _evaluate_question(
+def evaluate_question(
     db: Session,
     soal: Soal,
     jawaban: Optional[JawabanSiswa],
@@ -309,7 +309,7 @@ def calculate_ujian_score(db: Session, ujian: UjianSiswa) -> tuple[float, Dict[s
             breakdown_points[key] = 0.0
             breakdown_earned[key] = 0.0
         points = float(question.poin or 1.0)
-        correct, fraction, is_pending = _evaluate_question(db, question, answer_map.get(question.id), kunci_map.get(question.id))
+        correct, fraction, is_pending = evaluate_question(db, question, answer_map.get(question.id), kunci_map.get(question.id))
         breakdown[key]["jumlah_soal"] += 1
         if correct:
             breakdown[key]["jumlah_benar"] += 1
@@ -442,7 +442,7 @@ def _compute_cohort(db: Session, target: UjianSiswa, package: PaketUjian) -> Has
         pending = 0
         breakdown: Dict[str, Dict[str, Any]] = {}
         for question_id, question in question_map.items():
-            correct, _, is_pending = _evaluate_question(
+            correct, _, is_pending = evaluate_question(
                 db,
                 question,
                 answers_by_attempt[attempt.id].get(question_id),
@@ -485,9 +485,12 @@ def _compute_cohort(db: Session, target: UjianSiswa, package: PaketUjian) -> Has
     }
     for index, attempt in enumerate(attempts):
         pending = pending_by_attempt[attempt.id]
-        score = calculation.scores[index] if not cohort_has_pending else None
-        raw_score = calculation.raw_scores[index] if not cohort_has_pending else None
-        status = calculation.status if not cohort_has_pending else "sementara"
+        # Esai yang belum dikoreksi dihitung salah (0) dulu agar nilai tetap
+        # tampil; statusnya "sementara" sampai semua esai kohort dinilai, dan
+        # koreksi guru memicu hitung ulang (lihat jawaban_siswa router).
+        score = calculation.scores[index]
+        raw_score = calculation.raw_scores[index]
+        status = "sementara" if cohort_has_pending and calculation.status != "kosong" else calculation.status
         breakdown = breakdown_by_attempt[attempt.id]
         for key, item in breakdown.items():
             subject_question_ids = question_ids_by_subject.get(key, [])

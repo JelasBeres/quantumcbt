@@ -2,7 +2,7 @@
 
 import { FormEvent, Fragment, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { AlertTriangle, ArrowLeft, Check, X } from "lucide-react";
 import { api, getErrorMessage } from "@/lib/api";
 import Button from "@/components/Button";
@@ -48,6 +48,7 @@ type HasilSoalDetailItem = {
   skor_manual?: number | null;
   pembahasan?: string | null;
   is_dijawab?: boolean;
+  bagian_id?: number | null;
 };
 type HasilDetail = {
   ujian_siswa_id: number;
@@ -85,9 +86,9 @@ function statusLabel(status: Status): string {
 }
 
 // Skema warna status (konsisten di halaman ujian & hasil):
-// biru = benar, merah = salah, kuning = ragu, abu-abu = kosong/belum dijawab.
+// hijau = benar, merah = salah, kuning = menunggu koreksi, abu-abu = kosong/belum dijawab.
 function statusCls(status: Status): string {
-  if (status === "benar") return "bg-blue-600";
+  if (status === "benar") return "bg-green-600";
   if (status === "salah") return "bg-red-600";
   if (status === "kosong") return "bg-gray-400";
   if (status === "terjawab") return "bg-slate-500";
@@ -143,6 +144,11 @@ export default function HasilDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [nomor, setNomor] = useState(1);
+  // Dari Riwayat per mapel: ?bagian=<id> (atau "none" untuk soal di luar bagian)
+  // hanya menampilkan soal mapel itu; ?kategori= untuk tombol kembali.
+  const searchParams = useSearchParams();
+  const bagianParam = searchParams.get("bagian");
+  const kategoriParam = searchParams.get("kategori");
 
   const [laporkanSoal, setLaporkanSoal] = useState<HasilSoalDetailItem | null>(null);
   const [alasanLapor, setAlasanLapor] = useState("");
@@ -176,26 +182,37 @@ export default function HasilDetailPage() {
   }, [params.ujianId]);
 
   const kunciDitahan = !!detail?.kunci_disembunyikan;
-  const jumlahBenar = useMemo(() => (detail?.soal ?? []).filter((s) => statusSoal(s, kunciDitahan) === "benar").length, [detail, kunciDitahan]);
-  const jumlahSalah = useMemo(() => (detail?.soal ?? []).filter((s) => statusSoal(s, kunciDitahan) === "salah").length, [detail, kunciDitahan]);
-  const jumlahKosong = useMemo(() => (detail?.soal ?? []).filter((s) => statusSoal(s, kunciDitahan) === "kosong").length, [detail, kunciDitahan]);
-  const jumlahTerjawab = useMemo(() => (detail?.soal ?? []).filter((s) => statusSoal(s, kunciDitahan) === "terjawab").length, [detail, kunciDitahan]);
-  const totalSoal = detail?.soal.length ?? 0;
+  const soalList = useMemo(() => {
+    const semua = detail?.soal ?? [];
+    if (!bagianParam) return semua;
+    return semua.filter((s) => (bagianParam === "none" ? s.bagian_id == null : String(s.bagian_id) === bagianParam));
+  }, [detail, bagianParam]);
+  const namaBagianFilter = bagianParam ? soalList[0]?.bagian_nama ?? null : null;
+  useEffect(() => {
+    // Mulai dari soal pertama mapel yang dipilih.
+    if (soalList.length > 0 && !soalList.some((s) => s.nomor === nomor)) setNomor(soalList[0].nomor);
+  }, [soalList, nomor]);
+  const jumlahBenar = useMemo(() => soalList.filter((s) => statusSoal(s, kunciDitahan) === "benar").length, [soalList, kunciDitahan]);
+  const jumlahSalah = useMemo(() => soalList.filter((s) => statusSoal(s, kunciDitahan) === "salah").length, [soalList, kunciDitahan]);
+  const jumlahKosong = useMemo(() => soalList.filter((s) => statusSoal(s, kunciDitahan) === "kosong").length, [soalList, kunciDitahan]);
+  const jumlahTerjawab = useMemo(() => soalList.filter((s) => statusSoal(s, kunciDitahan) === "terjawab").length, [soalList, kunciDitahan]);
+  const totalSoal = soalList.length;
   const skor = hasil?.skor ?? detail?.skor ?? null;
 
-  const soalAktif = detail?.soal.find((s) => s.nomor === nomor) ?? null;
+  const indeksAktif = soalList.findIndex((s) => s.nomor === nomor);
+  const soalAktif = indeksAktif >= 0 ? soalList[indeksAktif] : null;
   // Nomor ditampilkan per bagian (mulai lagi dari 1), sama seperti saat mengerjakan.
   // `nomor` global tetap dipakai sebagai kunci navigasi.
   const grupBagian = useMemo(() => {
     const groups: { nama: string | null; soal: HasilSoalDetailItem[] }[] = [];
-    for (const soal of detail?.soal ?? []) {
+    for (const soal of soalList) {
       const nama = soal.bagian_nama ?? null;
       const last = groups[groups.length - 1];
       if (last && last.nama === nama) last.soal.push(soal);
       else groups.push({ nama, soal: [soal] });
     }
     return groups;
-  }, [detail]);
+  }, [soalList]);
   const adaBagian = grupBagian.some((g) => g.nama);
   const labelNomor = (soal: HasilSoalDetailItem) => soal.nomor_bagian ?? soal.nomor;
   const judulSoal = (soal: HasilSoalDetailItem) =>
@@ -252,13 +269,13 @@ export default function HasilDetailPage() {
       <div className="fixed inset-x-0 top-[var(--st-header-h)] z-30 border-b border-card-border bg-card-bg">
         <div className="mx-auto flex h-[3.25rem] w-full max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
           <Link
-            href="/siswa/riwayat"
+            href={kategoriParam ? `/siswa/riwayat/${encodeURIComponent(kategoriParam)}/${params.ujianId}` : "/siswa/riwayat"}
             aria-label="Kembali ke riwayat"
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-btn text-body-dark transition hover:bg-neutral focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2"
           >
             <ArrowLeft className="h-4.5 w-4.5" aria-hidden="true" />
           </Link>
-          <p className="truncate text-sm font-bold text-heading-dark">Pembahasan</p>
+          <p className="truncate text-sm font-bold text-heading-dark">Pembahasan{namaBagianFilter ? ` · ${namaBagianFilter}` : ""}</p>
           <span className="shrink-0 text-xs font-semibold text-text-muted">
             {posisiAktif.ke} / {posisiAktif.dari}
           </span>
@@ -317,7 +334,7 @@ export default function HasilDetailPage() {
                   <span className="rounded-md bg-slate-100 px-2 py-1 text-slate-700">Terjawab {jumlahTerjawab}</span>
                 ) : (
                   <>
-                    <span className="rounded-md bg-blue-50 px-2 py-1 text-blue-800">Benar {jumlahBenar}</span>
+                    <span className="rounded-md bg-green-50 px-2 py-1 text-green-800">Benar {jumlahBenar}</span>
                     <span className="rounded-md bg-red-50 px-2 py-1 text-red-700">Salah {jumlahSalah}</span>
                   </>
                 )}
@@ -387,7 +404,7 @@ export default function HasilDetailPage() {
                                   {row.is_correct == null ? (
                                     <span className="font-semibold text-body-dark">{row.jawaban_user == null ? "-" : label(row.jawaban_user)}</span>
                                   ) : (
-                                    <span className={`inline-flex items-center gap-1 font-semibold ${row.is_correct ? "text-blue-700" : "text-red-700"}`}>
+                                    <span className={`inline-flex items-center gap-1 font-semibold ${row.is_correct ? "text-green-700" : "text-red-700"}`}>
                                       {row.is_correct ? <Check className="h-4 w-4" aria-hidden="true" /> : <X className="h-4 w-4" aria-hidden="true" />}
                                       {row.jawaban_user == null ? "-" : label(row.jawaban_user)}
                                       <span className="sr-only">{row.is_correct ? "(benar)" : "(salah)"}</span>
@@ -413,8 +430,8 @@ export default function HasilDetailPage() {
                         let style = "border-card-border bg-card-bg";
                         let badge = null;
                         if (isBenar) {
-                          style = "border-blue-200 bg-blue-50";
-                          badge = <span className="text-xs font-semibold text-blue-800">Kunci jawaban</span>;
+                          style = "border-green-200 bg-green-50";
+                          badge = <span className="text-xs font-semibold text-green-800">Kunci jawaban</span>;
                         }
                         if (isUser && kunciDitahan) {
                           style = "border-brand-primary/40 bg-brand-primary/5";
@@ -437,8 +454,8 @@ export default function HasilDetailPage() {
                   {!(soalAktif.tipe === "benar_salah" && soalAktif.pernyataan?.length) && <div>
                     <p className="mb-1.5 text-xs font-bold uppercase tracking-wider text-text-muted">Jawaban Anda</p>
                     {statusAktif === "benar" ? (
-                      <div className="rounded-input border border-blue-200 bg-blue-50 p-3.5">
-                        <p className="flex items-center gap-1.5 text-xs font-bold text-blue-800">
+                      <div className="rounded-input border border-green-200 bg-green-50 p-3.5">
+                        <p className="flex items-center gap-1.5 text-xs font-bold text-green-800">
                           <Check className="h-3.5 w-3.5" /> Jawaban Anda
                         </p>
                         <p className="mt-1 text-sm font-medium text-heading-dark">{teksJawabanUser(soalAktif)}</p>
@@ -478,8 +495,8 @@ export default function HasilDetailPage() {
                   {!kunciDitahan && !(soalAktif.tipe === "benar_salah" && soalAktif.pernyataan?.length) && (statusAktif === "salah" || statusAktif === "kosong") && (
                     <div>
                       <p className="mb-1.5 text-xs font-bold uppercase tracking-wider text-text-muted">Jawaban Benar</p>
-                      <div className="rounded-input border border-blue-200 bg-blue-50 p-3.5">
-                        <p className="flex items-center gap-1.5 text-xs font-bold text-blue-800">
+                      <div className="rounded-input border border-green-200 bg-green-50 p-3.5">
+                        <p className="flex items-center gap-1.5 text-xs font-bold text-green-800">
                           <Check className="h-3.5 w-3.5" /> Jawaban Benar
                         </p>
                         <p className="mt-1 text-sm font-medium text-heading-dark">{teksJawabanBenar(soalAktif)}</p>
@@ -549,12 +566,12 @@ export default function HasilDetailPage() {
                   <span className="text-sm font-bold text-slate-700">{jumlahTerjawab}</span>
                 </div>
                 ) : (<>
-                <div className="flex items-center justify-between rounded-input bg-blue-50 px-3 py-2">
-                  <span className="flex items-center gap-2 text-sm text-blue-800">
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-white"><Check className="h-3 w-3" /></span>
+                <div className="flex items-center justify-between rounded-input bg-green-50 px-3 py-2">
+                  <span className="flex items-center gap-2 text-sm text-green-800">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-green-600 text-white"><Check className="h-3 w-3" /></span>
                     Benar
                   </span>
-                  <span className="text-sm font-bold text-blue-800">{jumlahBenar}</span>
+                  <span className="text-sm font-bold text-green-800">{jumlahBenar}</span>
                 </div>
                 <div className="flex items-center justify-between rounded-input bg-red-50 px-3 py-2">
                   <span className="flex items-center gap-2 text-sm text-red-700">
@@ -588,7 +605,7 @@ export default function HasilDetailPage() {
               )}
               {hasil.skor_per_pelajaran_json?._meta?.menunggu_koreksi && (
                 <p className="mt-4 rounded-md bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
-                  Nilai sementara. Ada jawaban yang masih menunggu koreksi guru.
+                  Nilai sementara. Esai yang belum dikoreksi guru dihitung 0 dulu; nilai diperbarui otomatis setelah dikoreksi.
                 </p>
               )}
             </div>
@@ -656,7 +673,7 @@ export default function HasilDetailPage() {
               </div>
 
               <div className="mt-4 space-y-1.5 border-t border-card-border pt-3 text-[11px] text-text-muted">
-                <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-blue-600" /> Benar</span>
+                <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-green-600" /> Benar</span>
                 <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-red-600" /> Salah</span>
                 <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-gray-400" /> Kosong</span>
                 <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-amber-500" /> Menunggu koreksi</span>
@@ -670,13 +687,13 @@ export default function HasilDetailPage() {
       {/* Dinaikkan di atas bottom nav aplikasi pada mobile agar tidak tertutup. */}
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-card-border bg-card-bg pb-[env(safe-area-inset-bottom,0px)]">
         <div className="mx-auto flex w-full max-w-xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
-          <Button variant="outline" size="sm" disabled={nomor <= 1} onClick={() => setNomor((n) => Math.max(1, n - 1))}>
+          <Button variant="outline" size="sm" disabled={indeksAktif <= 0} onClick={() => indeksAktif > 0 && setNomor(soalList[indeksAktif - 1].nomor)}>
             Sebelumnya
           </Button>
           <span className="text-xs font-semibold text-text-muted">
             {adaBagian && grupAktif?.nama ? `${grupAktif.nama} · ` : ""}Soal {posisiAktif.ke} dari {posisiAktif.dari}
           </span>
-          <Button variant="outline" size="sm" disabled={nomor >= totalSoal} onClick={() => setNomor((n) => Math.min(totalSoal, n + 1))}>
+          <Button variant="outline" size="sm" disabled={indeksAktif < 0 || indeksAktif >= soalList.length - 1} onClick={() => indeksAktif >= 0 && indeksAktif < soalList.length - 1 && setNomor(soalList[indeksAktif + 1].nomor)}>
             Berikutnya
           </Button>
         </div>
