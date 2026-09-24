@@ -127,6 +127,25 @@ class SiswaRiwayatUjianOut(BaseModel):
     metadata: Optional[Dict[str, Any]] = None
 
 
+class SiswaRiwayatLatihanOut(BaseModel):
+    """Sesi latihan yang sudah selesai: paket latihan (mode ujian/drilling) dan
+    latihan per-mapel dari paket tryout (sumber="tryout")."""
+
+    ujian_siswa_id: int
+    paket_ujian_id: int
+    nama_paket: str
+    sumber: str
+    kategori: Optional[str] = None
+    kategori_nama: Optional[str] = None
+    mode_latihan: Optional[str] = None
+    bagian_id: Optional[int] = None
+    bagian_nama: Optional[str] = None
+    pelajaran_nama: Optional[str] = None
+    started_at: Optional[datetime] = None
+    finished_at: Optional[datetime] = None
+    skor: Optional[float] = None
+
+
 class SiswaDashboardDataOut(BaseModel):
     siswa: SiswaOut
     program_name: Optional[str] = None

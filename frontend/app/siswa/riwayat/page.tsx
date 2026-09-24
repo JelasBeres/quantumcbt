@@ -2,81 +2,52 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight } from "lucide-react";
-import { api, getErrorMessage } from "@/lib/api";
-import { KATEGORI_LAINNYA, fetchRiwayatTryout, kategoriKey } from "@/lib/riwayat";
+import { ArrowLeft, ArrowRight, BookOpen, ClipboardList } from "lucide-react";
+import { getErrorMessage } from "@/lib/api";
+import { fetchRiwayatLatihan, fetchRiwayatTryout } from "@/lib/riwayat";
 
-// Riwayat langkah 1: pilih kategori (sama seperti menu Tryout), lalu tryout, lalu mapel.
-type Kategori = { kode: string; nama: string; tipe: "ujian" | "latihan" | "keduanya"; is_active: boolean };
-
-export default function RiwayatKategoriPage() {
-  const [kategori, setKategori] = useState<{ kode: string; nama: string }[]>([]);
-  const [jumlah, setJumlah] = useState<Record<string, number>>({});
-  const [loading, setLoading] = useState(true);
+// Riwayat dipisah dua grup sebelum memilih kategori: Tryout dan Latihan.
+export default function RiwayatPage() {
+  const [jumlah, setJumlah] = useState<{ tryout: number; latihan: number } | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const [katRes, riwayat] = await Promise.all([api.get<Kategori[]>("/kategori-paket"), fetchRiwayatTryout()]);
-        if (cancelled) return;
-        const count: Record<string, number> = {};
-        const namaDariRiwayat: Record<string, string> = {};
-        for (const item of riwayat) {
-          const key = kategoriKey(item);
-          count[key] = (count[key] ?? 0) + 1;
-          if (item.kategori_nama) namaDariRiwayat[key] = item.kategori_nama;
-        }
-        const aktif = (katRes.data ?? [])
-          .filter((k) => k.is_active && (k.tipe === "keduanya" || k.tipe === "ujian"))
-          .map((k) => ({ kode: k.kode, nama: k.nama }));
-        // Kategori yang sudah nonaktif tetap tampil bila siswa punya riwayatnya.
-        const kodeAktif = new Set(aktif.map((k) => k.kode));
-        const tambahan = Object.keys(count)
-          .filter((kode) => kode !== KATEGORI_LAINNYA && !kodeAktif.has(kode))
-          .map((kode) => ({ kode, nama: namaDariRiwayat[kode] ?? kode.replace(/_/g, " ").toUpperCase() }));
-        const lainnya = count[KATEGORI_LAINNYA] ? [{ kode: KATEGORI_LAINNYA, nama: "Lainnya" }] : [];
-        setJumlah(count);
-        setKategori([...aktif, ...tambahan, ...lainnya]);
+        const [tryout, latihan] = await Promise.all([fetchRiwayatTryout(), fetchRiwayatLatihan()]);
+        if (!cancelled) setJumlah({ tryout: tryout.length, latihan: latihan.length });
       } catch (e) {
         if (!cancelled) setError(getErrorMessage(e, "Riwayat gagal dimuat."));
-      } finally {
-        if (!cancelled) setLoading(false);
       }
     })();
     return () => { cancelled = true; };
   }, []);
+
+  const grup = [
+    { href: "/siswa/riwayat/tryout", judul: "Tryout", icon: ClipboardList, info: jumlah ? `${jumlah.tryout} tryout selesai` : "Memuat…" },
+    { href: "/siswa/riwayat/latihan", judul: "Latihan", icon: BookOpen, info: jumlah ? `${jumlah.latihan} sesi latihan selesai` : "Memuat…" },
+  ];
 
   return (
     <main className="student-home student-split-page">
       <Link href="/siswa/dashboard" className="student-back"><ArrowLeft size={15} aria-hidden="true" /> Beranda</Link>
       <header className="student-split-head">
         <h1>Riwayat</h1>
-        <p className="student-muted mt-1">Pilih kategori untuk melihat tryout yang sudah kamu kerjakan.</p>
+        <p className="student-muted mt-1">Pilih riwayat tryout atau latihan yang sudah kamu kerjakan.</p>
       </header>
 
       {error && <p role="alert" className="student-notice mt-4">{error}</p>}
-      {loading ? <p className="student-notice mt-6">Memuat…</p> : kategori.length === 0 && !error ? (
-        <p className="student-notice mt-6">Belum ada tryout yang selesai dikerjakan.</p>
-      ) : (
-        <div className="student-kategori-grid">
-          {kategori.map((k) => {
-            const n = jumlah[k.kode] ?? 0;
-            const inner = (
-              <>
-                <strong>{k.nama}</strong>
-                <span className="student-kategori-foot">
-                  {n > 0 ? <><em>{n} tryout selesai</em><ArrowRight size={16} aria-hidden="true" /></> : <em>Belum ada riwayat</em>}
-                </span>
-              </>
-            );
-            return n > 0
-              ? <Link key={k.kode} href={`/siswa/riwayat/${encodeURIComponent(k.kode)}`} className="student-kategori">{inner}</Link>
-              : <div key={k.kode} className="student-kategori student-kategori-off" aria-disabled="true">{inner}</div>;
-          })}
-        </div>
-      )}
+
+      <nav className="student-categories student-riwayat-grup" aria-label="Grup riwayat">
+        {grup.map(({ href, judul, icon: Icon, info }) => (
+          <Link key={href} href={href} className="student-category">
+            <span className="student-category-icon"><Icon size={24} aria-hidden="true" /></span>
+            <span className="student-category-text"><strong>{judul}</strong><small>{info}</small></span>
+            <ArrowRight size={18} className="student-category-arrow" aria-hidden="true" />
+          </Link>
+        ))}
+      </nav>
     </main>
   );
 }

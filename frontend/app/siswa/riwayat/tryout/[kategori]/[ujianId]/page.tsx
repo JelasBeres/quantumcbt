@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, ArrowRight, Check, CircleDashed, FileText, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, CircleDashed, FileText, Flag, X } from "lucide-react";
 import { api, getErrorMessage } from "@/lib/api";
 import SetSoalPerMapel from "@/components/SetSoalPerMapel";
 import { DetailHasil, RiwayatItem, fetchRiwayatTryout, formatSkor, formatTanggal, ringkas } from "@/lib/riwayat";
@@ -23,6 +23,7 @@ type SetRiwayat = {
   kosong: number;
   menunggu: number;
   terjawab: number;
+  ragu: number;
 };
 
 export default function RiwayatMapelPage() {
@@ -86,7 +87,7 @@ export default function RiwayatMapelPage() {
 
   return (
     <main className="student-home student-split-page">
-      <Link href={`/siswa/riwayat/${encodeURIComponent(kategori)}`} className="student-back">
+      <Link href={`/siswa/riwayat/tryout/${encodeURIComponent(kategori)}`} className="student-back">
         <ArrowLeft size={15} aria-hidden="true" /> Daftar Tryout
       </Link>
 
@@ -125,6 +126,7 @@ export default function RiwayatMapelPage() {
                     )}
                     <span><CircleDashed size={14} aria-hidden="true" />{s.kosong} kosong</span>
                     {!ditahan && s.menunggu > 0 && <span className="text-amber-700">{s.menunggu} menunggu koreksi</span>}
+                    {s.ragu > 0 && <span className="text-yellow-500"><Flag size={14} aria-hidden="true" />{s.ragu} ragu-ragu</span>}
                   </div>
                 )}
                 renderActions={(s) => (

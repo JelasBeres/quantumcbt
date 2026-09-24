@@ -1,7 +1,7 @@
 import { api } from "./api";
 
-// Riwayat tryout bertingkat (mengikuti menu Tryout): kategori -> tryout -> mapel.
-// Hanya tryout berjadwal yang sudah dikumpulkan; latihan tidak masuk riwayat.
+// Riwayat dibagi dua grup: Tryout (kategori -> tryout -> mapel -> pembahasan)
+// dan Latihan (kategori -> sesi latihan -> pembahasan).
 
 export const KATEGORI_LAINNYA = "lainnya";
 
@@ -27,6 +27,7 @@ export type SoalHasil = {
   bagian_id?: number | null;
   jawaban_user?: unknown;
   is_correct?: boolean | null;
+  is_ragu?: boolean;
 };
 
 export type BagianHasil = {
@@ -47,7 +48,8 @@ export type DetailHasil = {
   kunci_tersedia_at?: string | null;
 };
 
-export type Ringkasan = { benar: number; salah: number; kosong: number; menunggu: number; terjawab: number };
+// ragu = jumlah soal yang ditandai ragu-ragu (tumpang tindih dengan status lain).
+export type Ringkasan = { benar: number; salah: number; kosong: number; menunggu: number; terjawab: number; ragu: number };
 
 export function kategoriKey(item: Pick<RiwayatItem, "kategori">): string {
   return item.kategori || KATEGORI_LAINNYA;
@@ -58,8 +60,30 @@ export async function fetchRiwayatTryout(): Promise<RiwayatItem[]> {
   return (data ?? []).filter((item) => item.is_submitted && item.jadwal_ujian_id != null);
 }
 
+export type RiwayatLatihanItem = {
+  ujian_siswa_id: number;
+  paket_ujian_id: number;
+  nama_paket: string;
+  // "tryout" = latihan per-mapel dari paket tryout yang sudah dikerjakan.
+  sumber: "latihan" | "tryout";
+  kategori?: string | null;
+  kategori_nama?: string | null;
+  mode_latihan?: "latihan" | "drill" | null;
+  bagian_id?: number | null;
+  bagian_nama?: string | null;
+  pelajaran_nama?: string | null;
+  started_at?: string | null;
+  finished_at?: string | null;
+  skor?: number | null;
+};
+
+export async function fetchRiwayatLatihan(): Promise<RiwayatLatihanItem[]> {
+  const { data } = await api.get<RiwayatLatihanItem[]>("/siswa/riwayat-latihan");
+  return data ?? [];
+}
+
 // Samakan logika status per soal dengan halaman hasil, supaya jumlahnya selalu = total soal.
-export function statusSoal(soal: SoalHasil, kunciDitahan = false): keyof Ringkasan {
+export function statusSoal(soal: SoalHasil, kunciDitahan = false): Exclude<keyof Ringkasan, "ragu"> {
   const jawaban = soal.jawaban_user;
   const kosong = jawaban == null || jawaban === "" || (Array.isArray(jawaban) && jawaban.length === 0);
   if (kosong) return "kosong";
@@ -72,8 +96,11 @@ export function statusSoal(soal: SoalHasil, kunciDitahan = false): keyof Ringkas
 }
 
 export function ringkas(soal: SoalHasil[], kunciDitahan = false): Ringkasan {
-  const total: Ringkasan = { benar: 0, salah: 0, kosong: 0, menunggu: 0, terjawab: 0 };
-  for (const item of soal) total[statusSoal(item, kunciDitahan)] += 1;
+  const total: Ringkasan = { benar: 0, salah: 0, kosong: 0, menunggu: 0, terjawab: 0, ragu: 0 };
+  for (const item of soal) {
+    total[statusSoal(item, kunciDitahan)] += 1;
+    if (item.is_ragu) total.ragu += 1;
+  }
   return total;
 }
 

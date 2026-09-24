@@ -336,3 +336,12 @@ a.student-kategori:hover { border-color: var(--st-accent-soft); }
 @keyframes student-notif-fade { from { opacity: 0; } }
 @keyframes student-notif-pop { from { opacity: 0; transform: translateY(12px) scale(.98); } }
 @media (max-width: 767px) { .student-notif-item { padding: 14px; gap: 12px; } .student-notif-head .student-notif-secondary { width: 100%; } }
+
+/* ---------- Riwayat: grup Tryout / Latihan ---------- */
+.student-shell .student-riwayat-grup { margin: 28px 0 0; }
+.student-riwayat-grup .student-category { min-height: 96px; }
+@media (max-width: 767px) {
+  .student-shell .student-riwayat-grup { margin-top: 20px; }
+  .student-riwayat-grup .student-category-text small { display: block; }
+}
+@media (max-width: 420px) { .student-riwayat-grup { grid-template-columns: minmax(0, 1fr); } }

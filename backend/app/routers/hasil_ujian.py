@@ -296,6 +296,7 @@ def get_hasil_detail(
                 is_correct=is_correct,
                 skor_manual=skor_manual,
                 pembahasan=soal.pembahasan,
+                is_ragu=bool(jawaban.is_ragu) if jawaban else False,
             )
         )
 

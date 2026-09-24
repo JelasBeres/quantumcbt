@@ -3,7 +3,7 @@
 import { FormEvent, Fragment, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
-import { AlertTriangle, ArrowLeft, Check, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Check, Flag, X } from "lucide-react";
 import { api, getErrorMessage } from "@/lib/api";
 import Button from "@/components/Button";
 import MathContent from "@/components/MathContent";
@@ -49,7 +49,17 @@ type HasilSoalDetailItem = {
   pembahasan?: string | null;
   is_dijawab?: boolean;
   bagian_id?: number | null;
+  is_ragu?: boolean;
 };
+
+// Penanda ragu-ragu di pojok nomor soal; warna nomor tetap benar/salah/kosong.
+function TandaRagu() {
+  return (
+    <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-yellow-400 text-yellow-950 ring-2 ring-card-bg" aria-hidden="true">
+      <Flag className="h-2.5 w-2.5" />
+    </span>
+  );
+}
 type HasilDetail = {
   ujian_siswa_id: number;
   skor?: number | null;
@@ -149,6 +159,13 @@ export default function HasilDetailPage() {
   const searchParams = useSearchParams();
   const bagianParam = searchParams.get("bagian");
   const kategoriParam = searchParams.get("kategori");
+  // Kembali ke grup riwayat asalnya: latihan -> daftar sesi latihan kategori itu,
+  // tryout -> halaman mapel tryout tersebut.
+  const hrefKembali = !kategoriParam
+    ? "/siswa/riwayat"
+    : searchParams.get("jenis") === "latihan"
+      ? `/siswa/riwayat/latihan/${encodeURIComponent(kategoriParam)}`
+      : `/siswa/riwayat/tryout/${encodeURIComponent(kategoriParam)}/${params.ujianId}`;
 
   const [laporkanSoal, setLaporkanSoal] = useState<HasilSoalDetailItem | null>(null);
   const [alasanLapor, setAlasanLapor] = useState("");
@@ -196,6 +213,7 @@ export default function HasilDetailPage() {
   const jumlahSalah = useMemo(() => soalList.filter((s) => statusSoal(s, kunciDitahan) === "salah").length, [soalList, kunciDitahan]);
   const jumlahKosong = useMemo(() => soalList.filter((s) => statusSoal(s, kunciDitahan) === "kosong").length, [soalList, kunciDitahan]);
   const jumlahTerjawab = useMemo(() => soalList.filter((s) => statusSoal(s, kunciDitahan) === "terjawab").length, [soalList, kunciDitahan]);
+  const jumlahRagu = useMemo(() => soalList.filter((s) => s.is_ragu).length, [soalList]);
   const totalSoal = soalList.length;
   const skor = hasil?.skor ?? detail?.skor ?? null;
 
@@ -269,7 +287,7 @@ export default function HasilDetailPage() {
       <div className="fixed inset-x-0 top-[var(--st-header-h)] z-30 border-b border-card-border bg-card-bg">
         <div className="mx-auto flex h-[3.25rem] w-full max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
           <Link
-            href={kategoriParam ? `/siswa/riwayat/${encodeURIComponent(kategoriParam)}/${params.ujianId}` : "/siswa/riwayat"}
+            href={hrefKembali}
             aria-label="Kembali ke riwayat"
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-btn text-body-dark transition hover:bg-neutral focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2"
           >
@@ -286,7 +304,7 @@ export default function HasilDetailPage() {
       <div className="fixed inset-x-0 top-[calc(var(--st-header-h)+3.25rem)] z-30 border-b border-card-border bg-card-bg lg:hidden">
         <div className="mx-auto flex h-[3.5rem] w-full max-w-7xl items-center gap-2 px-4 sm:px-6">
           <span className="shrink-0 text-[11px] font-bold uppercase tracking-wider text-text-muted">Soal</span>
-          <div ref={navStripRef} className="flex items-center gap-1.5 overflow-x-auto px-1 py-1" style={{ scrollbarWidth: "thin" }}>
+          <div ref={navStripRef} className="flex items-center gap-1.5 overflow-x-auto px-1.5 py-1.5" style={{ scrollbarWidth: "thin" }}>
             {grupBagian.map((grup, gi) => (
               <Fragment key={`${grup.nama ?? "umum"}-${gi}`}>
                 {adaBagian && grup.nama && (
@@ -300,15 +318,16 @@ export default function HasilDetailPage() {
                       key={soal.soal_id}
                       type="button"
                       onClick={() => setNomor(soal.nomor)}
-                      aria-label={judulSoal(soal)}
+                      aria-label={`${judulSoal(soal)}${soal.is_ragu ? " (ragu-ragu)" : ""}`}
                       aria-current={isCurrent ? "true" : undefined}
-                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-transparent text-[13px] font-bold transition-all duration-200 hover:scale-110 ${
+                      className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-transparent text-[13px] font-bold transition-all duration-200 hover:scale-110 ${
                         isCurrent
                           ? "ring-2 ring-brand-primary ring-offset-1 " + statusCls(st)
                           : statusCls(st)
                       } text-white`}
                     >
                       {labelNomor(soal)}
+                      {soal.is_ragu && <TandaRagu />}
                     </button>
                   );
                 })}
@@ -339,6 +358,7 @@ export default function HasilDetailPage() {
                   </>
                 )}
                 <span className="rounded-md bg-neutral px-2 py-1 text-text-muted">Kosong {jumlahKosong}</span>
+                {jumlahRagu > 0 && <span className="rounded-md bg-yellow-100 px-2 py-1 text-yellow-800">Ragu-ragu {jumlahRagu}</span>}
               </div>
             </div>
           </div>
@@ -364,6 +384,11 @@ export default function HasilDetailPage() {
                   <div className="flex items-center gap-3">
                     <h2 className="text-sm font-bold text-heading-dark">{judulSoal(soalAktif)}</h2>
                     <span className="text-xs text-text-muted">{labelTipeSoal(soalAktif.tipe)}</span>
+                    {soalAktif.is_ragu && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-yellow-100 px-2 py-0.5 text-[11px] font-semibold text-yellow-800">
+                        <Flag className="h-3 w-3" aria-hidden="true" /> Ragu-ragu
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <button
@@ -588,6 +613,13 @@ export default function HasilDetailPage() {
                   </span>
                   <span className="text-sm font-bold text-text-muted">{jumlahKosong}</span>
                 </div>
+                <div className="flex items-center justify-between rounded-input bg-yellow-50 px-3 py-2">
+                  <span className="flex items-center gap-2 text-sm text-yellow-800">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-yellow-400 text-yellow-950"><Flag className="h-3 w-3" /></span>
+                    Ragu-ragu
+                  </span>
+                  <span className="text-sm font-bold text-yellow-800">{jumlahRagu}</span>
+                </div>
               </div>
 
               <div className="my-4 border-t border-card-border" />
@@ -655,15 +687,16 @@ export default function HasilDetailPage() {
                             key={soal.soal_id}
                             type="button"
                             onClick={() => setNomor(soal.nomor)}
-                            aria-label={judulSoal(soal)}
+                            aria-label={`${judulSoal(soal)}${soal.is_ragu ? " (ragu-ragu)" : ""}`}
                             aria-current={isCurrent ? "true" : undefined}
-                            className={`aspect-square w-full transform rounded-lg border border-transparent font-bold transition-all duration-200 hover:scale-110 flex items-center justify-center ${
+                            className={`relative aspect-square w-full transform rounded-lg border border-transparent font-bold transition-all duration-200 hover:scale-110 flex items-center justify-center ${
                               isCurrent
                                 ? "ring-2 ring-brand-primary ring-offset-1 " + statusCls(st)
                                 : statusCls(st)
                             } text-white`}
                           >
                             {labelNomor(soal)}
+                            {soal.is_ragu && <TandaRagu />}
                           </button>
                         );
                       })}
@@ -677,6 +710,7 @@ export default function HasilDetailPage() {
                 <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-red-600" /> Salah</span>
                 <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-gray-400" /> Kosong</span>
                 <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-amber-500" /> Menunggu koreksi</span>
+                <span className="flex items-center gap-1.5"><span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-yellow-400 text-yellow-950"><Flag className="h-2 w-2" /></span> Ditandai ragu-ragu</span>
               </div>
             </div>
           </div>

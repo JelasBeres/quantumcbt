@@ -64,6 +64,8 @@ class HasilSoalDetail(BaseModel):
     skor_manual: Optional[float] = None
     pembahasan: Optional[str] = None
     is_dijawab: bool = True
+    # Penanda ragu-ragu dari siswa saat mengerjakan (ditampilkan di riwayat/pembahasan).
+    is_ragu: bool = False
 
 
 class HasilUjianDetailOut(BaseModel):

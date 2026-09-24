@@ -19,7 +19,10 @@ Dokumen ini menggantikan aturan 17 September yang bertentangan.
 
 ## Riwayat bertingkat
 
-- Riwayat mengikuti menu Tryout: **Riwayat → Kategori (UTBK) → Tryout (UTBK 1) → Mapel (PU, dst.) → Pembahasan mapel itu**.
+- Halaman Riwayat dimulai dengan **dua card: Tryout dan Latihan** (menggantikan aturan 17 September "riwayat hanya Tryout").
+- **Tryout**: Riwayat → Tryout → Kategori (UTBK) → Tryout (UTBK 1) → Mapel (PU, dst.) → Pembahasan mapel itu (`/siswa/riwayat/tryout/...`).
+- **Latihan**: Riwayat → Latihan → Kategori → daftar sesi latihan (paket, mapel, Mode Ujian/Drilling, nilai, benar/salah/kosong) → Pembahasan (`/siswa/riwayat/latihan/...`, API `GET /siswa/riwayat-latihan`). Latihan per-mapel dari paket tryout ikut grup Latihan.
+- **Ragu-ragu** tampil di riwayat: jumlah soal ragu-ragu di daftar tryout/latihan dan per mapel; di pembahasan ada bendera kuning di pojok nomor soal, label "Ragu-ragu" pada soal, dan hitungannya di ringkasan.
 - Halaman mapel menampilkan set soal per mapel beserta jumlah benar/salah/kosong; tombol **Lihat Pembahasan** membuka pembahasan yang hanya berisi soal mapel tersebut, tersedia juga pembahasan semua mapel.
 
 ## Esai belum dinilai

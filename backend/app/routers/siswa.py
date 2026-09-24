@@ -1,7 +1,7 @@
 from typing import Dict, List
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app.core.security import get_current_active_user, get_password_hash, require_roles
@@ -27,6 +27,7 @@ from app.schemas.siswa import (
     SiswaJadwalUjianOut,
     SiswaOut,
     SiswaProfilUpdate,
+    SiswaRiwayatLatihanOut,
     SiswaRiwayatUjianOut,
 )
 
@@ -369,6 +370,66 @@ def get_siswa_riwayat_ujian(db: Session = Depends(get_db), current_user=Depends(
                 skala=(hasil.skor_per_pelajaran_json or {}).get("_meta", {}).get("skala") if hasil else None,
                 skor_mentah=(hasil.skor_per_pelajaran_json or {}).get("_meta", {}).get("skor_mentah") if hasil else None,
                 metadata=(hasil.skor_per_pelajaran_json or {}).get("_meta") if hasil else None,
+            )
+        )
+    return rows
+
+
+@router.get("/riwayat-latihan", response_model=List[SiswaRiwayatLatihanOut])
+def get_siswa_riwayat_latihan(db: Session = Depends(get_db), current_user=Depends(require_roles(["siswa"]))):
+    siswa = get_current_siswa_profile(db, current_user)
+    # Latihan = tanpa jadwal: semua sesi paket latihan, plus latihan per-mapel
+    # dari paket tryout (latihan_bagian_id terisi). Tryout berjadwal ada di
+    # /riwayat-ujian.
+    ujian_list = (
+        db.query(UjianSiswa)
+        .join(PaketUjian, PaketUjian.id == UjianSiswa.paket_ujian_id)
+        .filter(
+            UjianSiswa.siswa_id == siswa.id,
+            UjianSiswa.is_submitted == True,
+            UjianSiswa.jadwal_ujian_id.is_(None),
+            or_(PaketUjian.tipe == "latihan", UjianSiswa.latihan_bagian_id.isnot(None)),
+        )
+        .order_by(UjianSiswa.finished_at.desc(), UjianSiswa.id.desc())
+        .all()
+    )
+    if not ujian_list:
+        return []
+    paket_ids = {ujian.paket_ujian_id for ujian in ujian_list}
+    paket_map = {paket.id: paket for paket in db.query(PaketUjian).filter(PaketUjian.id.in_(paket_ids)).all()}
+    bagian_ids = {ujian.latihan_bagian_id for ujian in ujian_list if ujian.latihan_bagian_id is not None}
+    bagian_map = {
+        bagian.id: bagian
+        for bagian in db.query(BagianPaket).filter(BagianPaket.id.in_(bagian_ids)).all()
+    } if bagian_ids else {}
+    pelajaran_ids = {bagian.pelajaran_id for bagian in bagian_map.values() if bagian.pelajaran_id is not None}
+    pelajaran_map = dict(
+        db.query(Pelajaran.id, Pelajaran.nama).filter(Pelajaran.id.in_(pelajaran_ids)).all()
+    ) if pelajaran_ids else {}
+    skor_map = dict(
+        db.query(HasilUjian.ujian_siswa_id, HasilUjian.skor)
+        .filter(HasilUjian.ujian_siswa_id.in_([ujian.id for ujian in ujian_list]))
+        .all()
+    )
+    rows: List[SiswaRiwayatLatihanOut] = []
+    for ujian in ujian_list:
+        paket = paket_map[ujian.paket_ujian_id]
+        bagian = bagian_map.get(ujian.latihan_bagian_id)
+        rows.append(
+            SiswaRiwayatLatihanOut(
+                ujian_siswa_id=ujian.id,
+                paket_ujian_id=paket.id,
+                nama_paket=paket.nama,
+                sumber="latihan" if paket.tipe == "latihan" else "tryout",
+                kategori=paket.kategori_ref.kode if paket.kategori_ref else paket.kategori,
+                kategori_nama=paket.kategori_ref.nama if paket.kategori_ref else None,
+                mode_latihan=ujian.mode_latihan or "latihan",
+                bagian_id=ujian.latihan_bagian_id,
+                bagian_nama=bagian.nama if bagian else None,
+                pelajaran_nama=pelajaran_map.get(bagian.pelajaran_id) if bagian else None,
+                started_at=ujian.started_at,
+                finished_at=ujian.finished_at,
+                skor=skor_map.get(ujian.id),
             )
         )
     return rows
