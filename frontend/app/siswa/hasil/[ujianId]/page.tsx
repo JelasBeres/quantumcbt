@@ -27,8 +27,9 @@ type Hasil = {
   calculated_at?: string | null;
 };
 
-type HasilPernyataan = { pernyataan_id: number; teks: string; urutan: number; jawaban_user?: boolean | null; jawaban_benar: boolean; is_correct: boolean };
-type HasilOpsi = { id: number; label: string; teks: string; is_benar: boolean };
+// Kunci (is_benar/jawaban_benar/is_correct) bernilai null selama kunci ditahan.
+type HasilPernyataan = { pernyataan_id: number; teks: string; urutan: number; jawaban_user?: boolean | null; jawaban_benar?: boolean | null; is_correct?: boolean | null };
+type HasilOpsi = { id: number; label: string; teks: string; is_benar?: boolean | null };
 type HasilSoalDetailItem = {
   nomor: number;
   nomor_bagian?: number | null;
@@ -53,12 +54,20 @@ type HasilDetail = {
   skor?: number | null;
   soal: HasilSoalDetailItem[];
   nama_paket?: string | null;
+  kunci_disembunyikan?: boolean;
+  kunci_tersedia_at?: string | null;
 };
 
-type Status = "benar" | "salah" | "kosong" | "menunggu";
+type Status = "benar" | "salah" | "kosong" | "menunggu" | "terjawab";
 
-function statusSoal(soal: HasilSoalDetailItem): Status {
+function statusSoal(soal: HasilSoalDetailItem, kunciDitahan = false): Status {
   if (!soal.is_dijawab && soal.jawaban_user == null) return "kosong";
+  if (kunciDitahan) {
+    // Benar/salah belum boleh diketahui selama jadwal tryout masih berjalan.
+    const jawaban = soal.jawaban_user;
+    const kosong = jawaban == null || jawaban === "" || (Array.isArray(jawaban) && jawaban.length === 0);
+    return kosong ? "kosong" : "terjawab";
+  }
   if (soal.tipe === "esai" || soal.tipe === "isian") {
     if (soal.is_correct != null) return soal.is_correct ? "benar" : "salah";
     return "menunggu";
@@ -71,6 +80,7 @@ function statusLabel(status: Status): string {
   if (status === "benar") return "BENAR";
   if (status === "salah") return "SALAH";
   if (status === "kosong") return "TIDAK DIJAWAB";
+  if (status === "terjawab") return "TERJAWAB";
   return "MENUNGGU KOREKSI";
 }
 
@@ -80,6 +90,7 @@ function statusCls(status: Status): string {
   if (status === "benar") return "bg-blue-600";
   if (status === "salah") return "bg-red-600";
   if (status === "kosong") return "bg-gray-400";
+  if (status === "terjawab") return "bg-slate-500";
   return "bg-amber-500";
 }
 
@@ -164,9 +175,11 @@ export default function HasilDetailPage() {
       .finally(() => setLoading(false));
   }, [params.ujianId]);
 
-  const jumlahBenar = useMemo(() => (detail?.soal ?? []).filter((s) => statusSoal(s) === "benar").length, [detail]);
-  const jumlahSalah = useMemo(() => (detail?.soal ?? []).filter((s) => statusSoal(s) === "salah").length, [detail]);
-  const jumlahKosong = useMemo(() => (detail?.soal ?? []).filter((s) => statusSoal(s) === "kosong").length, [detail]);
+  const kunciDitahan = !!detail?.kunci_disembunyikan;
+  const jumlahBenar = useMemo(() => (detail?.soal ?? []).filter((s) => statusSoal(s, kunciDitahan) === "benar").length, [detail, kunciDitahan]);
+  const jumlahSalah = useMemo(() => (detail?.soal ?? []).filter((s) => statusSoal(s, kunciDitahan) === "salah").length, [detail, kunciDitahan]);
+  const jumlahKosong = useMemo(() => (detail?.soal ?? []).filter((s) => statusSoal(s, kunciDitahan) === "kosong").length, [detail, kunciDitahan]);
+  const jumlahTerjawab = useMemo(() => (detail?.soal ?? []).filter((s) => statusSoal(s, kunciDitahan) === "terjawab").length, [detail, kunciDitahan]);
   const totalSoal = detail?.soal.length ?? 0;
   const skor = hasil?.skor ?? detail?.skor ?? null;
 
@@ -191,7 +204,7 @@ export default function HasilDetailPage() {
   const posisiAktif = adaBagian && soalAktif && grupAktif
     ? { ke: labelNomor(soalAktif), dari: grupAktif.soal.length }
     : { ke: nomor, dari: totalSoal };
-  const statusAktif = soalAktif ? statusSoal(soalAktif) : "kosong";
+  const statusAktif = soalAktif ? statusSoal(soalAktif, kunciDitahan) : "kosong";
 
   const kirimLaporan = async (e: FormEvent) => {
     e.preventDefault();
@@ -263,7 +276,7 @@ export default function HasilDetailPage() {
                   <span className={`shrink-0 whitespace-nowrap text-[11px] font-semibold text-text-muted ${gi > 0 ? "ml-2" : ""}`}>{grup.nama}</span>
                 )}
                 {grup.soal.map((soal) => {
-                  const st = statusSoal(soal);
+                  const st = statusSoal(soal, kunciDitahan);
                   const isCurrent = soal.nomor === nomor;
                   return (
                     <button
@@ -300,8 +313,14 @@ export default function HasilDetailPage() {
             <div className="min-w-0 flex-1">
               <p className="text-[11px] font-bold uppercase tracking-wider text-text-muted">Nilai</p>
               <div className="mt-1.5 flex flex-wrap gap-2 text-xs font-semibold">
-                <span className="rounded-md bg-blue-50 px-2 py-1 text-blue-800">Benar {jumlahBenar}</span>
-                <span className="rounded-md bg-red-50 px-2 py-1 text-red-700">Salah {jumlahSalah}</span>
+                {kunciDitahan ? (
+                  <span className="rounded-md bg-slate-100 px-2 py-1 text-slate-700">Terjawab {jumlahTerjawab}</span>
+                ) : (
+                  <>
+                    <span className="rounded-md bg-blue-50 px-2 py-1 text-blue-800">Benar {jumlahBenar}</span>
+                    <span className="rounded-md bg-red-50 px-2 py-1 text-red-700">Salah {jumlahSalah}</span>
+                  </>
+                )}
                 <span className="rounded-md bg-neutral px-2 py-1 text-text-muted">Kosong {jumlahKosong}</span>
               </div>
             </div>
@@ -312,6 +331,15 @@ export default function HasilDetailPage() {
 
           {/* ===== TENGAH: REVIEW SOAL ===== */}
           <section className="order-1 min-w-0 lg:order-2">
+            {kunciDitahan && (
+              <div className="mb-4 flex items-start gap-2 rounded-card border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                <p>
+                  Kunci jawaban dan pembahasan akan tersedia setelah jadwal tryout ini berakhir
+                  {detail?.kunci_tersedia_at ? ` (${formatTanggal(detail.kunci_tersedia_at)})` : ""}.
+                </p>
+              </div>
+            )}
             {soalAktif ? (
               <div className="rounded-card border border-card-border bg-card-bg shadow-card">
                 {/* Bar info soal â€” statis, terpisah dari isi soal */}
@@ -352,17 +380,21 @@ export default function HasilDetailPage() {
                           {soalAktif.pernyataan.map((row, index) => {
                             const label = (value: boolean) => value ? soalAktif.label_benar || "Benar" : soalAktif.label_salah || "Salah";
                             return (
-                              <tr key={row.pernyataan_id} className={`border-t border-card-border align-middle ${row.is_correct ? "" : "bg-red-50"}`}>
+                              <tr key={row.pernyataan_id} className={`border-t border-card-border align-middle ${row.is_correct === false ? "bg-red-50" : ""}`}>
                                 <td className="px-3 py-3 text-center font-semibold text-text-muted">{index + 1}</td>
                                 <td className="px-3 py-3"><MathContent className="prose prose-sm max-w-none prose-p:my-0" html={row.teks} /></td>
                                 <td className="px-2 py-3 text-center">
-                                  <span className={`inline-flex items-center gap-1 font-semibold ${row.is_correct ? "text-blue-700" : "text-red-700"}`}>
-                                    {row.is_correct ? <Check className="h-4 w-4" aria-hidden="true" /> : <X className="h-4 w-4" aria-hidden="true" />}
-                                    {row.jawaban_user == null ? "-" : label(row.jawaban_user)}
-                                    <span className="sr-only">{row.is_correct ? "(benar)" : "(salah)"}</span>
-                                  </span>
+                                  {row.is_correct == null ? (
+                                    <span className="font-semibold text-body-dark">{row.jawaban_user == null ? "-" : label(row.jawaban_user)}</span>
+                                  ) : (
+                                    <span className={`inline-flex items-center gap-1 font-semibold ${row.is_correct ? "text-blue-700" : "text-red-700"}`}>
+                                      {row.is_correct ? <Check className="h-4 w-4" aria-hidden="true" /> : <X className="h-4 w-4" aria-hidden="true" />}
+                                      {row.jawaban_user == null ? "-" : label(row.jawaban_user)}
+                                      <span className="sr-only">{row.is_correct ? "(benar)" : "(salah)"}</span>
+                                    </span>
+                                  )}
                                 </td>
-                                <td className="px-2 py-3 text-center font-semibold text-body-dark">{label(row.jawaban_benar)}</td>
+                                <td className="px-2 py-3 text-center font-semibold text-body-dark">{row.jawaban_benar == null ? "-" : label(row.jawaban_benar)}</td>
                               </tr>
                             );
                           })}
@@ -384,7 +416,10 @@ export default function HasilDetailPage() {
                           style = "border-blue-200 bg-blue-50";
                           badge = <span className="text-xs font-semibold text-blue-800">Kunci jawaban</span>;
                         }
-                        if (isUser && !isBenar) {
+                        if (isUser && kunciDitahan) {
+                          style = "border-brand-primary/40 bg-brand-primary/5";
+                          badge = <span className="text-xs font-semibold text-brand-primary">Jawabanmu</span>;
+                        } else if (isUser && !isBenar) {
                           style = "border-red-200 bg-red-50";
                           badge = <span className="text-xs font-semibold text-red-700">Jawabanmu</span>;
                         }
@@ -422,6 +457,11 @@ export default function HasilDetailPage() {
                         </p>
                         <p className="mt-1 text-sm italic text-text-muted">Tidak dijawab</p>
                       </div>
+                    ) : statusAktif === "terjawab" ? (
+                      <div className="rounded-input border border-card-border bg-neutral p-3.5">
+                        <p className="text-xs font-bold text-body-dark">Jawaban Anda</p>
+                        <p className="mt-1 text-sm font-medium text-heading-dark">{teksJawabanUser(soalAktif)}</p>
+                      </div>
                     ) : (
                       <div className="rounded-input border border-amber-200 bg-amber-50 p-3.5">
                         <p className="flex items-center gap-1.5 text-xs font-bold text-amber-700">
@@ -435,7 +475,7 @@ export default function HasilDetailPage() {
                     )}
                   </div>}
 
-                  {!(soalAktif.tipe === "benar_salah" && soalAktif.pernyataan?.length) && (statusAktif === "salah" || statusAktif === "kosong") && (
+                  {!kunciDitahan && !(soalAktif.tipe === "benar_salah" && soalAktif.pernyataan?.length) && (statusAktif === "salah" || statusAktif === "kosong") && (
                     <div>
                       <p className="mb-1.5 text-xs font-bold uppercase tracking-wider text-text-muted">Jawaban Benar</p>
                       <div className="rounded-input border border-blue-200 bg-blue-50 p-3.5">
@@ -500,6 +540,15 @@ export default function HasilDetailPage() {
 
               <p className="text-[11px] font-bold uppercase tracking-wider text-text-muted">Ringkasan</p>
               <div className="mt-2 space-y-2">
+                {kunciDitahan ? (
+                <div className="flex items-center justify-between rounded-input bg-slate-100 px-3 py-2">
+                  <span className="flex items-center gap-2 text-sm text-slate-700">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-500 text-white"><Check className="h-3 w-3" /></span>
+                    Terjawab
+                  </span>
+                  <span className="text-sm font-bold text-slate-700">{jumlahTerjawab}</span>
+                </div>
+                ) : (<>
                 <div className="flex items-center justify-between rounded-input bg-blue-50 px-3 py-2">
                   <span className="flex items-center gap-2 text-sm text-blue-800">
                     <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-white"><Check className="h-3 w-3" /></span>
@@ -514,6 +563,7 @@ export default function HasilDetailPage() {
                   </span>
                   <span className="text-sm font-bold text-red-700">{jumlahSalah}</span>
                 </div>
+                </>)}
                 <div className="flex items-center justify-between rounded-input bg-neutral px-3 py-2">
                   <span className="flex items-center gap-2 text-sm text-text-muted">
                     <span className="flex h-5 w-5 items-center justify-center rounded-full bg-gray-400 text-white"><X className="h-3 w-3" /></span>
@@ -581,7 +631,7 @@ export default function HasilDetailPage() {
                     )}
                     <div className="grid grid-cols-4 gap-2">
                       {grup.soal.map((soal) => {
-                        const st = statusSoal(soal);
+                        const st = statusSoal(soal, kunciDitahan);
                         const isCurrent = soal.nomor === nomor;
                         return (
                           <button

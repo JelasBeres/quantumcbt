@@ -33,6 +33,11 @@ npm ci --no-audit --no-fund
 npm run build
 EOF
 
+# Timer auto-submit ujian yang waktunya habis (siswa menutup browser, dsb).
+install -m 644 "$APP_DIR/deploy/quantumcbt-autosubmit.service" "$APP_DIR/deploy/quantumcbt-autosubmit.timer" /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable --now quantumcbt-autosubmit.timer
+
 systemctl restart quantumcbt-backend
 systemctl restart quantumcbt-frontend
 sleep 5

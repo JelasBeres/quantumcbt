@@ -10,6 +10,8 @@ class OpsiJawabanCreate(BaseModel):
 
 
 class OpsiJawabanNestedCreate(BaseModel):
+    # id opsi yang sudah ada: dipertahankan agar jawaban siswa (disimpan sebagai id opsi) tetap valid.
+    id: Optional[int] = None
     teks_opsi: str
     is_benar: bool = False
     urutan: Optional[int] = None

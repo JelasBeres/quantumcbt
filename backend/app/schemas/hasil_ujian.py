@@ -23,7 +23,8 @@ class HasilSoalOpsi(BaseModel):
     id: int
     label: str
     teks: str
-    is_benar: bool
+    # None saat kunci disembunyikan (jadwal tryout paket ini belum berakhir).
+    is_benar: Optional[bool] = None
 
 
 class HasilPernyataanDetail(BaseModel):
@@ -31,8 +32,8 @@ class HasilPernyataanDetail(BaseModel):
     teks: str
     urutan: int
     jawaban_user: Optional[bool] = None
-    jawaban_benar: bool
-    is_correct: bool
+    jawaban_benar: Optional[bool] = None
+    is_correct: Optional[bool] = None
 
 
 class HasilSoalDetail(BaseModel):
@@ -66,3 +67,7 @@ class HasilUjianDetailOut(BaseModel):
     skala: Optional[str] = None
     skor_mentah: Optional[int] = None
     metadata: Optional[Dict[str, Any]] = None
+    # True bila kunci, status benar/salah, dan pembahasan ditahan untuk siswa
+    # karena masih ada jadwal tryout paket ini yang belum berakhir.
+    kunci_disembunyikan: bool = False
+    kunci_tersedia_at: Optional[datetime] = None

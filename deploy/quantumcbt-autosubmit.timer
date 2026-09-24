@@ -1,0 +1,11 @@
+[Unit]
+Description=Jalankan auto-submit QuantumCBT tiap menit
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=1min
+AccuracySec=5s
+Unit=quantumcbt-autosubmit.service
+
+[Install]
+WantedBy=timers.target

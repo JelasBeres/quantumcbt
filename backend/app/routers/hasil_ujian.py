@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 import json
 
@@ -5,8 +6,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.security import get_current_active_user
+from app.core.timeutils import ensure_utc, utc_now
 from app.db.database import get_db
 from app.models.hasil_ujian import HasilUjian
+from app.models.jadwal_ujian import JadwalUjian
 from app.models.jawaban_siswa import JawabanSiswa
 from app.models.opsi_jawaban import OpsiJawaban
 from app.models.pernyataan_benar_salah import PernyataanBenarSalah
@@ -32,6 +35,31 @@ def authorize_hasil_access(ujian: UjianSiswa, current_user, db: Session) -> None
         linked_siswa = db.query(Siswa).filter(Siswa.id == ujian.siswa_id, Siswa.user_id == current_user.id).first()
         if not linked_siswa:
             raise HTTPException(status_code=403, detail="Insufficient permissions")
+
+
+def kunci_ditahan(db: Session, paket: Optional[PaketUjian]) -> tuple[bool, Optional[datetime]]:
+    """Kunci & pembahasan tryout ditahan selama masih ada jadwal (terbit) untuk
+    paket ini yang belum berakhir, agar siswa yang selesai lebih dulu tidak bisa
+    membagikan kunci ke peserta yang masih/akan mengerjakan soal yang sama.
+    Mengembalikan (ditahan, waktu kunci tersedia; None bila jadwal tanpa batas)."""
+    if not paket or paket.tipe != "ujian":
+        return False, None
+    now = utc_now()
+    rows = (
+        db.query(JadwalUjian.selesai)
+        .filter(
+            JadwalUjian.paket_ujian_id == paket.id,
+            JadwalUjian.is_deleted == False,
+            JadwalUjian.is_published == True,
+        )
+        .all()
+    )
+    belum_berakhir = [ensure_utc(selesai) for (selesai,) in rows if selesai is None or ensure_utc(selesai) > now]
+    if not belum_berakhir:
+        return False, None
+    if any(selesai is None for selesai in belum_berakhir):
+        return True, None
+    return True, max(belum_berakhir)
 
 
 @router.post("/", response_model=HasilUjianOut)
@@ -107,6 +135,7 @@ def get_hasil_detail(
 
     paket = db.query(PaketUjian).filter(PaketUjian.id == ujian.paket_ujian_id).first()
     metadata = (hasil.skor_per_pelajaran_json or {}).get("_meta", {}) if hasil else {}
+    sembunyikan, kunci_tersedia_at = kunci_ditahan(db, paket) if current_user.role == "siswa" else (False, None)
 
     soal_detail: List[HasilSoalDetail] = []
     if not ujian.soal_urutan:
@@ -203,8 +232,13 @@ def get_hasil_detail(
         elif soal.tipe == "isian" and soal.kunci_jawaban:
             jawaban_benar = soal.kunci_jawaban
             jawaban_user = jawaban.jawaban if jawaban else None
-            from app.services.scoring import _isian_cocok_kunci
-            is_correct = bool(jawaban_user) and _isian_cocok_kunci(soal.kunci_jawaban, jawaban_user)
+            if jawaban and jawaban.dinilai_oleh is not None and jawaban.skor_manual is not None:
+                # Selaras dengan scoring: koreksi manual guru menang atas kunci otomatis.
+                skor_manual = jawaban.skor_manual
+                is_correct = jawaban.skor_manual >= 60
+            else:
+                from app.services.scoring import _isian_cocok_kunci
+                is_correct = bool(jawaban_user) and _isian_cocok_kunci(soal.kunci_jawaban, jawaban_user)
         else:
             jawaban_user = jawaban.jawaban if jawaban else None
             skor_manual = jawaban.skor_manual if jawaban else None
@@ -232,6 +266,16 @@ def get_hasil_detail(
             )
         )
 
+    if sembunyikan:
+        for item in soal_detail:
+            item.opsi = [opsi.model_copy(update={"is_benar": None}) for opsi in item.opsi]
+            item.pernyataan = [
+                row.model_copy(update={"jawaban_benar": None, "is_correct": None}) for row in item.pernyataan
+            ]
+            item.jawaban_benar = None
+            item.is_correct = None
+            item.pembahasan = None
+
     return HasilUjianDetailOut(
         ujian_siswa_id=ujian.id,
         skor=hasil.skor if hasil else None,
@@ -242,6 +286,8 @@ def get_hasil_detail(
         skala=metadata.get("skala"),
         skor_mentah=metadata.get("skor_mentah"),
         metadata=metadata,
+        kunci_disembunyikan=sembunyikan,
+        kunci_tersedia_at=kunci_tersedia_at,
     )
 
 

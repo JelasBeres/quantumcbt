@@ -1,9 +1,11 @@
-from typing import List
+from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict
 
 
 class PernyataanBenarSalahCreate(BaseModel):
+    # id pernyataan yang sudah ada: dipertahankan agar jawaban siswa tetap valid.
+    id: Optional[int] = None
     teks_pernyataan: str
     is_benar: bool
 

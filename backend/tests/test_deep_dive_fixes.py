@@ -1,0 +1,261 @@
+"""Regresi hasil deep-dive 2026-09-24: edit soal approved, waktu habis antar
+bagian, nilai manual isian, kunci ditahan selama jadwal, dan auto-submit."""
+
+from datetime import timedelta
+
+from fastapi.testclient import TestClient
+
+from app.core.security import get_password_hash
+from app.core.timeutils import utc_now
+from app.db.database import SessionLocal
+from app.main import app
+from app.models.bagian_paket import BagianPaket
+from app.models.hasil_ujian import HasilUjian
+from app.models.jadwal_ujian import JadwalUjian
+from app.models.jawaban_siswa import JawabanSiswa
+from app.models.opsi_jawaban import OpsiJawaban
+from app.models.paket_soal import PaketSoal
+from app.models.paket_ujian import PaketUjian
+from app.models.pernyataan_benar_salah import PernyataanBenarSalah
+from app.models.siswa import Siswa
+from app.models.soal import Soal
+from app.models.ujian_siswa import UjianSiswa
+from app.models.user import User
+from app.scripts.auto_submit_expired import auto_submit_expired_ujian
+from support import active_schedule_id, default_program_id
+
+client = TestClient(app)
+
+
+def _login(username, role, program=None):
+    with SessionLocal() as db:
+        user = User(username=username, password_hash=get_password_hash("Rahasia123"), role=role)
+        db.add(user)
+        db.flush()
+        if role == "siswa":
+            db.add(Siswa(user_id=user.id, nama_lengkap=username, program_id=program))
+        db.commit()
+    token = client.post("/auth/login", json={"username": username, "password": "Rahasia123"}).json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
+def _paket_pg(program, tipe="ujian", sections=1, durasi=30, bagian_durasi=30):
+    with SessionLocal() as db:
+        paket = PaketUjian(nama="Deep dive", tipe=tipe, durasi_menit=durasi, program_id=program,
+                           is_random_soal=False, is_random_opsi=False)
+        db.add(paket)
+        db.flush()
+        soal_ids = []
+        for i in range(sections):
+            bagian = BagianPaket(paket_ujian_id=paket.id, nama=f"Bagian {i}", urutan=i + 1,
+                                 durasi_menit=bagian_durasi, status="approved")
+            db.add(bagian)
+            db.flush()
+            soal = Soal(teks_soal=f"Soal {i}", tipe="pilihan_ganda", status="approved")
+            db.add(soal)
+            db.flush()
+            db.add_all([
+                OpsiJawaban(soal_id=soal.id, teks_opsi="benar", is_benar=True, urutan=1),
+                OpsiJawaban(soal_id=soal.id, teks_opsi="salah", is_benar=False, urutan=2),
+            ])
+            db.add(PaketSoal(paket_ujian_id=paket.id, soal_id=soal.id, urutan=i + 1, bagian_paket_id=bagian.id))
+            soal_ids.append(soal.id)
+        paket.jumlah_soal = sections
+        db.commit()
+        return paket.id, soal_ids
+
+
+def _seed_higher_ids():
+    # Postgres tidak pernah memakai ulang id yang dihapus; SQLite memakai ulang
+    # max(id)+1. Baris dengan id lebih tinggi membuat SQLite berperilaku sama.
+    with SessionLocal() as db:
+        other = Soal(teks_soal="pengganjal id", tipe="benar_salah", status="draft")
+        db.add(other)
+        db.flush()
+        db.add(OpsiJawaban(soal_id=other.id, teks_opsi="x", is_benar=True, urutan=1))
+        db.add(PernyataanBenarSalah(soal_id=other.id, teks_pernyataan="x", urutan=1, is_benar=True))
+        db.commit()
+
+
+def _correct_opsi(soal_id):
+    with SessionLocal() as db:
+        return db.query(OpsiJawaban.id).filter(OpsiJawaban.soal_id == soal_id, OpsiJawaban.is_benar == True).scalar()
+
+
+def test_edit_opsi_soal_approved_tidak_menolkan_jawaban_siswa():
+    program = default_program_id()
+    siswa = _login("dd-siswa1", "siswa", program)
+    admin = _login("dd-admin1", "admin")
+    paket, [soal_id] = _paket_pg(program)
+    jadwal = active_schedule_id(paket)
+    ujian = client.post("/ujian-siswa/mulai", headers=siswa, json={"jadwal_ujian_id": jadwal}).json()["ujian_siswa_id"]
+    benar = _correct_opsi(soal_id)
+    assert client.post(f"/ujian-siswa/{ujian}/jawab", headers=siswa, json={"soal_id": soal_id, "opsi_jawaban_id": benar}).status_code == 200
+    assert client.patch(f"/ujian-siswa/{ujian}/submit", headers=siswa).status_code == 200
+    _seed_higher_ids()
+
+    opsi = client.get(f"/soal/{soal_id}", headers=admin).json()["opsi_jawaban"]
+    opsi[0]["teks_opsi"] = "benar (typo diperbaiki)"
+    response = client.put(f"/soal/{soal_id}/opsi", headers=admin, json={"opsi": opsi})
+    assert response.status_code == 200, response.text
+    assert [item["id"] for item in response.json()] == [item["id"] for item in opsi]
+
+    recomputed = client.post(f"/hasil-ujian/{ujian}/compute", headers=admin)
+    assert recomputed.status_code == 200, recomputed.text
+    assert recomputed.json()["skor"] == 100.0
+
+
+def test_edit_opsi_tanpa_id_dipasangkan_per_posisi_dan_hapus_opsi():
+    program = default_program_id()
+    admin = _login("dd-admin2", "admin")
+    _, [soal_id] = _paket_pg(program)
+    _seed_higher_ids()
+    before = client.get(f"/soal/{soal_id}", headers=admin).json()["opsi_jawaban"]
+
+    # Payload lama (tanpa id) tetap memakai baris yang sama per posisi.
+    legacy = client.put(f"/soal/{soal_id}/opsi", headers=admin, json={"opsi": [
+        {"teks_opsi": "A", "is_benar": True}, {"teks_opsi": "B", "is_benar": False}]})
+    assert [item["id"] for item in legacy.json()] == [item["id"] for item in before]
+
+    # Opsi yang dibuang dihapus, opsi baru dibuat.
+    keep = before[0]
+    changed = client.put(f"/soal/{soal_id}/opsi", headers=admin, json={"opsi": [
+        {"id": keep["id"], "teks_opsi": "A", "is_benar": True}, {"teks_opsi": "C baru", "is_benar": False}]})
+    assert changed.status_code == 200, changed.text
+    ids = [item["id"] for item in changed.json()]
+    assert ids[0] == keep["id"] and ids[1] not in {item["id"] for item in before}
+    with SessionLocal() as db:
+        assert db.query(OpsiJawaban).filter(OpsiJawaban.soal_id == soal_id).count() == 2
+
+
+def test_edit_pernyataan_mempertahankan_id_dan_boleh_ditukar_urutannya():
+    admin = _login("dd-admin3", "admin")
+    with SessionLocal() as db:
+        soal = Soal(teks_soal="BS", tipe="benar_salah", status="approved", label_benar="Benar", label_salah="Salah")
+        db.add(soal)
+        db.flush()
+        db.add_all([
+            PernyataanBenarSalah(soal_id=soal.id, teks_pernyataan="P1", urutan=1, is_benar=True),
+            PernyataanBenarSalah(soal_id=soal.id, teks_pernyataan="P2", urutan=2, is_benar=False),
+        ])
+        db.commit()
+        soal_id = soal.id
+    _seed_higher_ids()
+    rows = client.get(f"/soal/{soal_id}", headers=admin).json()["pernyataan"]
+    response = client.put(f"/soal/{soal_id}/pernyataan-benar-salah", headers=admin, json={
+        "label_benar": "Benar", "label_salah": "Salah",
+        "pernyataan": [
+            {"id": rows[1]["id"], "teks_pernyataan": "P2", "is_benar": False},
+            {"id": rows[0]["id"], "teks_pernyataan": "P1 revisi", "is_benar": True},
+        ],
+    })
+    assert response.status_code == 200, response.text
+    out = response.json()["pernyataan"]
+    assert [row["id"] for row in out] == [rows[1]["id"], rows[0]["id"]]
+    assert [row["urutan"] for row in out] == [1, 2]
+
+
+def test_waktu_total_habis_di_bagian_non_terakhir_memberi_sinyal_kumpulkan():
+    program = default_program_id()
+    siswa = _login("dd-siswa4", "siswa", program)
+    # Durasi paket (10) lebih kecil dari jumlah durasi bagian (2 x 30).
+    paket, _ = _paket_pg(program, sections=2, durasi=10, bagian_durasi=30)
+    jadwal = active_schedule_id(paket)
+    ujian = client.post("/ujian-siswa/mulai", headers=siswa, json={"jadwal_ujian_id": jadwal}).json()["ujian_siswa_id"]
+    before = client.get(f"/ujian-siswa/{ujian}/sisa-waktu", headers=siswa).json()
+    assert before["bagian_terakhir"] is False
+
+    with SessionLocal() as db:
+        db.get(UjianSiswa, ujian).started_at = utc_now() - timedelta(minutes=11)
+        db.commit()
+    after = client.get(f"/ujian-siswa/{ujian}/sisa-waktu", headers=siswa).json()
+    assert after["sisa_waktu_detik"] == 0
+    assert after["bagian_terakhir"] is True
+    assert client.get(f"/ujian-siswa/{ujian}/state", headers=siswa).json()["bagian_terakhir"] is True
+    assert client.patch(f"/ujian-siswa/{ujian}/submit", headers=siswa).status_code == 200
+
+
+def test_nilai_manual_guru_untuk_isian_tidak_tertimpa_kunci_otomatis():
+    program = default_program_id()
+    siswa = _login("dd-siswa5", "siswa", program)
+    admin = _login("dd-admin5", "admin")
+    with SessionLocal() as db:
+        paket = PaketUjian(nama="Isian", tipe="latihan", durasi_menit=30, program_id=program, is_random_soal=False)
+        db.add(paket)
+        db.flush()
+        soal = Soal(teks_soal="1/2 = ?", tipe="isian", status="approved", kunci_jawaban="0.5")
+        db.add(soal)
+        db.flush()
+        db.add(PaketSoal(paket_ujian_id=paket.id, soal_id=soal.id, urutan=1))
+        paket.jumlah_soal = 1
+        db.commit()
+        paket_id, soal_id = paket.id, soal.id
+    ujian = client.post("/ujian-siswa/mulai-latihan", headers=siswa, json={"paket_ujian_id": paket_id}).json()["ujian_siswa_id"]
+    client.post(f"/ujian-siswa/{ujian}/jawab", headers=siswa, json={"soal_id": soal_id, "jawaban_teks": "0,5"})
+    client.patch(f"/ujian-siswa/{ujian}/submit", headers=siswa)
+    with SessionLocal() as db:
+        jawaban_id = db.query(JawabanSiswa.id).filter(JawabanSiswa.ujian_siswa_id == ujian).scalar()
+        assert db.query(HasilUjian.skor).filter(HasilUjian.ujian_siswa_id == ujian).scalar() == 0.0
+
+    graded = client.patch(f"/jawaban-siswa/{jawaban_id}/nilai", headers=admin, json={"skor_manual": 100})
+    assert graded.status_code == 200, graded.text
+    assert client.post(f"/hasil-ujian/{ujian}/compute", headers=admin).json()["skor"] == 100.0
+    with SessionLocal() as db:
+        assert db.get(JawabanSiswa, jawaban_id).skor_manual == 100
+    detail = client.get(f"/hasil-ujian/ujian/{ujian}/detail", headers=siswa).json()
+    assert detail["soal"][0]["is_correct"] is True
+
+
+def test_kunci_dan_pembahasan_ditahan_selama_jadwal_tryout_berjalan():
+    program = default_program_id()
+    siswa = _login("dd-siswa6", "siswa", program)
+    admin = _login("dd-admin6", "admin")
+    paket, [soal_id] = _paket_pg(program)
+    with SessionLocal() as db:
+        db.get(Soal, soal_id).pembahasan = "Karena benar."
+        db.commit()
+    jadwal = active_schedule_id(paket)
+    ujian = client.post("/ujian-siswa/mulai", headers=siswa, json={"jadwal_ujian_id": jadwal}).json()["ujian_siswa_id"]
+    client.post(f"/ujian-siswa/{ujian}/jawab", headers=siswa, json={"soal_id": soal_id, "opsi_jawaban_id": _correct_opsi(soal_id)})
+    client.patch(f"/ujian-siswa/{ujian}/submit", headers=siswa)
+
+    hidden = client.get(f"/hasil-ujian/ujian/{ujian}/detail", headers=siswa).json()
+    assert hidden["kunci_disembunyikan"] is True
+    assert hidden["kunci_tersedia_at"] is not None
+    item = hidden["soal"][0]
+    assert item["pembahasan"] is None and item["is_correct"] is None and item["jawaban_benar"] is None
+    assert all(opsi["is_benar"] is None for opsi in item["opsi"])
+    assert item["jawaban_user"] is not None
+
+    # Admin/guru tetap melihat kunci.
+    assert client.get(f"/hasil-ujian/ujian/{ujian}/detail", headers=admin).json()["kunci_disembunyikan"] is False
+
+    with SessionLocal() as db:
+        db.get(JadwalUjian, jadwal).selesai = utc_now() - timedelta(minutes=1)
+        db.commit()
+    shown = client.get(f"/hasil-ujian/ujian/{ujian}/detail", headers=siswa).json()
+    assert shown["kunci_disembunyikan"] is False
+    assert shown["soal"][0]["pembahasan"] == "Karena benar."
+    assert shown["soal"][0]["is_correct"] is True
+
+
+def test_auto_submit_melewati_drill_dan_mengumpulkan_tryout_yang_habis():
+    program = default_program_id()
+    siswa = _login("dd-siswa7", "siswa", program)
+    latihan, _ = _paket_pg(program, tipe="latihan", durasi=1)
+    drill = client.post("/ujian-siswa/mulai-latihan", headers=siswa, json={"paket_ujian_id": latihan, "mode": "drill"}).json()["ujian_siswa_id"]
+    tryout, _ = _paket_pg(program, durasi=30)
+    jadwal = active_schedule_id(tryout)
+    ujian = client.post("/ujian-siswa/mulai", headers=siswa, json={"jadwal_ujian_id": jadwal}).json()["ujian_siswa_id"]
+    with SessionLocal() as db:
+        db.get(UjianSiswa, drill).started_at = utc_now() - timedelta(hours=2)
+        db.get(UjianSiswa, ujian).started_at = utc_now() - timedelta(minutes=31)
+        db.commit()
+
+    submitted, errors = auto_submit_expired_ujian()
+
+    assert (submitted, errors) == (1, 0)
+    with SessionLocal() as db:
+        assert db.get(UjianSiswa, drill).is_submitted is False
+        assert db.get(UjianSiswa, ujian).is_submitted is True
+        assert db.query(HasilUjian).filter(HasilUjian.ujian_siswa_id == ujian).first() is not None

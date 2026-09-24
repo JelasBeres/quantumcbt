@@ -29,4 +29,6 @@ Commit perubahan, lalu jalankan `bash deploy/deploy.sh`.
 ```bash
 systemctl status quantumcbt-backend quantumcbt-frontend
 journalctl -u quantumcbt-backend -f
+systemctl list-timers quantumcbt-autosubmit.timer   # auto-submit ujian yang waktunya habis, tiap menit
+journalctl -u quantumcbt-autosubmit -n 50
 ```

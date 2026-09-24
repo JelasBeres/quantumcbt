@@ -76,8 +76,9 @@ chown "$APP_USER:$APP_USER" "$APP_DIR/frontend.env"
 
 install -m 644 "$HERE/quantumcbt-backend.service" /etc/systemd/system/
 install -m 644 "$HERE/quantumcbt-frontend.service" /etc/systemd/system/
+install -m 644 "$HERE/quantumcbt-autosubmit.service" "$HERE/quantumcbt-autosubmit.timer" /etc/systemd/system/
 systemctl daemon-reload
-systemctl enable quantumcbt-backend quantumcbt-frontend
+systemctl enable quantumcbt-backend quantumcbt-frontend quantumcbt-autosubmit.timer
 
 sed "s/__DOMAIN__/$DOMAIN/g" "$HERE/nginx.conf" > /etc/nginx/sites-available/quantumcbt
 ln -sf /etc/nginx/sites-available/quantumcbt /etc/nginx/sites-enabled/quantumcbt

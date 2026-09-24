@@ -10,8 +10,10 @@ import { Pelajaran, Kelas, Subbab, Topik } from "@/lib/types";
 
 const OPSI_LABEL = ["A", "B", "C", "D", "E", "F", "G", "H"];
 
-type LocalOpsi = { teks_opsi: string; is_benar: boolean };
-type LocalPernyataan = { teks_pernyataan: string; is_benar: boolean };
+// `id` ikut dikirim balik saat edit agar backend memperbarui opsi/pernyataan in-place
+// (jawaban siswa merujuk id tersebut).
+type LocalOpsi = { id?: number; teks_opsi: string; is_benar: boolean };
+type LocalPernyataan = { id?: number; teks_pernyataan: string; is_benar: boolean };
 
 const opsiKosong = (): LocalOpsi => ({ teks_opsi: "", is_benar: false });
 const pernyataanKosong = (): LocalPernyataan => ({ teks_pernyataan: "", is_benar: true });

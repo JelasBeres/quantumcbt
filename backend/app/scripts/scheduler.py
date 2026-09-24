@@ -37,9 +37,9 @@ def run_scheduler():
     """
     Run auto-submit scheduler in infinite loop
     """
-    print(f"🚀 Auto-submit scheduler started at {utc_now()}")
-    print(f"⏰ Check interval: {CHECK_INTERVAL_SECONDS} seconds")
-    print(f"📝 Mode: {'DEBUG' if DEBUG_MODE else 'PRODUCTION'}")
+    print(f"Auto-submit scheduler started at {utc_now()}")
+    print(f"Check interval: {CHECK_INTERVAL_SECONDS} seconds")
+    print(f"Mode: {'DEBUG' if DEBUG_MODE else 'PRODUCTION'}")
     print(f"")
     print(f"Press CTRL+C to stop...")
     print(f"-" * 60)
@@ -57,22 +57,22 @@ def run_scheduler():
                 submitted, errors = auto_submit_expired_ujian()
                 
                 if submitted > 0 or errors > 0:
-                    print(f"[{iteration}] ✅ Submitted: {submitted}, ❌ Errors: {errors}")
+                    print(f"[{iteration}] Submitted: {submitted}, Errors: {errors}")
                 elif DEBUG_MODE:
                     print(f"[{iteration}] No expired ujian found")
                     
             except Exception as e:
-                print(f"[{iteration}] ❌ Error in scheduler loop: {e}")
+                print(f"[{iteration}] [ERROR] in scheduler loop: {e}")
                 
             # Sleep until next check
             time.sleep(CHECK_INTERVAL_SECONDS)
             
     except KeyboardInterrupt:
-        print(f"\n\n🛑 Scheduler stopped by user at {utc_now()}")
-        print(f"📊 Total iterations: {iteration}")
+        print(f"\n\nScheduler stopped by user at {utc_now()}")
+        print(f"Total iterations: {iteration}")
         sys.exit(0)
     except Exception as e:
-        print(f"\n\n❌ Fatal error in scheduler: {e}")
+        print(f"\n\n[FATAL] error in scheduler: {e}")
         sys.exit(1)
 
 

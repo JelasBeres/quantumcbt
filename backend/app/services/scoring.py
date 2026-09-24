@@ -220,6 +220,11 @@ def _evaluate_question(
         )
 
     if soal.tipe == "isian" and soal.kunci_jawaban:
+        if jawaban is not None and jawaban.dinilai_oleh is not None and jawaban.skor_manual is not None:
+            # Koreksi manual guru (mis. menerima "0,5" untuk kunci "0.5") menang
+            # atas pencocokan kunci otomatis. dinilai_oleh direset ke None saat
+            # siswa mengubah jawaban, sehingga auto-scoring berlaku lagi.
+            return evaluate_answer(soal.tipe, jawaban.jawaban, manual_score=jawaban.skor_manual)
         result = evaluate_answer(
             soal.tipe,
             jawaban.jawaban if jawaban else None,

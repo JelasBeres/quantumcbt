@@ -19,7 +19,7 @@ type Riwayat = {
   skala?: "utbk" | "tka" | null;
 };
 
-type StatusRingkasan = { benar: number; salah: number; kosong: number; menunggu: number };
+type StatusRingkasan = { benar: number; salah: number; kosong: number; menunggu: number; ditahan?: boolean };
 
 // Samakan logika status per soal dengan halaman hasil, supaya benar+salah+kosong+menunggu selalu = total soal.
 function statusSoal(soal: any): "benar" | "salah" | "kosong" | "menunggu" {
@@ -65,7 +65,7 @@ export default function RiwayatPage() {
                   acc[statusSoal(s)] += 1;
                   return acc;
                 },
-                { benar: 0, salah: 0, kosong: 0, menunggu: 0 } as StatusRingkasan
+                { benar: 0, salah: 0, kosong: 0, menunggu: 0, ditahan: !!detail.data?.kunci_disembunyikan } as StatusRingkasan
               );
             } catch {
               summaries[item.ujian_siswa_id] = { benar: 0, salah: 0, kosong: 0, menunggu: 0 };
@@ -114,7 +114,10 @@ export default function RiwayatPage() {
                       </p>
                     </div>
                     <div className="flex flex-wrap items-center gap-4">
-                      {ringkas && (
+                      {ringkas?.ditahan && (
+                        <p className="text-xs font-semibold text-amber-700">Kunci & pembahasan tersedia setelah jadwal berakhir</p>
+                      )}
+                      {ringkas && !ringkas.ditahan && (
                         <div className="flex items-center gap-3 text-xs text-text-muted">
                           <span className="font-semibold text-green-700">✓ {ringkas.benar} benar</span>
                           <span className="font-semibold text-red-700">× {ringkas.salah} salah</span>

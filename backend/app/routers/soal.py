@@ -153,6 +153,45 @@ def validate_opsi_for_tipe(tipe: str, opsi_payload: List[OpsiJawabanNestedCreate
     return opsi_valid
 
 
+def _sync_child_rows(db: Session, existing: list, items: list, make_row) -> list:
+    """Sinkronkan baris opsi/pernyataan milik soal secara in-place.
+
+    Jawaban siswa menyimpan id opsi/pernyataan, jadi baris lama WAJIB
+    dipertahankan (bukan hapus-lalu-buat-ulang); kalau tidak, semua jawaban
+    yang sudah masuk dianggap salah saat skor dihitung ulang. Item dipasangkan
+    ke baris lama lewat `id`; payload lama tanpa id dipasangkan per posisi.
+    Mengembalikan baris hasil sesuai urutan `items`.
+    """
+    by_id = {row.id: row for row in existing}
+    matched: list = []
+    used: set[int] = set()
+    if any(getattr(item, "id", None) is not None for item in items):
+        for item in items:
+            row = by_id.get(item.id) if item.id is not None else None
+            if row is not None and row.id in used:
+                row = None
+            matched.append(row)
+            if row is not None:
+                used.add(row.id)
+    else:
+        matched = [existing[i] if i < len(existing) else None for i in range(len(items))]
+        used = {row.id for row in matched if row is not None}
+    for row in existing:
+        if row.id not in used:
+            db.delete(row)
+    # Geser urutan baris lama ke nilai sementara dulu agar tidak bentrok
+    # dengan unique (soal_id, urutan) saat urutan ditukar.
+    for index, row in enumerate(row for row in matched if row is not None):
+        row.urutan = -(index + 1)
+    db.flush()
+    result = []
+    for position, (item, row) in enumerate(zip(items, matched), start=1):
+        # Baris baru sengaja belum di-add ke session: pemanggil mengisi kolom
+        # wajib dulu, baru db.add(), agar autoflush tidak menyimpan baris kosong.
+        result.append((position, item, row if row is not None else make_row()))
+    return result
+
+
 def _pernyataan_rows(soal_id: int, db: Session) -> List[PernyataanBenarSalah]:
     return (
         db.query(PernyataanBenarSalah)
@@ -503,15 +542,17 @@ def replace_opsi_by_soal(
     
     opsi_valid = validate_opsi_for_tipe(soal.tipe or "pilihan_ganda", payload.opsi)
 
-    db.query(OpsiJawaban).filter(OpsiJawaban.soal_id == soal_id).delete(synchronize_session=False)
+    existing = (
+        db.query(OpsiJawaban)
+        .filter(OpsiJawaban.soal_id == soal_id)
+        .order_by(OpsiJawaban.urutan, OpsiJawaban.id)
+        .all()
+    )
     created: List[OpsiJawabanAdminOut] = []
-    for urutan, item in enumerate(opsi_valid, start=1):
-        opsi = OpsiJawaban(
-            soal_id=soal_id,
-            teks_opsi=item.teks_opsi,
-            is_benar=item.is_benar,
-            urutan=item.urutan if item.urutan is not None else urutan,
-        )
+    for urutan, item, opsi in _sync_child_rows(db, existing, opsi_valid, lambda: OpsiJawaban(soal_id=soal_id)):
+        opsi.teks_opsi = item.teks_opsi
+        opsi.is_benar = item.is_benar
+        opsi.urutan = item.urutan if item.urutan is not None else urutan
         db.add(opsi)
         db.flush()
         created.append(
@@ -550,18 +591,15 @@ def replace_pernyataan_benar_salah(
     if len(rows) != len(payload.pernyataan) or not rows:
         raise HTTPException(status_code=400, detail="Minimal satu pernyataan tidak kosong wajib diisi")
 
-    db.query(PernyataanBenarSalah).filter(PernyataanBenarSalah.soal_id == soal_id).delete(synchronize_session=False)
     soal.label_benar = label_benar
     soal.label_salah = label_salah
     db.add(soal)
     created = []
-    for urutan, item in enumerate(rows, start=1):
-        row = PernyataanBenarSalah(
-            soal_id=soal_id,
-            teks_pernyataan=item.teks_pernyataan,
-            urutan=urutan,
-            is_benar=item.is_benar,
-        )
+    existing = _pernyataan_rows(soal_id, db)
+    for urutan, item, row in _sync_child_rows(db, existing, rows, lambda: PernyataanBenarSalah(soal_id=soal_id)):
+        row.teks_pernyataan = item.teks_pernyataan
+        row.urutan = urutan
+        row.is_benar = item.is_benar
         db.add(row)
         db.flush()
         created.append(PernyataanBenarSalahAdminOut.model_validate(row))

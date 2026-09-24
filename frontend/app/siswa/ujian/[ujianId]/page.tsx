@@ -95,6 +95,7 @@ export default function ExamRoomPage() {
   const saveEssayAnswerRef = useRef<(soalId: number, text: string) => Promise<void>>(async () => undefined);
   const waktuSelesaiRef = useRef<number | null>(null);
   const submittingRef = useRef(false);
+  const advancingRef = useRef(false);
   const soalNavRef = useRef<HTMLDivElement>(null);
   const questionRequestRef = useRef(0);
   const [transitioning, setTransitioning] = useState(false);
@@ -130,7 +131,13 @@ export default function ExamRoomPage() {
       }
       const pending = pendingEssayRef.current;
       if (pending) {
-        await saveEssayAnswerRef.current(pending.soalId, pending.text);
+        try {
+          await saveEssayAnswerRef.current(pending.soalId, pending.text);
+        } catch {
+          // Draf yang ditolak server (mis. soal di bagian yang sudah dikunci)
+          // tidak boleh memblokir pengumpulan ujian.
+          pendingEssayRef.current = null;
+        }
       }
       await api.patch(`/ujian-siswa/${ujianId}/submit`);
       router.replace(`/siswa/hasil/${ujianId}`);
@@ -177,7 +184,24 @@ export default function ExamRoomPage() {
   // Lanjut ke bagian/mapel berikutnya (dipanggil manual atau otomatis saat waktu bagian habis).
   // Tidak bisa kembali ke bagian sebelumnya setelah pindah.
   const advanceSection = useCallback(async (currentBagianAktif: number) => {
+    // Timer server & efek remaining===0 bisa memicu bersamaan; cukup satu request.
+    if (advancingRef.current || submittingRef.current) return;
+    advancingRef.current = true;
     try {
+      // Simpan dulu esai/isian yang masih dalam jeda autosave: setelah pindah
+      // bagian, soal bagian lama terkunci dan simpanannya ditolak server.
+      if (essaySaveTimer.current) {
+        window.clearTimeout(essaySaveTimer.current);
+        essaySaveTimer.current = null;
+      }
+      const pending = pendingEssayRef.current;
+      if (pending) {
+        try {
+          await saveEssayAnswerRef.current(pending.soalId, pending.text);
+        } catch {
+          pendingEssayRef.current = null;
+        }
+      }
       const { data } = await api.post<ExamState>(`/ujian-siswa/${ujianId}/lanjut-bagian`, null, {
         params: { bagian_aktif: currentBagianAktif },
       });
@@ -191,9 +215,18 @@ export default function ExamRoomPage() {
       });
       await loadQuestion(firstUnanswered >= 0 ? firstUnanswered + 1 : data.soal_urutan.indexOf(data.soal_aktif_ids[0]) + 1);
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Gagal lanjut ke bagian berikutnya.");
+      const message: string = err.response?.data?.detail || "Gagal lanjut ke bagian berikutnya.";
+      if (message.toLowerCase().includes("expired")) {
+        // Waktu keseluruhan ujian habis: tidak ada bagian berikutnya, kumpulkan.
+        advancingRef.current = false;
+        await submitExam(true);
+        return;
+      }
+      setError(message);
+    } finally {
+      advancingRef.current = false;
     }
-  }, [loadQuestion, ujianId]);
+  }, [loadQuestion, submitExam, ujianId]);
 
   useEffect(() => {
     api.get(`/ujian-siswa/${ujianId}/state`)

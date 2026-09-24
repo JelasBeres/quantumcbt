@@ -95,6 +95,14 @@ def is_bagian_terakhir(ujian: UjianSiswa, paket: PaketUjian) -> bool:
     return (ujian.bagian_aktif or 0) >= len(ujian.bagian_urutan) - 1
 
 
+def harus_dikumpulkan(ujian: UjianSiswa, paket: PaketUjian) -> bool:
+    """Flag `bagian_terakhir` untuk frontend: saat waktu habis, True berarti
+    kumpulkan, False berarti lanjut bagian. Bila waktu KESELURUHAN ujian sudah
+    habis (mis. durasi paket < jumlah durasi bagian), lanjut bagian pasti
+    ditolak server, jadi paksa jalur kumpulkan."""
+    return is_bagian_terakhir(ujian, paket) or is_ujian_expired(ujian, paket)
+
+
 def calculate_display_time_info(ujian: UjianSiswa, paket: PaketUjian) -> tuple[int, Optional[datetime]]:
     """Sisa waktu yang ditampilkan/diawasi frontend: khusus paket tipe ujian
     dengan bagian_urutan, ini adalah sisa waktu BAGIAN yang sedang aktif
@@ -779,7 +787,7 @@ def get_ujian_sisa_waktu(
         "sisa_waktu_detik": sisa_waktu_detik,
         "server_time": datetime.now(timezone.utc),
         "waktu_selesai": waktu_selesai,
-        "bagian_terakhir": is_bagian_terakhir(ujian, paket),
+        "bagian_terakhir": harus_dikumpulkan(ujian, paket),
     }
 
 
@@ -858,7 +866,7 @@ def get_ujian_state(
         durasi_menit=effective_durasi_menit(ujian, paket),
         jumlah_soal=len(ujian.soal_urutan),
         sisa_waktu_detik=sisa_waktu_detik,
-        bagian_terakhir=is_bagian_terakhir(ujian, paket),
+        bagian_terakhir=harus_dikumpulkan(ujian, paket),
     )
 
 
