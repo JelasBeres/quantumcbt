@@ -668,7 +668,7 @@ export default function ExamRoomPage() {
           </div>
         )}
 
-        <div className="grid gap-6 lg:grid-cols-[45fr_55fr] lg:items-start">
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start">
           {/* ===== KIRI: PERTANYAAN ===== */}
           <section className="rounded-card border border-card-border bg-card-bg p-5 shadow-card sm:p-7">
             <div className="flex items-center justify-between gap-3">
@@ -697,11 +697,11 @@ export default function ExamRoomPage() {
           </section>
 
           {/* ===== KANAN: JAWABAN ===== */}
-          <section className="rounded-card border border-card-border bg-card-bg p-5 shadow-card sm:p-6">
+          <section className="rounded-card border border-card-border bg-card-bg p-4 shadow-card sm:p-5">
             {loading || !question ? (
               <div className="space-y-3 py-10">
                 {[0, 1, 2, 3].map((i) => (
-                  <div key={i} className="h-14 animate-pulse rounded-xl bg-neutral" />
+                  <div key={i} className="h-11 animate-pulse rounded-xl bg-neutral" />
                 ))}
               </div>
             ) : isEssayType(question.tipe) ? (
@@ -740,7 +740,7 @@ export default function ExamRoomPage() {
                 kunci={drillAktif ? Object.fromEntries(drillAktif.pernyataan.map((row) => [row.pernyataan_id, row.jawaban_benar])) : null}
               />
             ) : isOpsiType(question.tipe) ? (
-              <div key={question.soal_id} className="animate-question-in space-y-3">
+              <div key={question.soal_id} className="animate-question-in space-y-2">
                 {question.opsi.map((option, index) => {
                   const isSelected = isMultiSelectType(question.tipe)
                     ? selectedMulti.includes(option.opsi_id)
@@ -771,14 +771,14 @@ export default function ExamRoomPage() {
                       onClick={() => isMultiSelectType(question.tipe) ? toggleMultiAnswer(option.opsi_id) : selectAnswer(option.opsi_id)}
                       disabled={saving || submitting || !!drillAktif}
                       style={{ animationDelay: `${index * 45}ms` }}
-                      className={`group animate-option-in flex w-full items-center gap-4 rounded-input border p-4 text-left transition-all duration-200 active:scale-[0.985] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary disabled:active:scale-100 ${drillAktif ? "" : "disabled:opacity-60"} ${warnaBaris}`}
+                      className={`group animate-option-in flex w-full items-center gap-3 rounded-input border px-3 py-2.5 text-left transition-all duration-200 active:scale-[0.985] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary disabled:active:scale-100 ${drillAktif ? "" : "disabled:opacity-60"} ${warnaBaris}`}
                     >
                       <span
-                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-sm font-bold transition ${warnaHuruf}`}
+                        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-xs font-bold transition ${warnaHuruf}`}
                       >
                         {isMultiSelectType(question.tipe) ? (isSelected ? "✓" : "") : String.fromCharCode(65 + index)}
                       </span>
-                      <MathContent className="prose prose-sm max-w-none flex-1 text-body-dark prose-p:text-body-dark prose-li:text-body-dark" html={option.teks} />
+                      <MathContent className="prose prose-sm max-w-none flex-1 text-body-dark prose-p:my-0 prose-p:text-body-dark prose-li:text-body-dark" html={option.teks} />
                       {drillAktif && isKunci && <span className="shrink-0 text-xs font-semibold text-green-700">{isSelected ? "Jawabanmu benar" : "Jawaban benar"}</span>}
                       {drillAktif && !isKunci && isSelected && <span className="shrink-0 text-xs font-semibold text-red-700">Jawabanmu</span>}
                     </button>
@@ -787,7 +787,7 @@ export default function ExamRoomPage() {
               </div>
             ) : null}
 
-            {state?.mode_latihan === "drill" && question && <div className="mt-5 space-y-3">
+            {state?.mode_latihan === "drill" && question && <div className="mt-4 space-y-3">
               {!drillAktif && <Button disabled={saving || submitting || confirming} onClick={async () => {
                 setConfirming(true); setError("");
                 try {
@@ -817,7 +817,7 @@ export default function ExamRoomPage() {
                 </div>
               )}
             </div>}
-            <div className="mt-4 flex items-center gap-2 text-sm text-text-muted">
+            <div className="mt-3 flex items-center gap-2 text-xs text-text-muted">
               {saving ? (
                 <>
                   <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-card-border border-t-brand-primary" />
