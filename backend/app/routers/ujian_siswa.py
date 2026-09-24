@@ -4,6 +4,7 @@ import random
 from typing import Dict, List, Optional, Union
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -144,6 +145,18 @@ def ensure_ujian_active(ujian: UjianSiswa, paket: PaketUjian) -> None:
         raise HTTPException(status_code=400, detail="Ujian has been submitted")
     if is_ujian_expired(ujian, paket):
         raise HTTPException(status_code=400, detail="Ujian time has expired")
+
+
+def ensure_bagian_aktif_berjalan(ujian: UjianSiswa, paket: PaketUjian) -> None:
+    """Batas waktu per bagian ditegakkan di server, bukan hanya oleh timer
+    frontend: setelah waktu bagian aktif habis, jawabannya terkunci sampai
+    siswa lanjut ke bagian berikutnya. Pesan sengaja tanpa kata "expired"
+    karena frontend memakai kata itu sebagai sinyal mengumpulkan ujian."""
+    if paket.tipe != "ujian" or not ujian.bagian_urutan:
+        return
+    sisa_bagian, _ = calculate_display_time_info(ujian, paket)
+    if sisa_bagian == 0:
+        raise HTTPException(status_code=409, detail="Waktu bagian ini sudah habis, lanjut ke bagian berikutnya")
 
 
 def active_question_ids(ujian: UjianSiswa, paket: PaketUjian) -> list[int]:
@@ -292,9 +305,16 @@ def start_latihan(payload: LatihanStartRequest, db: Session = Depends(get_db), c
     bagian_id = payload.bagian_id
     if bagian_id is not None and not db.query(BagianPaket.id).filter(BagianPaket.id == bagian_id, BagianPaket.paket_ujian_id == paket.id).first():
         raise HTTPException(status_code=404, detail="Bagian/mapel tidak ditemukan pada latihan ini")
+    # Latihan per-mapel dari paket Tryout selalu berwaktu (drill hanya untuk
+    # paket latihan, lihat calculate_time_info & konfirmasi-drill).
+    mode = payload.mode if paket.tipe == "latihan" else "latihan"
+    mode_filter = UjianSiswa.mode_latihan == mode
+    if paket.tipe == "ujian":
+        # Attempt lama tersimpan dengan mode_latihan NULL; tetap dilanjutkan.
+        mode_filter = or_(mode_filter, UjianSiswa.mode_latihan.is_(None))
     existing_query = db.query(UjianSiswa).filter(
         UjianSiswa.siswa_id == siswa.id, UjianSiswa.paket_ujian_id == paket.id,
-        UjianSiswa.is_submitted == False, UjianSiswa.jadwal_ujian_id.is_(None), UjianSiswa.mode_latihan == payload.mode,
+        UjianSiswa.is_submitted == False, UjianSiswa.jadwal_ujian_id.is_(None), mode_filter,
     )
     existing_query = existing_query.filter(UjianSiswa.latihan_bagian_id.is_(None)) if bagian_id is None else existing_query.filter(UjianSiswa.latihan_bagian_id == bagian_id)
     existing = existing_query.order_by(UjianSiswa.id.desc()).first()
@@ -307,7 +327,7 @@ def start_latihan(payload: LatihanStartRequest, db: Session = Depends(get_db), c
         existing.is_submitted = True
         existing.finished_at = utc_now()
         db.commit()
-    return _initialize_attempt(db, siswa, paket, mode=payload.mode, bagian_id=bagian_id)
+    return _initialize_attempt(db, siswa, paket, mode=mode, bagian_id=bagian_id)
 
 
 def _initialize_attempt(db: Session, siswa: Siswa, paket: PaketUjian, jadwal_id: int | None = None, mode: str = "latihan", bagian_id: int | None = None):
@@ -418,7 +438,9 @@ def _initialize_attempt(db: Session, siswa: Siswa, paket: PaketUjian, jadwal_id:
         siswa_id=siswa.id,
         paket_ujian_id=paket.id,
         jadwal_ujian_id=jadwal_id,
-        mode_latihan=mode if paket.tipe == "latihan" else None,
+        # Semua attempt latihan (tanpa jadwal) menyimpan mode-nya agar bisa
+        # dilanjutkan oleh /mulai-latihan; attempt tryout berjadwal tetap NULL.
+        mode_latihan=mode if jadwal_id is None else None,
         soal_urutan=soal_ids,
         opsi_urutan=opsi_urutan_map,
         bagian_urutan=[b.model_dump() for b in bagian_urutan] if bagian_urutan else None,
@@ -607,6 +629,7 @@ def save_ujian_jawaban(
     if not ujian.soal_urutan or payload.soal_id not in ujian.soal_urutan:
         raise HTTPException(status_code=400, detail="Soal does not belong to this ujian")
     require_active_question(ujian, paket, payload.soal_id)
+    ensure_bagian_aktif_berjalan(ujian, paket)
 
     soal = db.query(Soal).filter(Soal.id == payload.soal_id).first()
     if not soal:
@@ -750,6 +773,7 @@ def set_ragu_jawaban(
     sisa_waktu_detik, _ = calculate_time_info(ujian, paket)
     if sisa_waktu_detik == 0:
         raise HTTPException(status_code=400, detail="Ujian time has expired")
+    ensure_bagian_aktif_berjalan(ujian, paket)
 
     jawaban = (
         db.query(JawabanSiswa)

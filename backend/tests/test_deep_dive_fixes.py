@@ -259,3 +259,61 @@ def test_auto_submit_melewati_drill_dan_mengumpulkan_tryout_yang_habis():
         assert db.get(UjianSiswa, drill).is_submitted is False
         assert db.get(UjianSiswa, ujian).is_submitted is True
         assert db.query(HasilUjian).filter(HasilUjian.ujian_siswa_id == ujian).first() is not None
+
+
+def test_jawaban_bagian_terkunci_setelah_waktu_bagian_habis():
+    program = default_program_id()
+    siswa = _login("dd-siswa8", "siswa", program)
+    paket, [soal_0, soal_1] = _paket_pg(program, sections=2, durasi=60, bagian_durasi=30)
+    jadwal = active_schedule_id(paket)
+    ujian = client.post("/ujian-siswa/mulai", headers=siswa, json={"jadwal_ujian_id": jadwal}).json()["ujian_siswa_id"]
+    jawab_0 = {"soal_id": soal_0, "opsi_jawaban_id": _correct_opsi(soal_0)}
+    assert client.post(f"/ujian-siswa/{ujian}/jawab", headers=siswa, json=jawab_0).status_code == 200
+
+    with SessionLocal() as db:
+        db.get(UjianSiswa, ujian).started_at = utc_now() - timedelta(minutes=45)
+        db.commit()
+    locked = client.post(f"/ujian-siswa/{ujian}/jawab", headers=siswa, json=jawab_0)
+    assert locked.status_code == 409
+    assert "expired" not in locked.json()["detail"].lower()
+    ragu = client.patch(f"/ujian-siswa/{ujian}/ragu", headers=siswa, json={"soal_id": soal_0, "is_ragu": True})
+    assert ragu.status_code == 409
+
+    # Bagian berikutnya mendapat waktunya sendiri dan bisa dijawab.
+    assert client.post(f"/ujian-siswa/{ujian}/lanjut-bagian?bagian_aktif=0", headers=siswa).status_code == 200
+    jawab_1 = {"soal_id": soal_1, "opsi_jawaban_id": _correct_opsi(soal_1)}
+    assert client.post(f"/ujian-siswa/{ujian}/jawab", headers=siswa, json=jawab_1).status_code == 200
+
+
+def test_latihan_mapel_dari_tryout_melanjutkan_attempt_yang_sama():
+    program = default_program_id()
+    siswa = _login("dd-siswa9", "siswa", program)
+    paket, _ = _paket_pg(program, sections=2)
+    jadwal = active_schedule_id(paket)
+    with SessionLocal() as db:
+        db.get(PaketUjian, paket).izinkan_pilih_mapel = True
+        siswa_id = db.query(Siswa.id).filter(Siswa.nama_lengkap == "dd-siswa9").scalar()
+        db.add(UjianSiswa(siswa_id=siswa_id, paket_ujian_id=paket, jadwal_ujian_id=jadwal, is_submitted=True))
+        bagian_ids = [row[0] for row in db.query(BagianPaket.id).filter(BagianPaket.paket_ujian_id == paket).order_by(BagianPaket.urutan)]
+        # Attempt lama (sebelum perbaikan) tersimpan dengan mode_latihan NULL.
+        legacy = UjianSiswa(siswa_id=siswa_id, paket_ujian_id=paket, latihan_bagian_id=bagian_ids[1],
+                            soal_urutan=[], bagian_urutan=[{"bagian_id": bagian_ids[1], "nama": "B", "urutan": 1,
+                                                             "durasi_menit": 30, "soal_ids": []}])
+        db.add(legacy)
+        db.commit()
+        legacy_id = legacy.id
+
+    payload = {"paket_ujian_id": paket, "mode": "latihan", "bagian_id": bagian_ids[0]}
+    first = client.post("/ujian-siswa/mulai-latihan", headers=siswa, json=payload)
+    assert first.status_code == 200, first.text
+    again = client.post("/ujian-siswa/mulai-latihan", headers=siswa, json=payload).json()["ujian_siswa_id"]
+    assert again == first.json()["ujian_siswa_id"]
+    # Mode drill tidak berlaku untuk paket tryout: tetap attempt berwaktu yang sama.
+    drill = client.post("/ujian-siswa/mulai-latihan", headers=siswa, json={**payload, "mode": "drill"}).json()["ujian_siswa_id"]
+    assert drill == again
+    state = client.get(f"/ujian-siswa/{again}/state", headers=siswa).json()
+    assert state["mode_latihan"] == "latihan" and state["sisa_waktu_detik"] > 0
+
+    resumed = client.post("/ujian-siswa/mulai-latihan", headers=siswa,
+                          json={**payload, "bagian_id": bagian_ids[1]}).json()["ujian_siswa_id"]
+    assert resumed == legacy_id
