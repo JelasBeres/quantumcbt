@@ -144,9 +144,17 @@ def test_other_teacher_revision_requires_admin_approval_and_scope():
     assert client.post(f"/soal/{source['id']}/submit-review", headers=guru_h, json={}).status_code == 200
     assert client.post(f"/soal/{source['id']}/approve", headers=other_h, json={}).status_code == 403
     assert client.post(f"/soal/{source['id']}/approve", headers=admin_h, json={}).status_code == 200
+    # Pembuat soal boleh merevisi soal approved miliknya sendiri, tetapi revisi
+    # itu tetap draft baru yang hanya bisa disetujui admin.
     own = client.post(f"/soal/{source['id']}/revision", headers=guru_h)
-    assert own.status_code == 403
-    assert "sendiri" in own.json()["detail"]
+    assert own.status_code == 200
+    own_revision = own.json()
+    assert own_revision["status"] == "draft" and own_revision["parent_soal_id"] == source["id"]
+    assert client.put(f"/soal/{own_revision['id']}", headers=guru_h, json={**payload, "teks_soal": "Revisi pemilik"}).status_code == 200
+    assert client.post(f"/soal/{own_revision['id']}/submit-review", headers=guru_h, json={}).status_code == 200
+    assert client.post(f"/soal/{own_revision['id']}/approve", headers=guru_h, json={}).status_code == 403
+    assert client.get(f"/soal/{source['id']}", headers=admin_h).json()["teks_soal"] == "Published source"
+    assert client.post(f"/soal/{own_revision['id']}/approve", headers=admin_h, json={}).status_code == 200
     response = client.post(f"/soal/{source['id']}/revision", headers=other_h)
     assert response.status_code == 200
     revision = response.json()
@@ -160,12 +168,12 @@ def test_other_teacher_revision_requires_admin_approval_and_scope():
     assert client.post(f"/soal/{revision['id']}/submit-review", headers=other_h, json={}).status_code == 200
     assert client.post(f"/soal/{revision['id']}/approve", headers=other_h, json={}).status_code == 403
     assert client.post(f"/soal/{revision['id']}/approve", headers=admin_h, json={}).status_code == 200
-    # Revisi yang sudah approved kini milik guru lain, jadi ia pun tak bisa merevisinya lagi,
-    # sedangkan pembuat soal awal boleh merevisi versi tersebut.
-    assert client.post(f"/soal/{revision['id']}/revision", headers=other_h).status_code == 403
+    # Revisi yang sudah approved bisa direvisi lagi oleh pemiliknya maupun pembuat soal awal.
+    assert client.post(f"/soal/{revision['id']}/revision", headers=other_h).status_code == 200
     assert client.post(f"/soal/{revision['id']}/revision", headers=guru_h).status_code == 200
     rows = client.get("/soal/", headers=other_h).json()
-    assert [r["id"] for r in rows] == [revision["id"], source["id"]]
+    approved_ids = [r["id"] for r in rows if r["status"] == "approved"]
+    assert approved_ids == [revision["id"], own_revision["id"], source["id"]]
     with SessionLocal() as db:
         db.query(GuruScope).filter(GuruScope.user_id == other_id).delete()
         db.commit()

@@ -811,8 +811,9 @@ def create_soal_revision(
     if source.status != "approved":
         raise HTTPException(status_code=409, detail="Revisi hanya dibuat dari soal approved")
     if current_user.role == "guru":
-        if source.created_by == current_user.id:
-            raise HTTPException(status_code=403, detail="Guru tidak dapat merevisi soal miliknya sendiri; revisi dilakukan oleh guru lain")
+        # Guru boleh merevisi soal approved miliknya sendiri maupun guru lain
+        # dalam penugasannya; revisi selalu berupa draft baru yang wajib
+        # disetujui admin (guru tidak pernah bisa approve).
         if source.pelajaran_id is None:
             raise HTTPException(status_code=403, detail="Soal belum memiliki penugasan mata pelajaran")
         subject = db.query(Pelajaran).filter(Pelajaran.id == source.pelajaran_id).first()

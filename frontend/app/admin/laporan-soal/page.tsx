@@ -55,13 +55,14 @@ export default function LaporanSoalPage() {
   }, [status]);
 
   // Admin selalu bisa mengedit langsung. Guru mengikuti workflow bank soal:
-  // draft/perlu revisi milik sendiri diedit langsung, soal approved milik guru lain
-  // dibuatkan revisi dulu (direview admin sebelum terbit).
+  // draft/perlu revisi milik sendiri diedit langsung, soal approved (milik sendiri
+  // maupun guru lain) dibuatkan revisi dulu (direview admin sebelum terbit).
   const editMode = (item: Laporan): "direct" | "revision" | null => {
     if (!isGuru) return "direct";
     const own = currentUser.id !== null && item.soal_created_by === currentUser.id;
     if (own && (item.soal_status === "draft" || item.soal_status === "rejected")) return "direct";
-    if (!own && item.soal_status === "approved") return "revision";
+    // Soal approved (milik sendiri maupun guru lain) diubah lewat revisi yang di-ACC admin.
+    if (item.soal_status === "approved") return "revision";
     return null;
   };
 
@@ -85,7 +86,6 @@ export default function LaporanSoalPage() {
 
   const editHint = (item: Laporan) => {
     if (item.soal_status === "pending_review") return "Soal sedang menunggu review admin.";
-    if (item.soal_status === "approved") return "Soal milik Anda. Revisi dilakukan oleh guru lain atau admin.";
     return "Soal tidak dapat diedit dari akun ini.";
   };
 

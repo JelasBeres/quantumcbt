@@ -12,7 +12,6 @@ import Skeleton from "@/components/Skeleton";
 import Select from "@/components/Select";
 import Input from "@/components/Input";
 import { api, getErrorMessage } from "@/lib/api";
-import { getUser } from "@/lib/auth";
 import { Soal, Pelajaran, Kelas, Subbab, Topik } from "@/lib/types";
 import { labelTipeSoal } from "@/lib/tipe-soal";
 
@@ -66,8 +65,6 @@ function groupBy(
 
 export default function GuruSoalPage() {
   const router = useRouter();
-  const [userId, setUserId] = useState<number | null>(null);
-  useEffect(() => { setUserId(getUser()?.id ?? null); }, []);
   const [items, setItems] = useState<Soal[]>([]);
   const [active, setActive] = useState<WorkflowStatus>("draft");
   const [metaFilter, setMetaFilter] = useState(emptyMetaFilter);
@@ -207,8 +204,7 @@ export default function GuruSoalPage() {
           {(itemStatus === "draft" || itemStatus === "rejected") && <Button size="sm" variant="outline" disabled={busyId === item.id} onClick={() => router.push(`/guru/soal/tambah?id=${item.id}`)}>Edit Soal</Button>}
           {(itemStatus === "draft" || itemStatus === "rejected") && <Button size="sm" disabled={busyId === item.id} onClick={() => action(item, "submit")}><Clock3 className="mr-1 h-4 w-4" /> Ajukan Review</Button>}
           {itemStatus === "pending_review" && <Button size="sm" variant="outline" disabled={busyId === item.id} onClick={() => action(item, "withdraw")}><RefreshCcw className="mr-1 h-4 w-4" /> Tarik Pengajuan</Button>}
-          {itemStatus === "approved" && userId !== null && item.created_by !== userId && <Button size="sm" variant="outline" disabled={busyId === item.id} onClick={() => action(item, "revision")}><CheckCircle2 className="mr-1 h-4 w-4" /> Edit Soal (Revisi)</Button>}
-          {itemStatus === "approved" && userId !== null && item.created_by === userId && <p className="text-xs text-text-muted">Soal milik Anda. Revisi hanya dapat dilakukan oleh guru lain.</p>}
+          {itemStatus === "approved" && <Button size="sm" variant="outline" disabled={busyId === item.id} onClick={() => action(item, "revision")}><CheckCircle2 className="mr-1 h-4 w-4" /> Edit Soal (Revisi)</Button>}
         </div>
       </Card>
     );
@@ -227,7 +223,7 @@ export default function GuruSoalPage() {
         <div>
           <p className="text-sm font-semibold text-brand-primary">Bank soal guru</p>
           <h1 className="mt-1 text-3xl font-bold text-heading-dark">Kelola Soal</h1>
-          <p className="mt-1 text-sm text-text-muted">Kelola draft sendiri dan revisi soal guru lain yang sudah disetujui sesuai penugasan. Revisi diperiksa admin sebelum diterbitkan.</p>
+          <p className="mt-1 text-sm text-text-muted">Kelola draft sendiri dan revisi soal yang sudah disetujui (milik sendiri maupun guru lain) sesuai penugasan. Revisi diperiksa admin sebelum diterbitkan.</p>
         </div>
         <Button onClick={() => router.push("/guru/soal/tambah")}>Buat Soal</Button>
       </header>
