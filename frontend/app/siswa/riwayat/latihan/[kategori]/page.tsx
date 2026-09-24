@@ -91,7 +91,7 @@ export default function RiwayatLatihanPerKategoriPage() {
       ) : hasilCari.length === 0 ? (
         <p className="student-notice mt-6">Tidak ada latihan yang cocok dengan &ldquo;{cari.trim()}&rdquo;.</p>
       ) : (
-        <div className="student-tryouts mt-6">
+        <div className="student-tryouts student-riwayat-list">
           {hasilCari.map((item) => {
             const r = ringkasan[item.ujian_siswa_id];
             const mapel = item.pelajaran_nama || item.bagian_nama;

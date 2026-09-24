@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional, Union
 import json
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.security import get_current_active_user, guru_accessible_package_ids, require_guru_package_access
@@ -30,6 +31,23 @@ from app.schemas.hasil_ujian import (
 from app.services.scoring import compute_and_store_hasil
 
 router = APIRouter(prefix="/hasil-ujian", tags=["hasil_ujian"])
+
+
+def get_or_compute_hasil(db: Session, ujian: UjianSiswa) -> Optional[HasilUjian]:
+    """Hasil sesi; sesi yang sudah dikumpulkan tapi belum punya hasil (mis.
+    latihan kedaluwarsa yang dulu ditutup /mulai-latihan tanpa dinilai)
+    dihitung saat pertama dibuka. Halaman pembahasan memanggil dua endpoint
+    sekaligus, jadi baris yang keburu dibuat request lain dipakai ulang."""
+    hasil = db.query(HasilUjian).filter(HasilUjian.ujian_siswa_id == ujian.id).first()
+    if hasil is not None or not ujian.is_submitted:
+        return hasil
+    try:
+        hasil = compute_and_store_hasil(db, ujian)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        hasil = db.query(HasilUjian).filter(HasilUjian.ujian_siswa_id == ujian.id).first()
+    return hasil
 
 
 def authorize_hasil_access(ujian: UjianSiswa, current_user, db: Session) -> None:
@@ -125,7 +143,7 @@ def get_hasil_by_ujian_siswa(
     if not ujian:
         raise HTTPException(status_code=404, detail="Ujian Siswa not found")
     authorize_hasil_access(ujian, current_user, db)
-    hasil = db.query(HasilUjian).filter(HasilUjian.ujian_siswa_id == ujian_siswa_id).first()
+    hasil = get_or_compute_hasil(db, ujian)
     if not hasil:
         raise HTTPException(status_code=404, detail="Hasil Ujian not found")
     return hasil
@@ -145,7 +163,7 @@ def get_hasil_detail(
     if current_user.role == "siswa" and not ujian.is_submitted:
         raise HTTPException(status_code=403, detail="Hasil belum tersedia")
 
-    hasil = db.query(HasilUjian).filter(HasilUjian.ujian_siswa_id == ujian_siswa_id).first()
+    hasil = get_or_compute_hasil(db, ujian)
     if current_user.role == "siswa" and not hasil:
         raise HTTPException(status_code=404, detail="Hasil Ujian not found")
 

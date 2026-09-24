@@ -83,7 +83,7 @@ export default function RiwayatPerKategoriPage() {
       ) : hasilCari.length === 0 ? (
         <p className="student-notice mt-6">Tidak ada tryout yang cocok dengan &ldquo;{cari.trim()}&rdquo;.</p>
       ) : (
-        <div className="student-tryouts mt-6">
+        <div className="student-tryouts student-riwayat-list">
           {hasilCari.map((item) => {
             const r = ringkasan[item.ujian_siswa_id];
             return (

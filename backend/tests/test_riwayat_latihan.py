@@ -76,3 +76,40 @@ def test_detail_hasil_menyertakan_tanda_ragu():
 
     detail = client.get(f"/hasil-ujian/ujian/{ujian}/detail", headers=headers).json()
     assert {row["soal_id"]: row["is_ragu"] for row in detail["soal"]} == {soal_ids[0]: True, soal_ids[1]: False}
+
+
+def test_sesi_latihan_kedaluwarsa_ditutup_dengan_hasil():
+    from datetime import timedelta
+
+    from app.core.timeutils import utc_now
+    from app.models.hasil_ujian import HasilUjian
+
+    headers, paket, _ = setup_exam(tipe="latihan")
+    payload = {"paket_ujian_id": paket, "mode": "latihan"}
+    lama = client.post("/ujian-siswa/mulai-latihan", headers=headers, json=payload).json()["ujian_siswa_id"]
+    with SessionLocal() as db:
+        db.get(UjianSiswa, lama).started_at = utc_now() - timedelta(hours=2)
+        db.commit()
+
+    baru = client.post("/ujian-siswa/mulai-latihan", headers=headers, json=payload).json()["ujian_siswa_id"]
+    assert baru != lama
+    with SessionLocal() as db:
+        assert db.get(UjianSiswa, lama).is_submitted is True
+        assert db.query(HasilUjian).filter(HasilUjian.ujian_siswa_id == lama).count() == 1
+    assert client.get(f"/hasil-ujian/ujian/{lama}/detail", headers=headers).status_code == 200
+
+
+def test_sesi_selesai_tanpa_hasil_dihitung_saat_dibuka():
+    from app.models.hasil_ujian import HasilUjian
+
+    headers, paket, _ = setup_exam(tipe="latihan")
+    ujian = client.post("/ujian-siswa/mulai-latihan", headers=headers, json={"paket_ujian_id": paket, "mode": "latihan"}).json()["ujian_siswa_id"]
+    # Data lama di server: sesi ditandai selesai tanpa baris hasil.
+    with SessionLocal() as db:
+        db.get(UjianSiswa, ujian).is_submitted = True
+        db.commit()
+
+    assert client.get(f"/hasil-ujian/ujian/{ujian}", headers=headers).status_code == 200
+    assert client.get(f"/hasil-ujian/ujian/{ujian}/detail", headers=headers).status_code == 200
+    with SessionLocal() as db:
+        assert db.query(HasilUjian).filter(HasilUjian.ujian_siswa_id == ujian).count() == 1

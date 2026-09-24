@@ -332,8 +332,12 @@ def start_latihan(payload: LatihanStartRequest, db: Session = Depends(get_db), c
             bagian_urutan=existing.bagian_urutan, waktu_mulai=ensure_utc(existing.started_at), waktu_selesai=finish,
             durasi_menit=effective_durasi_menit(existing, paket), jumlah_soal=len(existing.soal_urutan), sisa_waktu_detik=remaining)
     if existing:
+        # Sesi lama yang waktunya habis ditutup DAN dinilai (sama seperti
+        # auto-submit), agar tidak ada sesi "selesai" tanpa hasil di riwayat.
+        _, finish = calculate_time_info(existing, paket)
         existing.is_submitted = True
-        existing.finished_at = utc_now()
+        existing.finished_at = finish or utc_now()
+        compute_and_store_hasil(db, existing)
         db.commit()
     return _initialize_attempt(db, siswa, paket, mode=mode, bagian_id=bagian_id)
 
