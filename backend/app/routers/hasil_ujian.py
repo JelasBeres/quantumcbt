@@ -5,7 +5,7 @@ import json
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.core.security import get_current_active_user
+from app.core.security import get_current_active_user, guru_accessible_package_ids, require_guru_package_access
 from app.core.timeutils import ensure_utc, utc_now
 from app.db.database import get_db
 from app.models.hasil_ujian import HasilUjian
@@ -35,6 +35,14 @@ def authorize_hasil_access(ujian: UjianSiswa, current_user, db: Session) -> None
         linked_siswa = db.query(Siswa).filter(Siswa.id == ujian.siswa_id, Siswa.user_id == current_user.id).first()
         if not linked_siswa:
             raise HTTPException(status_code=403, detail="Insufficient permissions")
+    elif current_user.role == "guru":
+        # Guru hanya boleh melihat/menghitung hasil paket dalam penugasannya.
+        paket = db.query(PaketUjian).filter(PaketUjian.id == ujian.paket_ujian_id).first()
+        if not paket:
+            raise HTTPException(status_code=404, detail="Paket Ujian not found")
+        require_guru_package_access(db, current_user, paket)
+    elif current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
 
 
 def kunci_ditahan(db: Session, paket: Optional[PaketUjian]) -> tuple[bool, Optional[datetime]]:
@@ -64,7 +72,8 @@ def kunci_ditahan(db: Session, paket: Optional[PaketUjian]) -> tuple[bool, Optio
 
 @router.post("/", response_model=HasilUjianOut)
 def create_hasil_ujian(payload: HasilUjianCreate, db: Session = Depends(get_db), current_user=Depends(get_current_active_user)):
-    if current_user.role not in ["admin", "guru"]:
+    # Menimpa skor secara manual hanya untuk admin (guru menilai lewat koreksi esai).
+    if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Insufficient permissions")
     ujian = db.query(UjianSiswa).filter(UjianSiswa.id == payload.ujian_siswa_id).first()
     if not ujian:
@@ -96,6 +105,11 @@ def list_hasil_ujian(
             return []
         ujian_ids = [ujian.id for ujian in db.query(UjianSiswa).filter(UjianSiswa.siswa_id == siswa.id).all()]
         query = query.filter(HasilUjian.ujian_siswa_id.in_(ujian_ids))
+    elif current_user.role == "guru":
+        paket_ids = guru_accessible_package_ids(db, current_user, [row.id for row in db.query(PaketUjian.id).all()])
+        query = query.join(UjianSiswa, HasilUjian.ujian_siswa_id == UjianSiswa.id).filter(UjianSiswa.paket_ujian_id.in_(paket_ids))
+    elif current_user.role != "admin":
+        return []
     return query.all()
 
 
@@ -218,7 +232,8 @@ def get_hasil_detail(
                         jawaban_user = int(jawaban.jawaban)
                     except ValueError:
                         jawaban_user = None
-                is_correct = jawaban_user is not None and jawaban_user == jawaban_benar
+                # Selaras dengan scoring: opsi benar mana pun dihitung benar.
+                is_correct = jawaban_user is not None and jawaban_user in kunci_ids
         elif soal.tipe == "pilihan_lebih_dari_satu":
             jawaban_benar = kunci_ids
             if jawaban and jawaban.jawaban:
@@ -302,6 +317,7 @@ def compute_hasil_ujian(
     ujian = db.query(UjianSiswa).filter(UjianSiswa.id == ujian_siswa_id).first()
     if not ujian:
         raise HTTPException(status_code=404, detail="Ujian Siswa not found")
+    authorize_hasil_access(ujian, current_user, db)
     if not ujian.is_submitted:
         raise HTTPException(status_code=400, detail="Ujian has not been submitted")
     hasil = compute_and_store_hasil(db, ujian)

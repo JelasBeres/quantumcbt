@@ -317,3 +317,88 @@ def test_latihan_mapel_dari_tryout_melanjutkan_attempt_yang_sama():
     resumed = client.post("/ujian-siswa/mulai-latihan", headers=siswa,
                           json={**payload, "bagian_id": bagian_ids[1]}).json()["ujian_siswa_id"]
     assert resumed == legacy_id
+
+
+def test_hitung_ulang_kohort_tidak_query_per_soal_per_peserta():
+    from sqlalchemy import event
+
+    from app.db.database import engine
+    from app.services.scoring import compute_and_store_hasil
+
+    n_siswa, n_soal = 20, 10
+    with SessionLocal() as db:
+        paket = PaketUjian(nama="Kohort", tipe="ujian", durasi_menit=60, metode_penilaian="kohort")
+        db.add(paket)
+        db.flush()
+        soal_ids = []
+        for i in range(n_soal):
+            soal = Soal(teks_soal=f"K{i}", tipe="pilihan_ganda", status="approved")
+            db.add(soal)
+            db.flush()
+            db.add_all([OpsiJawaban(soal_id=soal.id, teks_opsi="a", is_benar=True, urutan=1),
+                        OpsiJawaban(soal_id=soal.id, teks_opsi="b", is_benar=False, urutan=2)])
+            soal_ids.append(soal.id)
+        db.flush()
+        benar = dict(db.query(OpsiJawaban.soal_id, OpsiJawaban.id).filter(OpsiJawaban.is_benar == True).all())
+        attempts = []
+        for s in range(n_siswa):
+            user = User(username=f"kohort{s}", password_hash="x", role="siswa")
+            db.add(user)
+            db.flush()
+            siswa = Siswa(user_id=user.id, nama_lengkap=f"kohort{s}")
+            db.add(siswa)
+            db.flush()
+            ujian = UjianSiswa(siswa_id=siswa.id, paket_ujian_id=paket.id, soal_urutan=soal_ids, is_submitted=True)
+            db.add(ujian)
+            db.flush()
+            attempts.append(ujian.id)
+            # Siswa ke-s menjawab benar s soal pertama (mod n_soal).
+            for idx, sid in enumerate(soal_ids):
+                if idx < s % (n_soal + 1):
+                    db.add(JawabanSiswa(ujian_siswa_id=ujian.id, soal_id=sid, jawaban=str(benar[sid])))
+        db.commit()
+
+    queries = []
+    listener = lambda *args, **kwargs: queries.append(1)  # noqa: E731
+    event.listen(engine, "before_cursor_execute", listener)
+    try:
+        with SessionLocal() as db:
+            compute_and_store_hasil(db, db.get(UjianSiswa, attempts[-1]))
+            db.commit()
+    finally:
+        event.remove(engine, "before_cursor_execute", listener)
+
+    # Dulu ~2 query per soal per peserta + 2 per hasil (> 400 di sini).
+    assert len(queries) <= n_siswa + 20
+    with SessionLocal() as db:
+        skor = {h.ujian_siswa_id: h.skor for h in db.query(HasilUjian).filter(HasilUjian.ujian_siswa_id.in_(attempts))}
+    assert len(skor) == n_siswa
+    # Lebih banyak benar -> skor tidak lebih rendah.
+    urut = sorted(attempts, key=lambda a: attempts.index(a) % (n_soal + 1))
+    assert [skor[a] for a in urut] == sorted(skor[a] for a in urut)
+
+
+def test_guru_di_luar_penugasan_tidak_bisa_akses_hasil_dan_ujian_siswa():
+    program = default_program_id()
+    siswa = _login("dd-siswa10", "siswa", program)
+    guru = _login("dd-guru10", "guru")
+    admin = _login("dd-admin10", "admin")
+    paket, [soal_id] = _paket_pg(program)
+    jadwal = active_schedule_id(paket)
+    ujian = client.post("/ujian-siswa/mulai", headers=siswa, json={"jadwal_ujian_id": jadwal}).json()["ujian_siswa_id"]
+
+    # Guru tanpa penugasan tidak bisa memaksa submit / membaca state ujian siswa.
+    assert client.patch(f"/ujian-siswa/{ujian}/submit", headers=guru).status_code == 403
+    assert client.get(f"/ujian-siswa/{ujian}/state", headers=guru).status_code == 403
+    assert client.get("/ujian-siswa/", headers=guru).json() == []
+
+    client.post(f"/ujian-siswa/{ujian}/jawab", headers=siswa, json={"soal_id": soal_id, "opsi_jawaban_id": _correct_opsi(soal_id)})
+    assert client.patch(f"/ujian-siswa/{ujian}/submit", headers=siswa).status_code == 200
+    assert client.get(f"/hasil-ujian/ujian/{ujian}/detail", headers=guru).status_code == 403
+    assert client.post(f"/hasil-ujian/{ujian}/compute", headers=guru).status_code == 403
+    assert client.get("/hasil-ujian/", headers=guru).json() == []
+    # Menimpa skor manual hanya admin.
+    assert client.post("/hasil-ujian/", headers=guru, json={"ujian_siswa_id": ujian, "skor": 100}).status_code == 403
+
+    assert client.get(f"/hasil-ujian/ujian/{ujian}/detail", headers=admin).status_code == 200
+    assert len(client.get("/hasil-ujian/", headers=admin).json()) == 1

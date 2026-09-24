@@ -335,6 +335,17 @@ export default function ExamRoomPage() {
     await loadQuestion(target);
   }, [flushPendingEssay, loadQuestion]);
 
+  const showSaveError = useCallback((err: any, fallback: string) => {
+    const message: string = err.response?.data?.detail || fallback;
+    setError(message);
+    // Server menolak karena waktu bagian sudah habis (jam browser bisa sedikit
+    // berbeda): nolkan timer agar efek remaining===0 langsung lanjut/kumpulkan.
+    if (err.response?.status === 409 && message.startsWith("Waktu bagian")) {
+      waktuSelesaiRef.current = performance.now();
+      setRemaining(0);
+    }
+  }, []);
+
   const selectAnswer = async (opsiId: number) => {
     setFeedback(null);
     if (!question) return;
@@ -349,7 +360,7 @@ export default function ExamRoomPage() {
         jawaban_tersimpan: { ...current.jawaban_tersimpan, [String(question.soal_id)]: opsiId }
       } : current);
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Jawaban gagal disimpan.");
+      showSaveError(err, "Jawaban gagal disimpan.");
     } finally {
       setSaving(false);
     }
@@ -372,7 +383,7 @@ export default function ExamRoomPage() {
         jawaban_tersimpan: { ...current.jawaban_tersimpan, [String(question.soal_id)]: next }
       } : current);
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Jawaban gagal disimpan.");
+      showSaveError(err, "Jawaban gagal disimpan.");
     } finally {
       setSaving(false);
     }
@@ -394,7 +405,7 @@ export default function ExamRoomPage() {
         jawaban_tersimpan: { ...current.jawaban_tersimpan, [String(question.soal_id)]: next }
       } : current);
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Jawaban gagal disimpan.");
+      showSaveError(err, "Jawaban gagal disimpan.");
     } finally {
       setSaving(false);
     }
@@ -415,12 +426,12 @@ export default function ExamRoomPage() {
         jawaban_tersimpan: { ...current.jawaban_tersimpan, [String(soalId)]: text }
       } : current);
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Jawaban gagal disimpan.");
+      showSaveError(err, "Jawaban gagal disimpan.");
       throw err;
     } finally {
       setSaving(false);
     }
-  }, [ujianId]);
+  }, [showSaveError, ujianId]);
 
   saveEssayAnswerRef.current = saveEssayAnswer;
 
@@ -436,7 +447,7 @@ export default function ExamRoomPage() {
         ragu_ragu: { ...(current.ragu_ragu ?? {}), [String(soalId)]: next }
       } : current);
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Tanda ragu-ragu gagal disimpan.");
+      showSaveError(err, "Tanda ragu-ragu gagal disimpan.");
     } finally {
       setRaguPending(false);
     }

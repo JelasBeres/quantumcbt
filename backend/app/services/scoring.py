@@ -176,43 +176,76 @@ def evaluate_answer(
     return False, 0.0, True
 
 
-def _attempt_questions(db: Session, ujian: UjianSiswa) -> list[Soal]:
+@dataclass(frozen=True)
+class KunciSoal:
+    correct_option_ids: frozenset[int]
+    statements: Dict[int, bool]
+
+
+def load_kunci(db: Session, soal_ids: Iterable[int]) -> Dict[int, KunciSoal]:
+    """Kunci opsi & pernyataan untuk banyak soal dalam 2 query (bukan 1-2 query
+    per soal per siswa, yang membuat hitung ulang kohort ribuan query)."""
+    ids = set(soal_ids)
+    if not ids:
+        return {}
+    options: Dict[int, set[int]] = {soal_id: set() for soal_id in ids}
+    for option_id, soal_id in (
+        db.query(OpsiJawaban.id, OpsiJawaban.soal_id)
+        .filter(OpsiJawaban.soal_id.in_(ids), OpsiJawaban.is_benar == True)
+        .all()
+    ):
+        options[soal_id].add(option_id)
+    statements: Dict[int, Dict[int, bool]] = {soal_id: {} for soal_id in ids}
+    for row_id, soal_id, is_benar in (
+        db.query(PernyataanBenarSalah.id, PernyataanBenarSalah.soal_id, PernyataanBenarSalah.is_benar)
+        .filter(PernyataanBenarSalah.soal_id.in_(ids))
+        .all()
+    ):
+        statements[soal_id][row_id] = bool(is_benar)
+    return {soal_id: KunciSoal(frozenset(options[soal_id]), statements[soal_id]) for soal_id in ids}
+
+
+def _questions_from_map(soal_map: Mapping[int, Soal], question_ids: Iterable[int]) -> list[Soal]:
+    return [soal_map[soal_id] for soal_id in question_ids if soal_id in soal_map]
+
+
+def _attempt_question_ids(db: Session, ujian: UjianSiswa) -> list[int]:
     if ujian.soal_urutan:
-        soal_map = {soal.id: soal for soal in db.query(Soal).filter(Soal.id.in_(ujian.soal_urutan)).all()}
-        return [soal_map[soal_id] for soal_id in ujian.soal_urutan if soal_id in soal_map]
+        return list(ujian.soal_urutan)
     package_rows = (
-        db.query(PaketSoal)
+        db.query(PaketSoal.soal_id)
         .filter(PaketSoal.paket_ujian_id == ujian.paket_ujian_id)
         .order_by(PaketSoal.urutan, PaketSoal.id)
         .all()
     )
-    question_ids = [row.soal_id for row in package_rows]
+    return [row.soal_id for row in package_rows]
+
+
+def _attempt_questions(db: Session, ujian: UjianSiswa) -> list[Soal]:
+    question_ids = _attempt_question_ids(db, ujian)
     if not question_ids:
         return []
     soal_map = {soal.id: soal for soal in db.query(Soal).filter(Soal.id.in_(question_ids)).all()}
-    return [soal_map[soal_id] for soal_id in question_ids if soal_id in soal_map]
+    return _questions_from_map(soal_map, question_ids)
 
 
 def _evaluate_question(
     db: Session,
     soal: Soal,
     jawaban: Optional[JawabanSiswa],
+    kunci: Optional[KunciSoal] = None,
 ) -> tuple[bool, float, bool]:
-    if soal.tipe == "benar_salah":
-        statements = db.query(PernyataanBenarSalah).filter(PernyataanBenarSalah.soal_id == soal.id).all()
-        if statements:
-            return evaluate_answer(
-                soal.tipe,
-                jawaban.jawaban if jawaban else None,
-                correct_statements={row.id: bool(row.is_benar) for row in statements},
-            )
+    if kunci is None and soal.tipe in ("pilihan_ganda", "benar_salah", "pilihan_lebih_dari_satu"):
+        kunci = load_kunci(db, [soal.id])[soal.id]
+    if soal.tipe == "benar_salah" and kunci.statements:
+        return evaluate_answer(
+            soal.tipe,
+            jawaban.jawaban if jawaban else None,
+            correct_statements=kunci.statements,
+        )
 
     if soal.tipe in ("pilihan_ganda", "benar_salah", "pilihan_lebih_dari_satu"):
-        correct_option_ids = {
-            option.id
-            for option in db.query(OpsiJawaban).filter(OpsiJawaban.soal_id == soal.id).all()
-            if option.is_benar
-        }
+        correct_option_ids = kunci.correct_option_ids
         return evaluate_answer(
             soal.tipe,
             jawaban.jawaban if jawaban else None,
@@ -258,6 +291,7 @@ def calculate_ujian_score(db: Session, ujian: UjianSiswa) -> tuple[float, Dict[s
         if subject_ids
         else {}
     )
+    kunci_map = load_kunci(db, [question.id for question in questions])
     total_points = 0.0
     earned_points = 0.0
     pending = 0
@@ -275,7 +309,7 @@ def calculate_ujian_score(db: Session, ujian: UjianSiswa) -> tuple[float, Dict[s
             breakdown_points[key] = 0.0
             breakdown_earned[key] = 0.0
         points = float(question.poin or 1.0)
-        correct, fraction, is_pending = _evaluate_question(db, question, answer_map.get(question.id))
+        correct, fraction, is_pending = _evaluate_question(db, question, answer_map.get(question.id), kunci_map.get(question.id))
         breakdown[key]["jumlah_soal"] += 1
         if correct:
             breakdown[key]["jumlah_benar"] += 1
@@ -302,8 +336,14 @@ def _upsert_hasil(
     score: Optional[float],
     breakdown: Dict[str, Dict[str, Any]],
     metadata: Dict[str, Any],
+    existing: Optional[Mapping[int, HasilUjian]] = None,
 ) -> HasilUjian:
-    hasil = db.query(HasilUjian).filter(HasilUjian.ujian_siswa_id == ujian.id).first()
+    """`existing` (hasil yang sudah dimuat sekaligus) dipakai hitung ulang kohort
+    agar tidak SELECT + flush per peserta; pemanggil itu yang flush di akhir."""
+    if existing is None:
+        hasil = db.query(HasilUjian).filter(HasilUjian.ujian_siswa_id == ujian.id).first()
+    else:
+        hasil = existing.get(ujian.id)
     if hasil is None:
         hasil = HasilUjian(ujian_siswa_id=ujian.id)
         db.add(hasil)
@@ -312,7 +352,8 @@ def _upsert_hasil(
     hasil.skor = score
     hasil.skor_per_pelajaran_json = payload
     hasil.calculated_at = datetime.now(timezone.utc)
-    db.flush()
+    if existing is None:
+        db.flush()
     return hasil
 
 
@@ -364,15 +405,22 @@ def _cohort_attempts(db: Session, target: UjianSiswa, package: PaketUjian) -> li
 
 
 def _compute_cohort(db: Session, target: UjianSiswa, package: PaketUjian) -> HasilUjian:
+    # Hitung ulang kohort menulis hasil SEMUA peserta. Submit yang berbarengan
+    # (akhir tryout) diserialkan per paket agar tidak saling deadlock / menimpa
+    # dengan snapshot peserta yang basi; query berikutnya melihat data terbaru.
+    db.query(PaketUjian.id).filter(PaketUjian.id == package.id).with_for_update().first()
     attempts = _cohort_attempts(db, target, package)
     if not attempts:
         attempts = [target]
-    questions_by_attempt = {attempt.id: _attempt_questions(db, attempt) for attempt in attempts}
+    question_ids_by_attempt = {attempt.id: _attempt_question_ids(db, attempt) for attempt in attempts}
+    all_question_ids = {soal_id for ids in question_ids_by_attempt.values() for soal_id in ids}
+    soal_map = {soal.id: soal for soal in db.query(Soal).filter(Soal.id.in_(all_question_ids)).all()} if all_question_ids else {}
     question_map = {
         question.id: question
-        for questions in questions_by_attempt.values()
-        for question in questions
+        for ids in question_ids_by_attempt.values()
+        for question in _questions_from_map(soal_map, ids)
     }
+    kunci_map = load_kunci(db, question_map)
     question_points = {question_id: float(question.poin or 1.0) for question_id, question in question_map.items()}
     answers_by_attempt: Dict[int, Dict[int, JawabanSiswa]] = {attempt.id: {} for attempt in attempts}
     attempt_ids = [attempt.id for attempt in attempts]
@@ -398,6 +446,7 @@ def _compute_cohort(db: Session, target: UjianSiswa, package: PaketUjian) -> Has
                 db,
                 question,
                 answers_by_attempt[attempt.id].get(question_id),
+                kunci_map.get(question_id),
             )
             row[question_id] = correct
             if is_pending:
@@ -419,6 +468,21 @@ def _compute_cohort(db: Session, target: UjianSiswa, package: PaketUjian) -> Has
     calculation = calculate_cohort_scores(correctness_rows, question_points, scale)
     results: Dict[int, HasilUjian] = {}
     cohort_has_pending = any(pending_by_attempt.values())
+    question_ids_by_subject: Dict[str, list[int]] = {}
+    for question_id, question in question_map.items():
+        key = str(question.pelajaran_id) if question.pelajaran_id is not None else "tanpa_pelajaran"
+        question_ids_by_subject.setdefault(key, []).append(question_id)
+    weights_meta = {
+        str(question_id): {
+            "p": calculation.proportions[question_id],
+            "bobot": calculation.weights[question_id],
+        }
+        for question_id in question_map
+    }
+    existing_hasil = {
+        hasil.ujian_siswa_id: hasil
+        for hasil in db.query(HasilUjian).filter(HasilUjian.ujian_siswa_id.in_([attempt.id for attempt in attempts])).all()
+    }
     for index, attempt in enumerate(attempts):
         pending = pending_by_attempt[attempt.id]
         score = calculation.scores[index] if not cohort_has_pending else None
@@ -426,11 +490,7 @@ def _compute_cohort(db: Session, target: UjianSiswa, package: PaketUjian) -> Has
         status = calculation.status if not cohort_has_pending else "sementara"
         breakdown = breakdown_by_attempt[attempt.id]
         for key, item in breakdown.items():
-            subject_question_ids = [
-                question_id
-                for question_id, question in question_map.items()
-                if (str(question.pelajaran_id) if question.pelajaran_id is not None else "tanpa_pelajaran") == key
-            ]
+            subject_question_ids = question_ids_by_subject.get(key, [])
             total_weight = sum(calculation.weights[question_id] for question_id in subject_question_ids)
             earned_weight = sum(
                 calculation.weights[question_id]
@@ -451,15 +511,11 @@ def _compute_cohort(db: Session, target: UjianSiswa, package: PaketUjian) -> Has
                 "skor_mentah": raw_score,
                 "esai_belum_dinilai": pending,
                 "menunggu_koreksi": pending > 0,
-                "weights": {
-                    str(question_id): {
-                        "p": calculation.proportions[question_id],
-                        "bobot": calculation.weights[question_id],
-                    }
-                    for question_id in question_map
-                },
+                "weights": weights_meta,
             },
+            existing_hasil,
         )
+    db.flush()
 
     if target.id in results:
         return results[target.id]

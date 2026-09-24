@@ -8,7 +8,7 @@ from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.core.security import get_current_active_user, require_roles
+from app.core.security import get_current_active_user, guru_accessible_package_ids, guru_can_access_package, require_roles
 from app.core.timeutils import ensure_utc, utc_now
 from app.db.database import get_db
 from app.models.jadwal_ujian import JadwalUjian
@@ -56,6 +56,14 @@ def authorize_ujian(ujian: UjianSiswa, current_user, db: Session) -> None:
         linked_siswa = db.query(Siswa).filter(Siswa.id == ujian.siswa_id, Siswa.user_id == current_user.id).first()
         if not linked_siswa:
             raise HTTPException(status_code=403, detail="Insufficient permissions")
+    elif current_user.role == "guru":
+        # Guru hanya untuk paket dalam penugasannya (mis. tidak bisa memaksa
+        # submit ujian siswa di luar mapel yang diampu).
+        paket = db.query(PaketUjian).filter(PaketUjian.id == ujian.paket_ujian_id).first()
+        if not paket or not guru_can_access_package(db, current_user, paket):
+            raise HTTPException(status_code=403, detail="Paket berada di luar penugasan guru")
+    elif current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
 
 
 def effective_durasi_menit(ujian: UjianSiswa, paket: PaketUjian) -> int:
@@ -505,6 +513,11 @@ def list_ujian_siswa(
     if current_user.role == "siswa":
         owned_ids = [row.id for row in db.query(Siswa.id).filter(Siswa.user_id == current_user.id).all()]
         query = query.filter(UjianSiswa.siswa_id.in_(owned_ids))
+    elif current_user.role == "guru":
+        paket_ids = guru_accessible_package_ids(db, current_user, [row.id for row in db.query(PaketUjian.id).all()])
+        query = query.filter(UjianSiswa.paket_ujian_id.in_(paket_ids))
+    elif current_user.role != "admin":
+        return []
     if siswa_id is not None:
         query = query.filter(UjianSiswa.siswa_id == siswa_id)
     if paket_ujian_id is not None:
@@ -901,6 +914,8 @@ def advance_section(ujian_id: int, bagian_aktif: int, db: Session = Depends(get_
         raise HTTPException(status_code=404, detail="Ujian tidak ditemukan")
     authorize_ujian(ujian, current_user, db)
     paket = db.query(PaketUjian).filter(PaketUjian.id == ujian.paket_ujian_id).first()
+    if not paket:
+        raise HTTPException(status_code=404, detail="Paket Ujian not found")
     ensure_ujian_active(ujian, paket)
     if paket.tipe != "ujian" or not ujian.bagian_urutan or bagian_aktif != (ujian.bagian_aktif or 0):
         raise HTTPException(status_code=409, detail="Bagian aktif sudah berubah, muat ulang ujian")
@@ -941,10 +956,7 @@ def submit_ujian_siswa(ujian_id: int, db: Session = Depends(get_db), current_use
     ujian = db.query(UjianSiswa).filter(UjianSiswa.id == ujian_id).with_for_update().first()
     if not ujian:
         raise HTTPException(status_code=404, detail="Ujian Siswa not found")
-    if current_user.role == "siswa":
-        linked_siswa = db.query(Siswa).filter(Siswa.id == ujian.siswa_id, Siswa.user_id == current_user.id).first()
-        if not linked_siswa:
-            raise HTTPException(status_code=403, detail="Insufficient permissions")
+    authorize_ujian(ujian, current_user, db)
     # prevent double submission
     if ujian.is_submitted:
         return ujian
