@@ -186,7 +186,7 @@ export default function SiswaHomePage() {
       <nav className="student-categories" aria-label="Menu belajar">
         <Link href="/siswa/tryout" className="student-category">
           <span className="student-category-icon"><ClipboardList size={24} aria-hidden="true" /></span>
-          <span className="student-category-text"><strong>Tryout</strong></span>
+          <span className="student-category-text"><strong>Try Out</strong></span>
           <ArrowRight size={18} className="student-category-arrow" aria-hidden="true" />
         </Link>
         <Link href="/siswa/latihan" className="student-category">
@@ -214,11 +214,11 @@ export default function SiswaHomePage() {
       {(
         <section className="student-section" aria-labelledby="tryout-heading">
           <div className="student-section-heading">
-            <h2 id="tryout-heading">Tryout</h2>
+            <h2 id="tryout-heading">Try Out</h2>
             <Link className="student-outline-link" href="/siswa/tryout">Semua <ArrowRight size={13} aria-hidden="true" /></Link>
           </div>
           {jadwalTersedia.length === 0 ? (
-            <div className="student-notice">Belum ada tryout.</div>
+            <div className="student-notice">Belum ada try out.</div>
           ) : (
             <div className="student-tryouts">
               {[...jadwalTersedia].sort((a, b) => b.jadwal_ujian_id - a.jadwal_ujian_id).map((item) => {
@@ -246,7 +246,7 @@ export default function SiswaHomePage() {
                       {selesai ? (
                         <Link className="student-primary-link" href={`/siswa/hasil/${riwayatSelesaiByJadwal.get(item.jadwal_ujian_id)}`}>Lihat Hasil <ArrowRight size={15} aria-hidden="true" /></Link>
                       ) : item.status === "berlangsung" ? (
-                        <Link className="student-primary-link" href={`/siswa/paket/${item.jadwal_ujian_id}`}>Mulai Tryout <ArrowRight size={15} aria-hidden="true" /></Link>
+                        <Link className="student-primary-link" href={`/siswa/paket/${item.jadwal_ujian_id}`}>Mulai Try Out <ArrowRight size={15} aria-hidden="true" /></Link>
                       ) : <p className="student-notice text-center">Dibuka sesuai jadwal</p>}
                     </div>
                   </article>

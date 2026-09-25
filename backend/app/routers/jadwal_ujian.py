@@ -63,16 +63,16 @@ def _validate_package_readiness(db: Session, paket: PaketUjian) -> None:
             .all()
         )
         if any(duration is None or not 1 <= duration <= 1440 for _, duration, _, _ in readiness):
-            raise HTTPException(status_code=409, detail="Tryout belum siap dijadwalkan: isi durasi valid pada setiap bagian terlebih dahulu.")
+            raise HTTPException(status_code=409, detail="Try Out belum siap dijadwalkan: isi durasi valid pada setiap bagian terlebih dahulu.")
         if any(question_count == 0 for _, _, _, question_count in readiness) or sum(question_count for _, _, _, question_count in readiness) == 0:
-            raise HTTPException(status_code=409, detail="Tryout belum siap dijadwalkan: isi soal pada setiap bagian/mata pelajaran terlebih dahulu.")
+            raise HTTPException(status_code=409, detail="Try Out belum siap dijadwalkan: isi soal pada setiap bagian/mata pelajaran terlebih dahulu.")
         if any(status != "approved" for _, _, status, _ in readiness):
-            raise HTTPException(status_code=409, detail="Tryout belum siap dijadwalkan: semua bagian harus disetujui admin terlebih dahulu.")
+            raise HTTPException(status_code=409, detail="Try Out belum siap dijadwalkan: semua bagian harus disetujui admin terlebih dahulu.")
         soal_ids = [row[0] for row in db.query(PaketSoal.soal_id).filter(PaketSoal.paket_ujian_id == paket.id).distinct().all()]
         if soal_ids and db.query(Soal.id).filter(Soal.id.in_(soal_ids), Soal.status != "approved").first():
-            raise HTTPException(status_code=409, detail="Tryout belum siap dijadwalkan: terdapat soal yang belum approved.")
+            raise HTTPException(status_code=409, detail="Try Out belum siap dijadwalkan: terdapat soal yang belum approved.")
     elif paket.kategori_id is not None or paket.kategori is not None:
-        raise HTTPException(status_code=409, detail="Tryout belum siap dijadwalkan: tambahkan minimal satu bagian/mata pelajaran terlebih dahulu.")
+        raise HTTPException(status_code=409, detail="Try Out belum siap dijadwalkan: tambahkan minimal satu bagian/mata pelajaran terlebih dahulu.")
 
 
 def validate_jadwal(db: Session, payload: JadwalUjianCreate, ignore_id: Optional[int] = None):
@@ -81,7 +81,7 @@ def validate_jadwal(db: Session, payload: JadwalUjianCreate, ignore_id: Optional
 
     paket = _ref_paket(db, payload.paket_ujian_id)
     if paket.tipe != "ujian" or paket.is_archived:
-        raise HTTPException(status_code=409, detail="Jadwal hanya untuk Tryout aktif. Latihan tidak memerlukan jadwal.")
+        raise HTTPException(status_code=409, detail="Jadwal hanya untuk Try Out aktif. Latihan tidak memerlukan jadwal.")
     _validate_package_readiness(db, paket)
     program_efektif, kelas_efektif = _program_kelas_efektif(payload, paket)
 

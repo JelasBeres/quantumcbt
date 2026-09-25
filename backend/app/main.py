@@ -32,13 +32,14 @@ def create_app() -> FastAPI:
     uploads_dir.mkdir(parents=True, exist_ok=True)
     app.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
     app.include_router(health.router)
-    from app.routers import auth, users, siswa, paket_ujian, kategori_paket, soal, ujian_siswa, jawaban_siswa, hasil_ujian, log_kecurangan, pelajaran, kelas, program, login_activity, dashboard, pengaturan, topik, subbab, upload, laporan_soal, bagian_paket, guru_scope
+    from app.routers import auth, users, siswa, paket_ujian, kategori_paket, soal, ujian_siswa, jawaban_siswa, hasil_ujian, log_kecurangan, pelajaran, kelas, program, login_activity, dashboard, pengaturan, topik, subbab, upload, laporan_soal, bagian_paket, paket_mapel, guru_scope
     app.include_router(auth.router)
     app.include_router(users.router)
     app.include_router(siswa.router)
     app.include_router(paket_ujian.router)
     app.include_router(kategori_paket.router)
     app.include_router(bagian_paket.router)
+    app.include_router(paket_mapel.router)
     app.include_router(soal.router)
     app.include_router(ujian_siswa.router)
     app.include_router(jawaban_siswa.router)

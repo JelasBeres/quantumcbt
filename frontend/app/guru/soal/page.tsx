@@ -3,12 +3,13 @@ import QuestionMetaFilters, { emptyMetaFilter, matchesMeta } from "@/components/
 
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, BookOpen, CheckCircle2, ChevronRight, Clock3, FileQuestion, RefreshCcw } from "lucide-react";
+import { ArrowLeft, BookOpen, ChevronRight, Clock3, Eye, FileQuestion, Pencil, RefreshCcw } from "lucide-react";
 import Button from "@/components/Button";
 import Card from "@/components/Card";
 import EmptyState from "@/components/EmptyState";
 import MathContent from "@/components/MathContent";
 import Skeleton from "@/components/Skeleton";
+import SoalPreviewDialog from "@/components/SoalPreviewDialog";
 import Select from "@/components/Select";
 import Input from "@/components/Input";
 import { api, getErrorMessage } from "@/lib/api";
@@ -71,6 +72,7 @@ export default function GuruSoalPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [previewId, setPreviewId] = useState<number | null>(null);
   const [filters, setFilters] = useState({ kelas: "", pelajaran: "", bab: "", subbab: "" });
   const [query, setQuery] = useState("");
   const [difficulty, setDifficulty] = useState("");
@@ -171,17 +173,12 @@ export default function GuruSoalPage() {
     return Array.from(groups.entries());
   }, [visible, kelasList, pelajaranList, topikList]);
 
-  const action = async (item: Soal, kind: "submit" | "withdraw" | "revision") => {
+  const action = async (item: Soal, kind: "submit" | "withdraw") => {
     setBusyId(item.id);
     setError("");
     try {
       if (kind === "submit") await api.post(`/soal/${item.id}/submit-review`, {});
       if (kind === "withdraw") await api.post(`/soal/${item.id}/withdraw-review`, {});
-      if (kind === "revision") {
-        const response = await api.post(`/soal/${item.id}/revision`);
-        router.push(`/guru/soal/tambah?id=${response.data.id}`);
-        return;
-      }
       await load();
     } catch (err) {
       setError(getErrorMessage(err, "Aksi soal gagal diproses."));
@@ -201,10 +198,10 @@ export default function GuruSoalPage() {
         <MathContent className="prose prose-sm mt-4 max-w-none line-clamp-4" html={item.teks_soal} />
         {item.rejection_reason && <div className="mt-4 rounded-input border border-red-200 bg-red-50 p-3 text-sm text-red-700"><strong>Catatan admin:</strong> {item.rejection_reason}</div>}
         <div className="mt-5 flex flex-wrap gap-2 border-t border-card-border pt-4">
-          {(itemStatus === "draft" || itemStatus === "rejected") && <Button size="sm" variant="outline" disabled={busyId === item.id} onClick={() => router.push(`/guru/soal/tambah?id=${item.id}`)}>Edit Soal</Button>}
+          <Button size="sm" variant="outline" onClick={() => setPreviewId(item.id)}><Eye className="mr-1 h-4 w-4" /> Lihat Soal</Button>
+          {itemStatus !== "pending_review" && <Button size="sm" variant="outline" disabled={busyId === item.id} onClick={() => router.push(`/guru/soal/tambah?id=${item.id}`)}><Pencil className="mr-1 h-4 w-4" /> Edit Soal</Button>}
           {(itemStatus === "draft" || itemStatus === "rejected") && <Button size="sm" disabled={busyId === item.id} onClick={() => action(item, "submit")}><Clock3 className="mr-1 h-4 w-4" /> Ajukan Review</Button>}
           {itemStatus === "pending_review" && <Button size="sm" variant="outline" disabled={busyId === item.id} onClick={() => action(item, "withdraw")}><RefreshCcw className="mr-1 h-4 w-4" /> Tarik Pengajuan</Button>}
-          {itemStatus === "approved" && <Button size="sm" variant="outline" disabled={busyId === item.id} onClick={() => action(item, "revision")}><CheckCircle2 className="mr-1 h-4 w-4" /> Edit Soal (Revisi)</Button>}
         </div>
       </Card>
     );
@@ -223,7 +220,7 @@ export default function GuruSoalPage() {
         <div>
           <p className="text-sm font-semibold text-brand-primary">Bank soal guru</p>
           <h1 className="mt-1 text-3xl font-bold text-heading-dark">Kelola Soal</h1>
-          <p className="mt-1 text-sm text-text-muted">Kelola draft sendiri dan revisi soal yang sudah disetujui (milik sendiri maupun guru lain) sesuai penugasan. Revisi diperiksa admin sebelum diterbitkan.</p>
+          <p className="mt-1 text-sm text-text-muted">Kelola draft sendiri dan edit soal yang sudah disetujui (milik sendiri maupun guru lain) sesuai penugasan. Soal yang disetujui langsung diperbarui tanpa review ulang, kecuali sudah dikerjakan siswa.</p>
         </div>
         <Button onClick={() => router.push("/guru/soal/tambah")}>Buat Soal</Button>
       </header>
@@ -254,6 +251,12 @@ export default function GuruSoalPage() {
           <Button variant="outline" size="sm" onClick={() => updateFilters({ kelas: "", pelajaran: "", bab: "", subbab: "" })}>Reset filter</Button>
         </div>
       </Card>
+
+      <SoalPreviewDialog
+        soalId={previewId}
+        onClose={() => setPreviewId(null)}
+        actions={(soal) => soal.status !== "pending_review" ? <Button variant="outline" onClick={() => router.push(`/guru/soal/tambah?id=${soal.id}`)}><Pencil className="mr-1 h-4 w-4" /> Edit Soal</Button> : null}
+      />
 
       {loading ? (
         <div className="grid gap-4 md:grid-cols-2">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-44" />)}</div>

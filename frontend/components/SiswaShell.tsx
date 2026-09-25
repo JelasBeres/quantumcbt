@@ -8,7 +8,7 @@ import { logout } from "@/lib/auth";
 import SiswaBottomNav from "./SiswaBottomNav";
 import PemberitahuanProvider, { usePemberitahuan } from "./PemberitahuanProvider";
 
-const NAV = [["tryout", "Tryout"], ["latihan", "Latihan"], ["ujian-aktif", "Ujian Aktif"], ["riwayat", "Riwayat"], ["pemberitahuan", "Pemberitahuan"], ["profil", "Profil"]];
+const NAV = [["tryout", "Try Out"], ["latihan", "Latihan"], ["ujian-aktif", "Ujian Aktif"], ["riwayat", "Riwayat"], ["pemberitahuan", "Pemberitahuan"], ["profil", "Profil"]];
 
 function JumlahBelumDibaca({ className }: { className: string }) {
   const { belumDibaca } = usePemberitahuan();

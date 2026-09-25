@@ -25,7 +25,7 @@ export default function RiwayatPage() {
   }, []);
 
   const grup = [
-    { href: "/siswa/riwayat/tryout", judul: "Tryout", icon: ClipboardList, info: jumlah ? `${jumlah.tryout} tryout selesai` : "Memuat…" },
+    { href: "/siswa/riwayat/tryout", judul: "Try Out", icon: ClipboardList, info: jumlah ? `${jumlah.tryout} try out selesai` : "Memuat…" },
     { href: "/siswa/riwayat/latihan", judul: "Latihan", icon: BookOpen, info: jumlah ? `${jumlah.latihan} sesi latihan selesai` : "Memuat…" },
   ];
 
@@ -34,7 +34,7 @@ export default function RiwayatPage() {
       <Link href="/siswa/dashboard" className="student-back"><ArrowLeft size={15} aria-hidden="true" /> Beranda</Link>
       <header className="student-split-head">
         <h1>Riwayat</h1>
-        <p className="student-muted mt-1">Pilih riwayat tryout atau latihan yang sudah kamu kerjakan.</p>
+        <p className="student-muted mt-1">Pilih riwayat try out atau latihan yang sudah kamu kerjakan.</p>
       </header>
 
       {error && <p role="alert" className="student-notice mt-4">{error}</p>}

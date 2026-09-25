@@ -1,4 +1,5 @@
-import { SelectHTMLAttributes } from "react";
+import { ChangeEvent, SelectHTMLAttributes } from "react";
+import DropdownSelect from "./DropdownSelect";
 
 interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   label?: string;
@@ -6,7 +7,31 @@ interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   options: { value: string | number; label: string }[];
 }
 
+// Opsi lebih dari ini (umumnya data master: paket, mapel, kelas, bab) memakai
+// DropdownSelect: selalu membuka ke bawah dan bisa dicari. Opsi sedikit tetap
+// memakai <select> bawaan (picker sistem di HP lebih nyaman).
+const BATAS_OPSI_NATIVE = 8;
+
 export default function Select({ label, error, options, className = "", ...props }: SelectProps) {
+  if (options.length > BATAS_OPSI_NATIVE && !props.multiple) {
+    return (
+      <DropdownSelect
+        label={label}
+        error={error}
+        options={options}
+        value={props.value == null ? "" : String(props.value)}
+        onChange={(value) =>
+          props.onChange?.({ target: { value, name: props.name }, currentTarget: { value, name: props.name } } as unknown as ChangeEvent<HTMLSelectElement>)
+        }
+        disabled={props.disabled}
+        required={props.required}
+        id={props.id}
+        name={props.name}
+        buttonClassName={className}
+      />
+    );
+  }
+
   return (
     <div className="w-full">
       {label && (

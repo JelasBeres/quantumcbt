@@ -15,6 +15,8 @@ interface TableProps<T> {
   searchText?: (row: T) => string;
   paginate?: boolean;
   newestFirst?: boolean;
+  // Batas tinggi tabel (kelas Tailwind, mis. "max-h-[65vh]"): isi di-scroll, judul kolom tetap di atas.
+  scrollHeight?: string;
 }
 
 export default function Table<T extends { id?: number | string }>({
@@ -24,7 +26,8 @@ export default function Table<T extends { id?: number | string }>({
   emptyMessage = "Tidak ada data",
   searchText,
   paginate = false,
-  newestFirst = false
+  newestFirst = false,
+  scrollHeight
 }: TableProps<T>) {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -40,14 +43,14 @@ export default function Table<T extends { id?: number | string }>({
       {searchText && <label className="block text-sm font-semibold text-body-dark">Cari data
         <input type="search" value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder="Ketik kata pencarian..." className="mt-2 block w-full rounded-input border border-card-border bg-card-bg px-3 py-2 text-body-dark" />
       </label>}
-    <div className="max-w-full overflow-x-auto rounded-card border border-card-border bg-card-bg">
+    <div className={`max-w-full rounded-card border border-card-border bg-card-bg ${scrollHeight ? `overflow-auto ${scrollHeight}` : "overflow-x-auto"}`}>
       <table className="w-full min-w-max border-collapse">
         <thead>
           <tr className="border-b border-card-border bg-neutral">
             {columns.map((col, idx) => (
               <th
                 key={idx}
-                className={`px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-text-muted sm:px-5 ${col.className || ""}`}
+                className={`px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-text-muted sm:px-5 ${scrollHeight ? "sticky top-0 z-10 bg-neutral shadow-[inset_0_-1px_0_var(--color-card-border,#e5e7eb)]" : ""} ${col.className || ""}`}
               >
                 {col.header}
               </th>

@@ -61,10 +61,12 @@ function questionIsEligible(
   soal: Soal,
   paket: PaketUjian,
   bagian: BagianPaket,
-  scopes: GuruScope[]
+  scopes: GuruScope[] | null
 ) {
   if (bagian.pelajaran_id == null || soal.pelajaran_id !== bagian.pelajaran_id || soal.status !== "approved") return false;
   if (paket.kelas_id != null && soal.kelas_id !== paket.kelas_id) return false;
+  // Admin (scopes null) boleh memakai semua soal approved di mapel & kelas bagian.
+  if (scopes == null) return true;
   const programId = paket.program_id ?? null;
   const kelasId = paket.kelas_id ?? null;
   return scopes.some((scope) => scopeMatches(scope, bagian.pelajaran_id as number, programId ?? null, kelasId));
@@ -75,9 +77,11 @@ export default function PaketQuestionAssignment() {
   const searchParams = useSearchParams();
   const paketId = positiveId(searchParams.get("id"));
   const bagianId = positiveId(searchParams.get("bagian_id"));
+  const isAdmin = getUser()?.role === "admin";
+  const basePath = isAdmin ? "/admin" : "/guru";
   const [paket, setPaket] = useState<PaketUjian | null>(null);
   const [bagian, setBagian] = useState<BagianPaket | null>(null);
-  const [scopes, setScopes] = useState<GuruScope[]>([]);
+  const [scopes, setScopes] = useState<GuruScope[] | null>(null);
   const [pelajaranList, setPelajaranList] = useState<Pelajaran[]>([]);
   const [kelasList, setKelasList] = useState<Kelas[]>([]);
   const [programList, setProgramList] = useState<Program[]>([]);
@@ -103,8 +107,9 @@ export default function PaketQuestionAssignment() {
   useEffect(() => {
     let active = true;
     const load = async () => {
-      if (getUser()?.role !== "guru") {
-        setLoadError("Halaman pengisian soal bagian hanya tersedia untuk guru.");
+      const role = getUser()?.role;
+      if (role !== "guru" && role !== "admin") {
+        setLoadError("Halaman pengisian soal bagian hanya tersedia untuk admin dan guru.");
         setLoading(false);
         return;
       }
@@ -117,7 +122,7 @@ export default function PaketQuestionAssignment() {
         const [paketRes, bagianRes, scopeRes, pelajaranRes, kelasRes, programRes, topikRes, subbabRes] = await Promise.all([
           api.get(`/paket-ujian/${paketId}`),
           api.get(`/paket-ujian/${paketId}/bagian/${bagianId}`),
-          api.get("/guru-scope/me"),
+          isAdmin ? Promise.resolve({ data: null }) : api.get("/guru-scope/me"),
           api.get("/pelajaran/"),
           api.get("/kelas/"),
           api.get("/program/"),
@@ -127,14 +132,14 @@ export default function PaketQuestionAssignment() {
         if (!active) return;
         const nextPaket = paketRes.data as PaketUjian;
         const nextBagian = bagianRes.data as BagianPaket;
-        const nextScopes = scopeRes.data as GuruScope[];
+        const nextScopes = scopeRes.data as GuruScope[] | null;
         const nextPelajaranList = pelajaranRes.data as Pelajaran[];
         const sectionSubject = nextPelajaranList.find((item) => item.id === nextBagian.pelajaran_id);
         if (nextBagian.paket_ujian_id !== nextPaket.id || !nextBagian.pelajaran_id || !sectionSubject) {
           throw new Error("INVALID_SECTION");
         }
         const effectiveProgramId = nextPaket.program_id ?? null;
-        if (!nextScopes.some((scope) => scopeMatches(scope, nextBagian.pelajaran_id as number, effectiveProgramId, nextPaket.kelas_id ?? null))) {
+        if (nextScopes && !nextScopes.some((scope) => scopeMatches(scope, nextBagian.pelajaran_id as number, effectiveProgramId, nextPaket.kelas_id ?? null))) {
           throw new Error("OUT_OF_SCOPE");
         }
         const bankRes = await api.get("/soal/", {
@@ -185,11 +190,13 @@ export default function PaketQuestionAssignment() {
   }, [bagianId, paketId]);
 
   const listHref = useMemo(() => {
-    if (!paket) return "/guru/paket-ujian";
+    if (!paket) return `${basePath}/paket-ujian`;
+    // Paket latihan: set soal dikelola per mapel, jadi kembali ke halaman set mapel itu.
+    if (paket.tipe === "latihan" && bagian?.pelajaran_id) return `${basePath}/paket-ujian/set-soal?id=${paket.id}&pelajaran_id=${bagian.pelajaran_id}`;
     const tipe = paket.tipe === "latihan" ? "latihan" : "ujian";
     const kategoriId = paket.kategori_id == null ? "belum" : String(paket.kategori_id);
-    return `/guru/paket-ujian?tipe=${tipe}&kategori_id=${encodeURIComponent(kategoriId)}`;
-  }, [paket]);
+    return `${basePath}/paket-ujian?tipe=${tipe}&kategori_id=${encodeURIComponent(kategoriId)}`;
+  }, [basePath, paket, bagian?.pelajaran_id]);
 
   const getNama = <T extends { id: number; nama: string }>(list: T[], id: number | null | undefined) => {
     if (!id) return "-";
@@ -294,7 +301,7 @@ export default function PaketQuestionAssignment() {
     }
   };
 
-  const isLocked = bagian?.status === "pending_review";
+  const isLocked = !isAdmin && bagian?.status === "pending_review";
 
   const persistSelection = async (): Promise<BagianPaket | null> => {
     if (!paket || !bagian) return null;
@@ -337,7 +344,7 @@ export default function PaketQuestionAssignment() {
     <div className="space-y-6">
       <header>
         <h1 className="text-2xl font-bold text-heading-dark sm:text-3xl">Isi Soal Bagian</h1>
-        <p className="mt-1 text-sm text-text-muted">Pilih soal approved dari Bank Soal sesuai penugasan bagian.</p>
+        <p className="mt-1 text-sm text-text-muted">{isAdmin ? "Pilih soal approved dari Bank Soal sesuai mapel dan kelas bagian." : "Pilih soal approved dari Bank Soal sesuai penugasan bagian."}</p>
       </header>
 
       <Card>
@@ -358,7 +365,7 @@ export default function PaketQuestionAssignment() {
             <p className="mt-0.5">{bagian.review_note || "Tidak ada catatan tambahan."}</p>
           </div>
         )}
-        {bagian.status === "pending_review" && (
+        {bagian.status === "pending_review" && !isAdmin && (
           <div className="mt-4 rounded-input border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
             Bagian ini sedang menunggu review admin. Isi soal terkunci sampai admin menyetujui atau meminta revisi.
           </div>
@@ -424,12 +431,12 @@ export default function PaketQuestionAssignment() {
         )}
 
         {saveError && <p className="mt-4 rounded-input border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{saveError}</p>}
-        {!bagian.durasi_menit && <p className="mt-4 rounded-input border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">Atur durasi bagian pada kartu paket terlebih dahulu sebelum mengajukan review.</p>}
+        {!bagian.durasi_menit && <p className="mt-4 rounded-input border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">{isAdmin ? "Durasi bagian belum diatur. Atur durasi pada kartu paket agar bagian langsung disetujui." : "Atur durasi bagian pada kartu paket terlebih dahulu sebelum mengajukan review."}</p>}
         <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-card-border pt-4">
           <Button className="w-full sm:w-auto" disabled={saving} onClick={saveSelection}>{saving ? "Menyimpan..." : `Simpan (${selectedIds.length} soal)`}</Button>
           <Button className="w-full sm:w-auto" variant="outline" onClick={() => router.push(listHref)}>Batal</Button>
         </div>
-        <p className="mt-3 text-xs text-text-muted">Setelah soal disimpan, ajukan review dari tombol "Ajukan Review" pada kartu bagian di halaman daftar paket.</p>
+        <p className="mt-3 text-xs text-text-muted">{isAdmin ? "Soal yang diisi admin tidak perlu review: bagian langsung disetujui begitu soal dan durasinya lengkap." : "Setelah soal disimpan, ajukan review dari tombol \"Ajukan Review\" pada kartu bagian di halaman daftar paket."}</p>
         </>
         )}
       </Card>

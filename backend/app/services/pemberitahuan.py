@@ -33,7 +33,7 @@ def sinkron_pemberitahuan_jadwal(db: Session, jadwal: JadwalUjian) -> None:
         notif = Pemberitahuan(jadwal_ujian_id=jadwal.id, jenis="paket_baru", tampil_popup=True, created_by=jadwal.reviewed_by or jadwal.created_by)
         db.add(notif)
     notif.judul = f"Paket ujian baru: {paket.nama}"
-    notif.isi = f"Tryout {paket.nama} dibuka mulai {_format_wib(jadwal.mulai)}." + (
+    notif.isi = f"Try Out {paket.nama} dibuka mulai {_format_wib(jadwal.mulai)}." + (
         f" Kerjakan sebelum {_format_wib(jadwal.selesai)}." if jadwal.selesai else ""
     )
     notif.tautan = f"/siswa/paket/{jadwal.id}"

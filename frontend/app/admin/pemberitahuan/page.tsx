@@ -269,7 +269,7 @@ export default function AdminPemberitahuanPage() {
               maxLength={200}
               value={form.judul}
               onChange={(e) => setForm({ ...form, judul: e.target.value })}
-              placeholder="Contoh: Promo Tryout UTBK diskon 50%"
+              placeholder="Contoh: Promo Try Out UTBK diskon 50%"
             />
             <Textarea
               label="Isi"

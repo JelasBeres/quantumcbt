@@ -91,10 +91,6 @@ def test_bagian_review_full_cycle_and_package_readiness():
     r = client.put(f"/paket-ujian/{paket_id}/bagian/{bagian_id}/soal", json={"soal_ids": data["soal_ids"]}, headers=owner)
     assert r.status_code == 200, r.text
 
-    # Admin tidak boleh mengedit isi bagian secara langsung.
-    assert client.put(f"/paket-ujian/{paket_id}/bagian/{bagian_id}/soal", json={"soal_ids": data["soal_ids"][:1]}, headers=admin).status_code == 403
-    assert client.patch(f"/paket-ujian/{paket_id}/bagian/{bagian_id}/durasi", json={"durasi_menit": 45}, headers=admin).status_code == 403
-
     # Guru mengajukan review.
     r = client.post(f"/paket-ujian/{paket_id}/bagian/{bagian_id}/submit-review", json={}, headers=owner)
     assert r.status_code == 200, r.text

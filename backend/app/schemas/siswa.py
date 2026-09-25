@@ -140,6 +140,7 @@ class SiswaRiwayatLatihanOut(BaseModel):
     mode_latihan: Optional[str] = None
     bagian_id: Optional[int] = None
     bagian_nama: Optional[str] = None
+    pelajaran_id: Optional[int] = None
     pelajaran_nama: Optional[str] = None
     started_at: Optional[datetime] = None
     finished_at: Optional[datetime] = None

@@ -10,6 +10,7 @@ from app.db.database import get_db
 from app.models.bagian_paket import BagianPaket
 from app.models.guru import Guru
 from app.models.guru_scope import GuruScope
+from app.models.paket_mapel import PaketMapel
 from app.models.paket_soal import PaketSoal
 from app.models.paket_ujian import PaketUjian
 from app.models.pelajaran import Pelajaran
@@ -126,6 +127,26 @@ def _revert_approval_if_needed(bagian: BagianPaket) -> None:
         bagian.reviewed_by = None
 
 
+def _after_content_change(bagian: BagianPaket, db: Session, current_user) -> None:
+    """Perubahan isi/durasi oleh guru membatalkan persetujuan. Admin adalah
+    penyetuju, jadi (revisi 25 Sep) set yang diisi admin langsung disetujui
+    begitu durasi dan soalnya lengkap."""
+    if current_user.role != "admin":
+        _revert_approval_if_needed(bagian)
+        return
+    db.flush()
+    lengkap = bool(bagian.durasi_menit) and db.query(PaketSoal.id).filter(PaketSoal.bagian_paket_id == bagian.id).first() is not None
+    if lengkap:
+        bagian.status = "approved"
+        bagian.review_note = None
+        bagian.reviewed_by = current_user.id
+        bagian.reviewed_at = datetime.now(timezone.utc)
+    elif bagian.status in ("approved", "pending_review"):
+        bagian.status = "draft"
+        bagian.reviewed_at = None
+        bagian.reviewed_by = None
+
+
 def _sync_paket_totals(paket_id: int, db: Session) -> None:
     db.flush()
     paket = db.query(PaketUjian).filter(PaketUjian.id == paket_id).first()
@@ -175,6 +196,26 @@ def _resolve_nama_bagian(
     return nama
 
 
+def ensure_paket_mapel(db: Session, paket_id: int, pelajaran_id: int) -> PaketMapel:
+    """Setiap set soal ber-mapel harus punya kartu mapel di paketnya."""
+    mapel = (
+        db.query(PaketMapel)
+        .filter(PaketMapel.paket_ujian_id == paket_id, PaketMapel.pelajaran_id == pelajaran_id)
+        .first()
+    )
+    if mapel is None:
+        last = (
+            db.query(PaketMapel.urutan)
+            .filter(PaketMapel.paket_ujian_id == paket_id)
+            .order_by(PaketMapel.urutan.desc())
+            .first()
+        )
+        mapel = PaketMapel(paket_ujian_id=paket_id, pelajaran_id=pelajaran_id, urutan=(last[0] if last else 0) + 1)
+        db.add(mapel)
+        db.flush()
+    return mapel
+
+
 def _next_urutan(paket_id: int, db: Session) -> int:
     current = (
         db.query(BagianPaket.urutan)
@@ -214,6 +255,7 @@ def create_bagian(payload: BagianPaketCreate, paket_id: int, db: Session = Depen
         deskripsi=payload.deskripsi,
     )
     db.add(bagian)
+    ensure_paket_mapel(db, paket_id, pelajaran.id)
     db.flush()
     _sync_paket_totals(paket_id, db)
     db.commit()
@@ -243,6 +285,7 @@ def update_bagian(bagian_id: int, payload: BagianPaketUpdate, paket_id: int, db:
         bagian.urutan = payload.urutan
     if "pelajaran_id" in payload.model_fields_set:
         bagian.pelajaran_id = selected_pelajaran_id
+        ensure_paket_mapel(db, paket_id, pelajaran.id)
     if payload.is_random_soal is not None:
         bagian.is_random_soal = payload.is_random_soal
     if payload.is_random_opsi is not None:
@@ -259,17 +302,18 @@ def update_bagian(bagian_id: int, payload: BagianPaketUpdate, paket_id: int, db:
 
 
 @router.patch("/{bagian_id}/durasi", response_model=BagianPaketDetailOut)
-def update_bagian_duration(bagian_id: int, payload: BagianDurasiUpdate, paket_id: int, db: Session = Depends(get_db), current_user=Depends(require_roles(["guru"]))):
+def update_bagian_duration(bagian_id: int, payload: BagianDurasiUpdate, paket_id: int, db: Session = Depends(get_db), current_user=Depends(require_roles(["admin", "guru"]))):
     paket = _get_paket(paket_id, db, current_user, mutable=True)
     bagian = _get_bagian(bagian_id, paket_id, db)
-    if not guru_can_access_section(db, current_user, bagian, paket):
-        raise HTTPException(status_code=403, detail="Bagian berada di luar mapel yang diampu")
-    if bagian.pelajaran_id is None:
-        raise HTTPException(status_code=409, detail="Bagian legacy tanpa mata pelajaran tidak dapat diubah oleh guru")
-    _ensure_bagian_editable(bagian)
-    require_guru_scope(db, current_user, bagian.pelajaran_id, paket.program_id, paket.kelas_id)
+    if current_user.role == "guru":
+        if not guru_can_access_section(db, current_user, bagian, paket):
+            raise HTTPException(status_code=403, detail="Bagian berada di luar mapel yang diampu")
+        if bagian.pelajaran_id is None:
+            raise HTTPException(status_code=409, detail="Bagian legacy tanpa mata pelajaran tidak dapat diubah oleh guru")
+        _ensure_bagian_editable(bagian)
+        require_guru_scope(db, current_user, bagian.pelajaran_id, paket.program_id, paket.kelas_id)
     bagian.durasi_menit = payload.durasi_menit
-    _revert_approval_if_needed(bagian)
+    _after_content_change(bagian, db, current_user)
     db.add(bagian)
     db.flush()
     _sync_paket_totals(paket_id, db)
@@ -291,14 +335,15 @@ def delete_bagian(bagian_id: int, paket_id: int, db: Session = Depends(get_db), 
 
 
 @router.put("/{bagian_id}/soal", response_model=BagianPaketDetailOut)
-def set_bagian_soal(bagian_id: int, payload: BagianSoalUpdateRequest, paket_id: int, db: Session = Depends(get_db), current_user=Depends(require_roles(["guru"]))):
+def set_bagian_soal(bagian_id: int, payload: BagianSoalUpdateRequest, paket_id: int, db: Session = Depends(get_db), current_user=Depends(require_roles(["admin", "guru"]))):
     paket = _get_paket(paket_id, db, current_user, mutable=True)
     bagian = _get_bagian(bagian_id, paket_id, db)
     if not guru_can_access_section(db, current_user, bagian, paket):
         raise HTTPException(status_code=403, detail="Bagian berada di luar mapel yang diampu")
     if bagian.pelajaran_id is None:
-        raise HTTPException(status_code=409, detail="Bagian legacy tanpa mata pelajaran tidak dapat diisi oleh guru")
-    _ensure_bagian_editable(bagian)
+        raise HTTPException(status_code=409, detail="Bagian legacy tanpa mata pelajaran tidak dapat diisi")
+    if current_user.role == "guru":
+        _ensure_bagian_editable(bagian)
     soal_ids = list(dict.fromkeys(payload.soal_ids))
     if soal_ids:
         existing_questions = db.query(Soal).filter(Soal.id.in_(soal_ids), Soal.status == "approved").all()
@@ -323,7 +368,7 @@ def set_bagian_soal(bagian_id: int, payload: BagianSoalUpdateRequest, paket_id: 
     for urutan, soal_id in enumerate(soal_ids, start=1):
         db.add(PaketSoal(paket_ujian_id=paket_id, soal_id=soal_id, urutan=urutan, bagian_paket_id=bagian.id))
 
-    _revert_approval_if_needed(bagian)
+    _after_content_change(bagian, db, current_user)
     db.add(bagian)
     _sync_paket_totals(paket_id, db)
     db.commit()

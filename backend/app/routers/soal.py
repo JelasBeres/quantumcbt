@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.core.security import get_current_active_user, require_guru_scope, require_roles
 from app.db.database import get_db
+from app.models.jawaban_siswa import JawabanSiswa
 from app.models.kelas import Kelas
 from app.models.opsi_jawaban import OpsiJawaban
 from app.models.pernyataan_benar_salah import PernyataanBenarSalah
@@ -79,8 +80,23 @@ def _require_read_soal(soal: Soal, user) -> None:
         raise HTTPException(status_code=403, detail="Soal belum diterbitkan atau bukan milik Anda")
 
 
-def _require_edit_soal(soal: Soal, user) -> None:
+def _soal_sudah_dikerjakan(db: Session, soal_id: int) -> bool:
+    return db.query(JawabanSiswa.id).filter(JawabanSiswa.soal_id == soal_id).first() is not None
+
+
+def _require_edit_soal(soal: Soal, user, db: Session) -> None:
     if user.role == "admin":
+        return
+    if soal.status == "approved":
+        # Revisi 25 Sep: guru pengampu mengedit soal approved langsung (tanpa
+        # soal baru dan tanpa review), kecuali soal yang sudah dijawab siswa
+        # agar nilai tersimpan dan pembahasan riwayat tetap cocok.
+        if soal.pelajaran_id is None:
+            raise HTTPException(status_code=403, detail="Soal belum memiliki penugasan mata pelajaran")
+        subject = db.query(Pelajaran).filter(Pelajaran.id == soal.pelajaran_id).first()
+        require_guru_scope(db, user, soal.pelajaran_id, subject.program_id if subject else None, soal.kelas_id)
+        if _soal_sudah_dikerjakan(db, soal.id):
+            raise HTTPException(status_code=409, detail="Soal sudah dikerjakan siswa sehingga tidak dapat diedit")
         return
     if soal.created_by != user.id:
         raise HTTPException(status_code=403, detail="Hanya pembuat soal yang dapat mengubah soal ini")
@@ -454,7 +470,7 @@ def upload_gambar_soal(
     soal = db.query(Soal).filter(Soal.id == soal_id).first()
     if not soal:
         raise HTTPException(status_code=404, detail="Soal not found")
-    _require_edit_soal(soal, current_user)
+    _require_edit_soal(soal, current_user, db)
 
     original_name = file.filename or ""
     extension = Path(original_name).suffix.lower()
@@ -500,7 +516,7 @@ def create_opsi_by_soal(
     soal = db.query(Soal).filter(Soal.id == soal_id).first()
     if not soal:
         raise HTTPException(status_code=404, detail="Soal not found")
-    _require_edit_soal(soal, current_user)
+    _require_edit_soal(soal, current_user, db)
     if payload.urutan is not None:
         existing = (
             db.query(OpsiJawaban)
@@ -532,7 +548,7 @@ def replace_opsi_by_soal(
     soal = db.query(Soal).filter(Soal.id == soal_id).first()
     if not soal:
         raise HTTPException(status_code=404, detail="Soal not found")
-    _require_edit_soal(soal, current_user)
+    _require_edit_soal(soal, current_user, db)
 
     # Soal esai/isian tidak perlu opsi jawaban, langsung return empty list
     if soal.tipe in ("esai", "isian"):
@@ -578,7 +594,7 @@ def replace_pernyataan_benar_salah(
     soal = db.query(Soal).filter(Soal.id == soal_id).first()
     if not soal:
         raise HTTPException(status_code=404, detail="Soal not found")
-    _require_edit_soal(soal, current_user)
+    _require_edit_soal(soal, current_user, db)
     if soal.tipe != "benar_salah":
         raise HTTPException(status_code=400, detail="Pernyataan hanya dapat digunakan untuk soal benar/salah")
     label_benar = payload.label_benar.strip()
@@ -616,7 +632,7 @@ def update_soal(soal_id: int, payload: SoalCreate, db: Session = Depends(get_db)
     soal = db.query(Soal).filter(Soal.id == soal_id).first()
     if not soal:
         raise HTTPException(status_code=404, detail="Soal not found")
-    _require_edit_soal(soal, current_user)
+    _require_edit_soal(soal, current_user, db)
     _require_read_soal(soal, current_user)
     if current_user.role == "guru":
         if payload.pelajaran_id is None:
@@ -655,6 +671,8 @@ def update_soal(soal_id: int, payload: SoalCreate, db: Session = Depends(get_db)
         soal.reviewed_by = None
         soal.reviewed_at = None
         _history(db, soal, current_user.id, "revised", previous, soal.status)
+    elif soal.status == "approved":
+        _history(db, soal, current_user.id, "edited", soal.status, soal.status)
     db.add(soal)
     db.commit()
     db.refresh(soal)
@@ -671,7 +689,9 @@ def submit_soal_review(
     soal = db.query(Soal).filter(Soal.id == soal_id).with_for_update().first()
     if not soal:
         raise HTTPException(status_code=404, detail="Soal not found")
-    _require_edit_soal(soal, current_user)
+    _require_edit_soal(soal, current_user, db)
+    if soal.status not in {"draft", "rejected"}:
+        raise HTTPException(status_code=409, detail="Hanya soal draft atau perlu revisi yang dapat diajukan review")
     previous = soal.status
     soal.status = "pending_review"
     soal.submitted_for_review_at = datetime.now(timezone.utc)
@@ -879,7 +899,9 @@ def delete_soal(soal_id: int, db: Session = Depends(get_db), current_user=Depend
     soal = db.query(Soal).filter(Soal.id == soal_id).first()
     if not soal:
         raise HTTPException(status_code=404, detail="Soal not found")
-    _require_edit_soal(soal, current_user)
+    _require_edit_soal(soal, current_user, db)
+    if current_user.role == "guru" and soal.status == "approved":
+        raise HTTPException(status_code=409, detail="Soal yang sudah disetujui tidak dapat dihapus guru")
     if db.query(PaketSoal).filter(PaketSoal.soal_id == soal.id).first():
         raise HTTPException(status_code=409, detail="Soal sudah digunakan dalam paket dan tidak dapat dihapus")
     db.delete(soal)

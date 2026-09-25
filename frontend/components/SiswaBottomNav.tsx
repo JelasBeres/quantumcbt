@@ -6,7 +6,7 @@ import { LayoutDashboard, ClipboardList, BookOpen, Activity, History, User } fro
 
 const ITEMS = [
   { href: "/siswa/dashboard", label: "Beranda", icon: LayoutDashboard, match: ["/siswa/dashboard"] },
-  { href: "/siswa/tryout", label: "Tryout", icon: ClipboardList, match: ["/siswa/tryout", "/siswa/paket"] },
+  { href: "/siswa/tryout", label: "Try Out", icon: ClipboardList, match: ["/siswa/tryout", "/siswa/paket"] },
   { href: "/siswa/latihan", label: "Latihan", icon: BookOpen, match: ["/siswa/latihan"] },
   { href: "/siswa/ujian-aktif", label: "Ujian", icon: Activity, match: ["/siswa/ujian-aktif", "/siswa/ujian"] },
   { href: "/siswa/riwayat", label: "Riwayat", icon: History, match: ["/siswa/riwayat", "/siswa/hasil"] },

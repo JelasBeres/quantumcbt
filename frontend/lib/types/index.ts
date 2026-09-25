@@ -104,6 +104,16 @@ export type JadwalUjian = {
   rejection_reason?: string | null;
 };
 
+// Mapel di paket latihan; set soalnya adalah bagian dengan pelajaran_id yang sama.
+export type PaketMapel = {
+  pelajaran_id: number;
+  nama: string;
+  urutan: number;
+  jumlah_set: number;
+  jumlah_set_approved: number;
+  jumlah_soal: number;
+};
+
 export type BagianPaket = {
   id: number;
   paket_ujian_id: number;

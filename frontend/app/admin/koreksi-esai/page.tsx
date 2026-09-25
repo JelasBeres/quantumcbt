@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { CheckCircle2, ClipboardCheck, Filter } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { CheckCircle2, ClipboardCheck, Filter, Search } from "lucide-react";
 import { api } from "@/lib/api";
 import { getUser } from "@/lib/auth";
 import Button from "@/components/Button";
 import Card from "@/components/Card";
 import MathContent from "@/components/MathContent";
-import Select from "@/components/Select";
+import DropdownSelect from "@/components/DropdownSelect";
 import { PaketUjian } from "@/lib/types";
 
 type JawabanEsai = {
@@ -32,6 +32,7 @@ export default function KoreksiEsaiPage() {
   const [savingId, setSavingId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [cari, setCari] = useState("");
 
   const load = async () => {
     setLoading(true);
@@ -63,6 +64,19 @@ export default function KoreksiEsaiPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPaket, onlyPending]);
 
+  // Pencarian di sisi klien: nama siswa, soal, jawaban, atau nomor ujian/soal.
+  const hasilCari = useMemo(() => {
+    const kata = cari.trim().toLocaleLowerCase();
+    if (!kata) return items;
+    const tanpaTag = (html: string) => html.replace(/<[^>]*>/g, " ");
+    return items.filter((item) =>
+      [item.nama_siswa, tanpaTag(item.teks_soal), item.jawaban_teks ?? "", `#${item.ujian_siswa_id}`, `#${item.soal_id}`]
+        .join(" ")
+        .toLocaleLowerCase()
+        .includes(kata)
+    );
+  }, [items, cari]);
+
   const simpanNilai = async (item: JawabanEsai) => {
     const raw = scores[item.jawaban_id];
     const nilai = Number(raw);
@@ -93,9 +107,10 @@ export default function KoreksiEsaiPage() {
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <div className="w-full sm:w-56">
-            <Select
+            <DropdownSelect
               value={selectedPaket}
-              onChange={(e) => setSelectedPaket(e.target.value)}
+              onChange={setSelectedPaket}
+              searchPlaceholder="Cari paket..."
               options={[
                 { value: "", label: "Semua paket ujian" },
                 ...paketList.map((p) => ({ value: p.id, label: p.nama }))
@@ -117,6 +132,20 @@ export default function KoreksiEsaiPage() {
 
       {error && <div className="rounded-input border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
 
+      {!loading && items.length > 0 && (
+        <label className="flex items-center gap-2 rounded-input border border-card-border bg-card-bg px-3.5 py-2.5 focus-within:border-brand-primary focus-within:ring-2 focus-within:ring-brand-primary/25">
+          <Search className="h-4 w-4 shrink-0 text-text-muted" aria-hidden="true" />
+          <input
+            type="search"
+            value={cari}
+            onChange={(e) => setCari(e.target.value)}
+            placeholder="Cari nama siswa, soal, atau jawaban..."
+            aria-label="Cari jawaban esai"
+            className="w-full bg-transparent text-sm text-body-dark outline-none"
+          />
+        </label>
+      )}
+
       {loading ? (
         <Card><p className="py-8 text-center text-text-muted">Memuat jawaban...</p></Card>
       ) : items.length === 0 ? (
@@ -126,9 +155,14 @@ export default function KoreksiEsaiPage() {
             <p className="mt-2 text-sm">Tidak ada jawaban esai yang perlu dikoreksi.</p>
           </div>
         </Card>
+      ) : hasilCari.length === 0 ? (
+        <Card>
+          <p className="py-8 text-center text-sm text-text-muted">Tidak ada jawaban yang cocok dengan &ldquo;{cari.trim()}&rdquo;.</p>
+        </Card>
       ) : (
         <div className="space-y-4">
-          {items.map((item) => (
+          {cari.trim() && <p className="text-xs text-text-muted">{hasilCari.length} dari {items.length} jawaban</p>}
+          {hasilCari.map((item) => (
             <Card key={item.jawaban_id}>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>

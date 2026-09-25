@@ -47,7 +47,7 @@ export default function RiwayatMapelPage() {
         setDetail(detailRes.data);
         setRiwayat(daftar.find((item) => item.ujian_siswa_id === ujianId) ?? null);
       } catch (e) {
-        if (!cancelled) setError(getErrorMessage(e, "Hasil tryout gagal dimuat."));
+        if (!cancelled) setError(getErrorMessage(e, "Hasil try out gagal dimuat."));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -88,20 +88,20 @@ export default function RiwayatMapelPage() {
   return (
     <main className="student-home student-split-page">
       <Link href={`/siswa/riwayat/tryout/${encodeURIComponent(kategori)}`} className="student-back">
-        <ArrowLeft size={15} aria-hidden="true" /> Daftar Tryout
+        <ArrowLeft size={15} aria-hidden="true" /> Daftar Try Out
       </Link>
 
       {error && <p role="alert" className="student-notice mt-4 mb-4">{error}</p>}
       {loading ? <p className="student-notice mt-6">Memuat…</p> : detail && (
         <>
           <header className="student-split-head">
-            <h1>{detail.nama_paket ?? riwayat?.nama_paket ?? "Hasil Tryout"}</h1>
+            <h1>{detail.nama_paket ?? riwayat?.nama_paket ?? "Hasil Try Out"}</h1>
             <p className="student-muted mt-1">
               {riwayat ? `Nilai ${formatSkor(riwayat)} · Selesai ${formatTanggal(riwayat.finished_at)}` : null}
             </p>
             {ditahan && (
               <p className="student-notice mt-3">
-                Kunci jawaban dan pembahasan tersedia setelah jadwal tryout berakhir
+                Kunci jawaban dan pembahasan tersedia setelah jadwal try out berakhir
                 {detail.kunci_tersedia_at ? ` (${formatTanggal(detail.kunci_tersedia_at)})` : ""}.
               </p>
             )}
@@ -125,13 +125,13 @@ export default function RiwayatMapelPage() {
                       </>
                     )}
                     <span><CircleDashed size={14} aria-hidden="true" />{s.kosong} kosong</span>
-                    {!ditahan && s.menunggu > 0 && <span className="text-amber-700">{s.menunggu} menunggu koreksi</span>}
-                    {s.ragu > 0 && <span className="text-yellow-500"><Flag size={14} aria-hidden="true" />{s.ragu} ragu-ragu</span>}
+                    {!ditahan && s.menunggu > 0 && <span className="text-amber-700">{s.menunggu} dinilai</span>}
+                    {s.ragu > 0 && <span className="text-yellow-500"><Flag size={14} aria-hidden="true" />{s.ragu} ragu</span>}
                   </div>
                 )}
                 renderActions={(s) => (
                   <Link className="student-btn" href={hrefPembahasan(s.bagian_id)}>
-                    Lihat Pembahasan <ArrowRight size={14} aria-hidden="true" />
+                    Pembahasan <ArrowRight size={14} aria-hidden="true" />
                   </Link>
                 )}
               />

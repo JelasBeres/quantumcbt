@@ -76,7 +76,7 @@ export default function GuruTambahSoalPage() {
         defaultTopikId={defaultTopikId ? Number(defaultTopikId) : null}
         defaultSubbab={defaultSubbab}
         defaultTipe={defaultTipe}
-        description="Soal akan disimpan sebagai draft dan dapat diajukan untuk review admin."
+        description="Soal baru disimpan sebagai draft dan dapat diajukan untuk review admin. Soal yang sudah disetujui langsung diperbarui tanpa review ulang."
       />
     </div>
   );

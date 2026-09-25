@@ -52,13 +52,13 @@ export default function RiwayatKategoriPage() {
     <main className="student-home student-split-page">
       <Link href="/siswa/riwayat" className="student-back"><ArrowLeft size={15} aria-hidden="true" /> Riwayat</Link>
       <header className="student-split-head">
-        <h1>Riwayat Tryout</h1>
-        <p className="student-muted mt-1">Pilih kategori untuk melihat tryout yang sudah kamu kerjakan.</p>
+        <h1>Riwayat Try Out</h1>
+        <p className="student-muted mt-1">Pilih kategori untuk melihat try out yang sudah kamu kerjakan.</p>
       </header>
 
       {error && <p role="alert" className="student-notice mt-4">{error}</p>}
       {loading ? <p className="student-notice mt-6">Memuat…</p> : kategori.length === 0 && !error ? (
-        <p className="student-notice mt-6">Belum ada tryout yang selesai dikerjakan.</p>
+        <p className="student-notice mt-6">Belum ada try out yang selesai dikerjakan.</p>
       ) : (
         <div className="student-kategori-grid">
           {kategori.map((k) => {
@@ -67,7 +67,7 @@ export default function RiwayatKategoriPage() {
               <>
                 <strong>{k.nama}</strong>
                 <span className="student-kategori-foot">
-                  {n > 0 ? <><em>{n} tryout selesai</em><ArrowRight size={16} aria-hidden="true" /></> : <em>Belum ada riwayat</em>}
+                  {n > 0 ? <><em>{n} try out selesai</em><ArrowRight size={16} aria-hidden="true" /></> : <em>Belum ada riwayat</em>}
                 </span>
               </>
             );

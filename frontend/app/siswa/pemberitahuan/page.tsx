@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, CheckCheck, ExternalLink } from "lucide-react";
 import { JenisIcon, usePemberitahuan } from "@/components/PemberitahuanProvider";
@@ -8,12 +8,9 @@ import { JENIS_LABEL, isTautanLuar, waktuRelatif } from "@/lib/pemberitahuan";
 
 export default function PemberitahuanPage() {
   const { items, belumDibaca, loaded, refresh, bacaSemua, buka, tandaiDibaca } = usePemberitahuan();
-  const [filter, setFilter] = useState<"semua" | "belum">("semua");
 
   // Selalu ambil data terbaru saat halaman ini dibuka.
   useEffect(() => { void refresh(); }, [refresh]);
-
-  const tampil = filter === "belum" ? items.filter((i) => !i.dibaca) : items;
 
   return (
     <main className="student-home student-split-page">
@@ -30,18 +27,11 @@ export default function PemberitahuanPage() {
         )}
       </header>
 
-      <div className="student-notif-tabs" role="tablist" aria-label="Saring pemberitahuan">
-        <button type="button" role="tab" aria-selected={filter === "semua"} onClick={() => setFilter("semua")}>Semua</button>
-        <button type="button" role="tab" aria-selected={filter === "belum"} onClick={() => setFilter("belum")}>
-          Belum dibaca{belumDibaca > 0 ? ` (${belumDibaca})` : ""}
-        </button>
-      </div>
-
-      {!loaded ? <p className="student-notice mt-4">Memuat…</p> : tampil.length === 0 ? (
-        <p className="student-notice mt-4">{filter === "belum" ? "Semua pemberitahuan sudah dibaca." : "Belum ada pemberitahuan."}</p>
+      {!loaded ? <p className="student-notice mt-5">Memuat…</p> : items.length === 0 ? (
+        <p className="student-notice mt-5">Belum ada pemberitahuan.</p>
       ) : (
         <ul className="student-notif-list">
-          {tampil.map((item) => (
+          {items.map((item) => (
             <li key={item.id}>
               <button
                 type="button"

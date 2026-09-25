@@ -42,7 +42,7 @@ export default function SiswaKategoriPilih({ tipe }: { tipe: "latihan" | "ujian"
     return () => { cancelled = true; };
   }, [isLatihan, tipe]);
 
-  const judul = isLatihan ? "Latihan" : "Tryout";
+  const judul = isLatihan ? "Latihan" : "Try Out";
   const lainnya = jumlah[KATEGORI_LAINNYA] ?? 0;
   const daftar = [
     ...kategori.map((k) => ({ kode: k.kode, nama: k.nama })),

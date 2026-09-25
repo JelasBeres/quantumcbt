@@ -84,7 +84,7 @@ export default function SiswaPaketSplit({ tipe, kategori }: { tipe: "latihan" | 
           })));
         }
       } catch (e) {
-        if (!cancelled) setError(getErrorMessage(e, isLatihan ? "Latihan gagal dimuat." : "Tryout gagal dimuat."));
+        if (!cancelled) setError(getErrorMessage(e, isLatihan ? "Latihan gagal dimuat." : "Try Out gagal dimuat."));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -98,7 +98,7 @@ export default function SiswaPaketSplit({ tipe, kategori }: { tipe: "latihan" | 
     return items.filter((item) => `${item.nama} ${item.keterangan ?? ""}`.toLowerCase().includes(kata));
   }, [items, cari]);
 
-  const judul = isLatihan ? "Latihan" : "Tryout";
+  const judul = isLatihan ? "Latihan" : "Try Out";
   const base = isLatihan ? "/siswa/latihan" : "/siswa/tryout";
   const labelKategori = namaKategori || (kategori === "lainnya" ? "Lainnya" : kategori.replace(/_/g, " ").toUpperCase());
 
@@ -125,11 +125,11 @@ export default function SiswaPaketSplit({ tipe, kategori }: { tipe: "latihan" | 
       )}
 
       {loading ? <p className="student-notice mt-6">Memuat…</p> : items.length === 0 ? (
-        <p className="student-notice mt-6">{isLatihan ? "Belum ada latihan pada kategori ini." : "Belum ada tryout pada kategori ini."}</p>
+        <p className="student-notice mt-6">{isLatihan ? "Belum ada latihan pada kategori ini." : "Belum ada try out pada kategori ini."}</p>
       ) : hasilCari.length === 0 ? (
         <p className="student-notice mt-6">Tidak ada {judul.toLowerCase()} yang cocok dengan &ldquo;{cari.trim()}&rdquo;.</p>
       ) : (
-        <div className="student-tryouts mt-6">
+        <div className="student-tryouts student-list-compact">
           {hasilCari.map((item) => (
             <article key={item.id} className="student-tryout">
               <div className="student-tryout-cover">

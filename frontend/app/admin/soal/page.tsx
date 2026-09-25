@@ -9,6 +9,7 @@ import Card from "@/components/Card";
 import Input from "@/components/Input";
 import MathContent from "@/components/MathContent";
 import Select from "@/components/Select";
+import SoalPreviewDialog from "@/components/SoalPreviewDialog";
 import Table from "@/components/Table";
 import { useAppDialog } from "@/components/Dialog";
 import { api } from "@/lib/api";
@@ -35,6 +36,7 @@ export default function SoalPage() {
   const [selectedBab, setSelectedBab] = useState<number | null>(null);
   const [selectedSubbab, setSelectedSubbab] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [previewId, setPreviewId] = useState<number | null>(null);
   const [bankFilter, setBankFilter] = useState({ q: "", kelas: "", bab: "", subbab: "", kesulitan: "", status: "" });
   const { showConfirm, dialog } = useAppDialog();
 
@@ -207,7 +209,7 @@ export default function SoalPage() {
     { header: "Bab", accessor: (row: Soal) => getNama(topikList, row.topik_id) || "Tanpa Bab" },
     { header: "Subbab", accessor: (row: Soal) => row.subbab || "Tanpa Subbab" },
     { header: "Kesulitan", accessor: (row: Soal) => <span className="capitalize text-xs font-medium text-text-muted">{row.tingkat_kesulitan ?? "sedang"}</span> },
-    { header: "Aksi", accessor: (row: Soal) => <div className="flex flex-wrap gap-2"><Link href={`/admin/tambah-soal?id=${row.id}`} className="inline-flex items-center justify-center rounded-btn border border-card-border bg-card-bg px-3 py-1.5 text-sm font-semibold text-brand-primary transition hover:bg-neutral">Edit</Link><Button size="sm" variant="danger" onClick={() => handleDelete(row.id)}>Hapus</Button></div> }
+    { header: "Aksi", accessor: (row: Soal) => <div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => setPreviewId(row.id)}>Lihat</Button><Link href={`/admin/tambah-soal?id=${row.id}`} className="inline-flex items-center justify-center rounded-btn border border-card-border bg-card-bg px-3 py-1.5 text-sm font-semibold text-brand-primary transition hover:bg-neutral">Edit</Link><Button size="sm" variant="danger" onClick={() => handleDelete(row.id)}>Hapus</Button></div> }
   ];
 
   const levelTitle = level === "kelas" ? "Kelas" : level === "pelajaran" ? "Mata Pelajaran" : level === "bab" ? "Bab" : level === "subbab" ? "Subbab" : "Daftar Soal";
@@ -257,6 +259,11 @@ export default function SoalPage() {
           </div>
         )}
       </Card>
+      <SoalPreviewDialog
+        soalId={previewId}
+        onClose={() => setPreviewId(null)}
+        actions={(soal) => <Link href={`/admin/tambah-soal?id=${soal.id}`} className="inline-flex items-center justify-center rounded-btn border border-card-border bg-card-bg px-4 py-2 text-sm font-semibold text-brand-primary transition hover:bg-neutral">Edit Soal</Link>}
+      />
       {dialog}
     </div>
   );

@@ -159,12 +159,13 @@ export default function HasilDetailPage() {
   const searchParams = useSearchParams();
   const bagianParam = searchParams.get("bagian");
   const kategoriParam = searchParams.get("kategori");
-  // Kembali ke grup riwayat asalnya: latihan -> daftar sesi latihan kategori itu,
-  // tryout -> halaman mapel tryout tersebut.
+  // Kembali ke grup riwayat asalnya: latihan -> daftar set soal mapel itu (?mapel=)
+  // atau daftar mapel kategori itu, tryout -> halaman mapel tryout tersebut.
+  const mapelParam = searchParams.get("mapel");
   const hrefKembali = !kategoriParam
     ? "/siswa/riwayat"
     : searchParams.get("jenis") === "latihan"
-      ? `/siswa/riwayat/latihan/${encodeURIComponent(kategoriParam)}`
+      ? `/siswa/riwayat/latihan/${encodeURIComponent(kategoriParam)}${mapelParam ? `/${encodeURIComponent(mapelParam)}` : ""}`
       : `/siswa/riwayat/tryout/${encodeURIComponent(kategoriParam)}/${params.ujianId}`;
 
   const [laporkanSoal, setLaporkanSoal] = useState<HasilSoalDetailItem | null>(null);
@@ -372,7 +373,7 @@ export default function HasilDetailPage() {
               <div className="mb-4 flex items-start gap-2 rounded-card border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                 <p>
-                  Kunci jawaban dan pembahasan akan tersedia setelah jadwal tryout ini berakhir
+                  Kunci jawaban dan pembahasan akan tersedia setelah jadwal try out ini berakhir
                   {detail?.kunci_tersedia_at ? ` (${formatTanggal(detail.kunci_tersedia_at)})` : ""}.
                 </p>
               </div>

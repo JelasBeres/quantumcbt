@@ -103,7 +103,10 @@ export default function LoginActivityPage() {
             <p className="mt-2 text-sm">Belum ada aktivitas login.</p>
           </div>
         ) : (
-          <Table data={items} columns={columns} emptyMessage="Belum ada aktivitas login" />
+          <>
+            <p className="mb-2 text-xs text-text-muted">{items.length} aktivitas login</p>
+            <Table data={items} columns={columns} emptyMessage="Belum ada aktivitas login" scrollHeight="max-h-[65vh]" />
+          </>
         )}
       </Card>
     </div>

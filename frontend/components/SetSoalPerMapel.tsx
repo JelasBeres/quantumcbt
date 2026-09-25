@@ -13,6 +13,24 @@ export type SetSoal = {
   pelajaran_nama?: string | null;
 };
 
+// Nama set di kartu dipersingkat: "Matematika 2" di bawah mapel Matematika -> "Set 2".
+function namaSingkat(item: SetSoal) {
+  const mapel = item.pelajaran_nama?.trim();
+  if (mapel && item.nama.toLowerCase().startsWith(`${mapel.toLowerCase()} `)) {
+    return `Set ${item.nama.slice(mapel.length + 1)}`;
+  }
+  return item.nama;
+}
+
+// Durasi ringkas untuk kartu set: "15 mnt", "1 j 30 mnt".
+export function durasiSingkat(menit?: number | null) {
+  if (!menit) return "-";
+  const jam = Math.floor(menit / 60);
+  const sisa = menit % 60;
+  if (!jam) return `${sisa} mnt`;
+  return sisa ? `${jam} j ${sisa} mnt` : `${jam} j`;
+}
+
 type Props<T extends SetSoal> = {
   items: T[];
   renderMeta: (item: T) => ReactNode;
@@ -38,7 +56,7 @@ export default function SetSoalPerMapel<T extends SetSoal>({ items, renderMeta, 
       {sets.map((item, i) => (
         <li key={item.bagian_id} className="student-set">
           <span className="student-set-no">{i + 1}</span>
-          <h3>{item.nama}</h3>
+          <h3 title={item.nama}>{namaSingkat(item)}</h3>
           {renderMeta(item)}
           <div className="student-set-actions">{renderActions(item)}</div>
         </li>

@@ -64,7 +64,7 @@ function DrilldownCard({ item, onClick }: { item: GroupItem; onClick: () => void
       <span className="min-w-0">
         <span className="block font-bold text-heading-dark">{item.label}</span>
         <span className="mt-1 block text-sm text-text-muted">
-          {item.count} jadwal · {item.packageCount} paket Tryout
+          {item.count} jadwal · {item.packageCount} paket Try Out
         </span>
       </span>
       <span aria-hidden="true" className="text-xl text-brand-primary transition group-hover:translate-x-1">→</span>
@@ -206,7 +206,7 @@ export default function JadwalUjianPage() {
     event.preventDefault();
     setError("");
     if (!form.paket_ujian_id) {
-      setError("Pilih paket Tryout yang akan dijadwalkan.");
+      setError("Pilih paket Try Out yang akan dijadwalkan.");
       return;
     }
     setSaving(true);
@@ -412,7 +412,7 @@ export default function JadwalUjianPage() {
         <form onSubmit={submitJadwal} className="space-y-5 rounded-card border border-card-border bg-card-bg p-4 shadow-card sm:p-5">
           <div>
             <h2 className="font-bold text-heading-dark">{editingId ? `Edit Jadwal #${editingId}` : "Tambah Jadwal"}</h2>
-            <p className="mt-1 text-xs text-text-muted">Hanya paket Tryout aktif dan siap dipublikasikan yang tersedia untuk jadwal baru.</p>
+            <p className="mt-1 text-xs text-text-muted">Hanya paket Try Out aktif dan siap dipublikasikan yang tersedia untuk jadwal baru.</p>
           </div>
 
           {selectedPackage && (
@@ -434,7 +434,7 @@ export default function JadwalUjianPage() {
           )}
 
           <fieldset className="space-y-3">
-            <legend className="text-sm font-bold text-heading-dark">Pilih Paket Tryout</legend>
+            <legend className="text-sm font-bold text-heading-dark">Pilih Paket Try Out</legend>
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
               <Input
                 label="Cari paket / ID paket"
@@ -698,7 +698,7 @@ export default function JadwalUjianPage() {
                   <li aria-hidden="true">/</li>
                   <li className="font-semibold text-heading-dark" aria-current="page">{selectedProgramLabel}</li>
                   <li aria-hidden="true">/</li>
-                  <li className="font-semibold text-heading-dark">Paket Tryout / Jadwal</li>
+                  <li className="font-semibold text-heading-dark">Paket Try Out / Jadwal</li>
                 </>
               )}
             </ol>
@@ -759,7 +759,7 @@ export default function JadwalUjianPage() {
           ) : (
             <div className="space-y-3">
               <div>
-                <h3 className="font-bold text-heading-dark">Paket Tryout / Jadwal · {selectedProgramLabel}</h3>
+                <h3 className="font-bold text-heading-dark">Paket Try Out / Jadwal · {selectedProgramLabel}</h3>
                 <p className="text-sm text-text-muted">{selectedTimeLabel} · {selectedCategoryLabel} · {programSchedules.length} jadwal</p>
               </div>
               {programSchedules.map((item) => {

@@ -5,6 +5,7 @@ import { Activity, AlertTriangle, ShieldAlert, UserCheck } from "lucide-react";
 import { api } from "@/lib/api";
 import Card from "@/components/Card";
 import Button from "@/components/Button";
+import DropdownSelect from "@/components/DropdownSelect";
 
 type Monitoring = {
   ujian_siswa_id: number;
@@ -145,7 +146,7 @@ export default function MonitoringUjianPage() {
         <div>
           <h1 className="text-3xl font-bold text-heading-dark">Monitoring Ujian</h1>
           <p className="mt-1 text-sm text-text-muted">
-            Pantau tryout/ujian berjalan per kategori dan deteksi kecurangan. Latihan mandiri tidak ditampilkan. Terakhir update {lastUpdate || "-"}
+            Pantau try out/ujian berjalan per kategori dan deteksi kecurangan. Latihan mandiri tidak ditampilkan. Terakhir update {lastUpdate || "-"}
           </p>
         </div>
         <Button variant="outline" onClick={load}>Refresh</Button>
@@ -205,18 +206,16 @@ export default function MonitoringUjianPage() {
               <option value="">Semua status</option><option value="sedang">Sedang berlangsung</option><option value="timeout">Waktu habis</option><option value="selesai">Selesai</option>
             </select>
           </label>
-          <label className="text-sm font-medium text-body-dark">
+          <div className="text-sm font-medium text-body-dark">
             Paket ujian
-            <select value={filter.paket} onChange={(event) => setFilter({ ...filter, paket: event.target.value })} className="mt-1 block w-full rounded-input border border-card-border bg-card-bg px-3 py-2 text-sm text-body-dark outline-none focus:border-brand-primary">
-              <option value="">Semua paket</option>{paketOptions.map(([id, nama]) => <option key={id} value={id}>{nama}</option>)}
-            </select>
-          </label>
+            <DropdownSelect value={filter.paket} onChange={(paket) => setFilter({ ...filter, paket })} className="mt-1" buttonClassName="px-3 py-2" searchPlaceholder="Cari paket..." options={[{ value: "", label: "Semua paket" }, ...paketOptions.map(([id, nama]) => ({ value: id, label: nama }))]} />
+          </div>
           <Button variant="outline" className="self-end" onClick={() => setFilter({ q: "", status: "", paket: "" })}>Reset</Button>
         </div>
         {loading ? (
           <p className="py-8 text-center text-text-muted">Memuat...</p>
         ) : scopedMonitoring.length === 0 ? (
-          <p className="py-8 text-center text-sm text-text-muted">Belum ada peserta yang mengerjakan tryout/ujian.</p>
+          <p className="py-8 text-center text-sm text-text-muted">Belum ada peserta yang mengerjakan try out/ujian.</p>
         ) : filteredMonitoring.length === 0 ? (
           <p className="py-8 text-center text-sm text-text-muted">Tidak ada data yang sesuai filter.</p>
         ) : (
@@ -272,12 +271,10 @@ export default function MonitoringUjianPage() {
               <option value="">Semua jenis</option>{tipeOptions.map((tipe) => <option key={tipe} value={tipe}>{labelTipe(tipe)}</option>)}
             </select>
           </label>
-          <label className="text-sm font-medium text-body-dark">
+          <div className="text-sm font-medium text-body-dark">
             Paket ujian
-            <select value={logFilter.paket} onChange={(event) => setLogFilter({ ...logFilter, paket: event.target.value })} className={inputClass}>
-              <option value="">Semua paket</option>{paketOptions.map(([id, nama]) => <option key={id} value={id}>{nama}</option>)}
-            </select>
-          </label>
+            <DropdownSelect value={logFilter.paket} onChange={(paket) => setLogFilter({ ...logFilter, paket })} className="mt-1" buttonClassName="px-3 py-2" searchPlaceholder="Cari paket..." options={[{ value: "", label: "Semua paket" }, ...paketOptions.map(([id, nama]) => ({ value: id, label: nama }))]} />
+          </div>
           <label className="text-sm font-medium text-body-dark">
             Dari tanggal
             <input type="date" value={logFilter.from} onChange={(event) => setLogFilter({ ...logFilter, from: event.target.value })} className={inputClass} />

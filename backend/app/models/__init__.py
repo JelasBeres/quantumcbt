@@ -11,6 +11,7 @@ from . import subbab
 from . import paket_ujian
 from . import kategori_paket
 from . import bagian_paket
+from . import paket_mapel
 from . import paket_soal
 from . import soal
 from . import pernyataan_benar_salah

@@ -54,34 +54,19 @@ export default function LaporanSoalPage() {
     load();
   }, [status]);
 
-  // Admin selalu bisa mengedit langsung. Guru mengikuti workflow bank soal:
-  // draft/perlu revisi milik sendiri diedit langsung, soal approved (milik sendiri
-  // maupun guru lain) dibuatkan revisi dulu (direview admin sebelum terbit).
-  const editMode = (item: Laporan): "direct" | "revision" | null => {
-    if (!isGuru) return "direct";
+  // Admin selalu bisa mengedit langsung. Guru mengedit langsung draft/perlu revisi
+  // miliknya sendiri, dan (revisi 25 Sep) soal approved milik siapa pun dalam
+  // penugasannya tanpa membuat soal baru atau review ulang.
+  const canEdit = (item: Laporan): boolean => {
+    if (!isGuru) return true;
     const own = currentUser.id !== null && item.soal_created_by === currentUser.id;
-    if (own && (item.soal_status === "draft" || item.soal_status === "rejected")) return "direct";
-    // Soal approved (milik sendiri maupun guru lain) diubah lewat revisi yang di-ACC admin.
-    if (item.soal_status === "approved") return "revision";
-    return null;
+    if (own && (item.soal_status === "draft" || item.soal_status === "rejected")) return true;
+    return item.soal_status === "approved";
   };
 
-  const editSoal = async (item: Laporan) => {
-    const mode = editMode(item);
-    if (mode === "direct") {
-      router.push(isGuru ? `/guru/soal/tambah?id=${item.soal_id}` : `/admin/tambah-soal?id=${item.soal_id}`);
-      return;
-    }
-    if (mode !== "revision") return;
-    setSavingId(item.id);
-    setError("");
-    try {
-      const res = await api.post(`/soal/${item.soal_id}/revision`);
-      router.push(`/guru/soal/tambah?id=${res.data.id}`);
-    } catch (err: any) {
-      setError(getErrorMessage(err, "Revisi soal gagal dibuat."));
-      setSavingId(null);
-    }
+  const editSoal = (item: Laporan) => {
+    if (!canEdit(item)) return;
+    router.push(isGuru ? `/guru/soal/tambah?id=${item.soal_id}` : `/admin/tambah-soal?id=${item.soal_id}`);
   };
 
   const editHint = (item: Laporan) => {
@@ -158,9 +143,9 @@ export default function LaporanSoalPage() {
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                    {editMode(item) ? (
+                    {canEdit(item) ? (
                       <Button size="sm" variant="outline" disabled={savingId === item.id} onClick={() => editSoal(item)}>
-                        <Pencil className="mr-1 h-4 w-4" aria-hidden="true" /> {editMode(item) === "revision" ? "Edit Soal (Revisi)" : "Edit Soal"}
+                        <Pencil className="mr-1 h-4 w-4" aria-hidden="true" /> Edit Soal
                       </Button>
                     ) : (
                       <span className="text-xs text-text-muted">{editHint(item)}</span>

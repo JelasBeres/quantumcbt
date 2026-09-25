@@ -71,6 +71,7 @@ export type RiwayatLatihanItem = {
   mode_latihan?: "latihan" | "drill" | null;
   bagian_id?: number | null;
   bagian_nama?: string | null;
+  pelajaran_id?: number | null;
   pelajaran_nama?: string | null;
   started_at?: string | null;
   finished_at?: string | null;
@@ -80,6 +81,54 @@ export type RiwayatLatihanItem = {
 export async function fetchRiwayatLatihan(): Promise<RiwayatLatihanItem[]> {
   const { data } = await api.get<RiwayatLatihanItem[]>("/siswa/riwayat-latihan");
   return data ?? [];
+}
+
+// Riwayat Latihan dikelompokkan: kategori -> mapel -> set soal -> sesi (percobaan).
+// Sesi tanpa mapel (latihan satu paket penuh / bagian tanpa mapel) masuk grup "lainnya".
+export const MAPEL_LAINNYA = "lainnya";
+
+export function mapelKey(item: Pick<RiwayatLatihanItem, "pelajaran_id">): string {
+  return item.pelajaran_id != null ? String(item.pelajaran_id) : MAPEL_LAINNYA;
+}
+
+export type GrupSet = {
+  key: string;
+  nama: string;
+  nama_paket: string;
+  // Terbaru lebih dulu (urutan dari API: finished_at desc).
+  sesi: RiwayatLatihanItem[];
+};
+
+export type GrupMapel = {
+  key: string;
+  nama: string;
+  sets: GrupSet[];
+  jumlahSesi: number;
+  terakhir?: string | null;
+};
+
+export function kelompokkanPerMapel(items: RiwayatLatihanItem[]): GrupMapel[] {
+  const mapel = new Map<string, GrupMapel>();
+  for (const item of items) {
+    const kunciMapel = mapelKey(item);
+    let grup = mapel.get(kunciMapel);
+    if (!grup) {
+      grup = { key: kunciMapel, nama: item.pelajaran_nama || "Lainnya", sets: [], jumlahSesi: 0, terakhir: item.finished_at };
+      mapel.set(kunciMapel, grup);
+    }
+    grup.jumlahSesi += 1;
+    const kunciSet = item.bagian_id != null ? `b${item.bagian_id}` : `p${item.paket_ujian_id}`;
+    let set = grup.sets.find((s) => s.key === kunciSet);
+    if (!set) {
+      set = { key: kunciSet, nama: item.bagian_nama || item.nama_paket, nama_paket: item.nama_paket, sesi: [] };
+      grup.sets.push(set);
+    }
+    set.sesi.push(item);
+  }
+  // Mapel "Lainnya" di akhir, selebihnya urut abjad.
+  return Array.from(mapel.values()).sort((a, b) =>
+    a.key === MAPEL_LAINNYA ? 1 : b.key === MAPEL_LAINNYA ? -1 : a.nama.localeCompare(b.nama, "id"),
+  );
 }
 
 // Samakan logika status per soal dengan halaman hasil, supaya jumlahnya selalu = total soal.

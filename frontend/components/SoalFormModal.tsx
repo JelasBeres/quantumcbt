@@ -21,7 +21,8 @@ const opsiBenarSalah = (): LocalOpsi[] => [
   { teks_opsi: "Benar", is_benar: true },
   { teks_opsi: "Salah", is_benar: false }
 ];
-const opsiDefault = (): LocalOpsi[] => [opsiKosong(), opsiKosong(), opsiKosong(), opsiKosong()];
+// Default lima pilihan (A-E).
+const opsiDefault = (): LocalOpsi[] => Array.from({ length: 5 }, opsiKosong);
 
 const teksPolos = (html: string) => html.replace(/<[^>]*>/g, " ").replace(/&nbsp;/gi, " ").trim();
 

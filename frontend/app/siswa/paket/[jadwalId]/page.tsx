@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { api, getErrorMessage } from "@/lib/api";
 import { ArrowLeft, CheckCircle2, Clock3, FileText, Play, BookOpen } from "lucide-react";
-import SetSoalPerMapel from "@/components/SetSoalPerMapel";
+import SetSoalPerMapel, { durasiSingkat } from "@/components/SetSoalPerMapel";
 
 // Detail 1 jadwal tryout: kiri daftar mapel, kanan kartu set soal (bagian) mapel tersebut.
 type Jadwal = {
@@ -30,14 +30,6 @@ type Riwayat = {
   is_submitted: boolean;
   skor?: number | null;
 };
-
-function formatDurasi(menit: number) {
-  if (!menit) return "-";
-  if (menit < 60) return `${menit} Menit`;
-  const jam = Math.floor(menit / 60);
-  const sisa = menit % 60;
-  return sisa > 0 ? `${jam} Jam ${sisa} Menit` : `${jam} Jam`;
-}
 
 export default function DetailPaketPage() {
   const params = useParams<{ jadwalId: string }>();
@@ -162,7 +154,7 @@ export default function DetailPaketPage() {
     if (selesaiUjianId !== null) {
       return (
         <Link className="student-btn" href={`/siswa/hasil/${selesaiUjianId}`}>
-          <CheckCircle2 size={15} aria-hidden="true" /> Lihat Hasil
+          <CheckCircle2 size={15} aria-hidden="true" /> Hasil
         </Link>
       );
     }
@@ -176,7 +168,7 @@ export default function DetailPaketPage() {
     if (canStart) {
       return (
         <button className="student-btn" disabled={starting} onClick={startExam}>
-          <Play size={15} aria-hidden="true" /> {starting ? "Menyiapkan..." : "Mulai Ujian"}
+          <Play size={15} aria-hidden="true" /> {starting ? "Memuat..." : "Mulai"}
         </button>
       );
     }
@@ -229,7 +221,7 @@ export default function DetailPaketPage() {
                 <li className="student-set">
                   <div className="student-meta">
                     <span><FileText size={14} aria-hidden="true" />{jadwal.jumlah_soal ?? 0} soal</span>
-                    <span><Clock3 size={14} aria-hidden="true" />{formatDurasi(jadwal.durasi_menit ?? 0)}</span>
+                    <span><Clock3 size={14} aria-hidden="true" />{durasiSingkat(jadwal.durasi_menit)}</span>
                   </div>
                   <p className="student-muted text-xs">Mapel dikerjakan berurutan sesuai jadwal, dibuka satu per satu saat pengerjaan.</p>
                   <div className="student-set-actions">{actionNode}</div>
@@ -245,7 +237,7 @@ export default function DetailPaketPage() {
                 renderMeta={(b) => (
                   <div className="student-meta">
                     <span><FileText size={14} aria-hidden="true" />{b.jumlah_soal ?? 0} soal</span>
-                    <span><Clock3 size={14} aria-hidden="true" />{formatDurasi(jadwal.durasi_menit ?? 0)}</span>
+                    <span><Clock3 size={14} aria-hidden="true" />{durasiSingkat(jadwal.durasi_menit)}</span>
                   </div>
                 )}
                 renderActions={(b) => (
@@ -258,7 +250,7 @@ export default function DetailPaketPage() {
                         disabled={startingBagianId !== null}
                         onClick={() => startLatihanMapel(b.bagian_id)}
                       >
-                        <BookOpen size={15} aria-hidden="true" /> {startingBagianId === b.bagian_id ? "Menyiapkan..." : "Latihan Set Ini"}
+                        <BookOpen size={15} aria-hidden="true" /> {startingBagianId === b.bagian_id ? "Memuat..." : "Latihan"}
                       </button>
                     )}
                   </>

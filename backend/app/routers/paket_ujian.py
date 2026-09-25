@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.security import guru_accessible_package_ids, guru_can_access_package, guru_can_access_section, require_guru_scope, require_roles
 from app.db.database import get_db
 from app.models.bagian_paket import BagianPaket
+from app.models.paket_mapel import PaketMapel
 from app.models.kelas import Kelas
 from app.models.jadwal_ujian import JadwalUjian
 from app.models.kategori_paket import KategoriPaket
@@ -157,7 +158,7 @@ def _derive_skala_kohort(category: KategoriPaket) -> str:
 
 def _validate_scoring_method(tipe: str, metode_penilaian: str) -> None:
     if metode_penilaian == "kohort" and tipe != "ujian":
-        raise HTTPException(status_code=400, detail="Benchmark Kohort hanya tersedia untuk Tryout")
+        raise HTTPException(status_code=400, detail="Benchmark Kohort hanya tersedia untuk Try Out")
 
 
 def _category_values(paket: PaketUjian, db: Session) -> tuple[Optional[int], Optional[str], Optional[str]]:
@@ -445,6 +446,9 @@ def clone_paket_ujian(
     db.add(clone)
     db.flush()
 
+    for mapel in db.query(PaketMapel).filter(PaketMapel.paket_ujian_id == source.id).all():
+        db.add(PaketMapel(paket_ujian_id=clone.id, pelajaran_id=mapel.pelajaran_id, urutan=mapel.urutan))
+
     section_id_map = {}
     for section in db.query(BagianPaket).filter(BagianPaket.paket_ujian_id == source.id).order_by(BagianPaket.urutan, BagianPaket.id).all():
         cloned_section = BagianPaket(
@@ -529,6 +533,7 @@ def delete_paket_ujian(paket_id: int, db: Session = Depends(get_db), current_use
     if _has_locking_attempt(paket.id, db):
         raise HTTPException(status_code=409, detail="Paket sudah memiliki attempt siswa dan tidak dapat dihapus")
     db.query(PaketSoal).filter(PaketSoal.paket_ujian_id == paket.id).delete(synchronize_session=False)
+    db.query(PaketMapel).filter(PaketMapel.paket_ujian_id == paket.id).delete(synchronize_session=False)
     db.delete(paket)
     db.commit()
     return {"message": "Paket Ujian deleted successfully"}

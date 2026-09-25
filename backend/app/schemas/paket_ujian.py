@@ -12,7 +12,7 @@ SKALA_KOHORT = ("utbk", "tka")
 
 def _validate_scoring(tipe: str, metode_penilaian: str) -> None:
     if tipe != "ujian" and metode_penilaian == "kohort":
-        raise ValueError("Benchmark Kohort hanya tersedia untuk Tryout")
+        raise ValueError("Benchmark Kohort hanya tersedia untuk Try Out")
 
 
 class PaketUjianCreate(BaseModel):

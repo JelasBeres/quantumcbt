@@ -215,8 +215,10 @@ def test_section_question_assignment_is_guru_only_and_scoped(isolated_database):
 
     endpoint = f"/paket-ujian/{package_id}/bagian/{section_id}/soal"
     assert client.get(f"/paket-ujian/{package_id}/bagian/{section_id}", headers=admin_headers).status_code == 200
-    # Admin tidak mengubah isi bagian secara langsung; hanya guru pengampu yang bisa.
-    assert client.put(endpoint, json={"soal_ids": [question_id]}, headers=admin_headers).status_code == 403
+    # Revisi 25 Sep: admin boleh mengisi soal bagian; tanpa durasi bagian tetap draft.
+    by_admin = client.put(endpoint, json={"soal_ids": [question_id]}, headers=admin_headers)
+    assert by_admin.status_code == 200
+    assert by_admin.json()["status"] == "draft"
     guru_headers = _headers(guru_name, "Guru123")
     assigned = client.put(endpoint, json={"soal_ids": [question_id]}, headers=guru_headers)
     assert assigned.status_code == 200
@@ -244,8 +246,10 @@ def test_categorized_section_duration_required_and_teacher_security(isolated_dat
     assert foreign_section_response.status_code == 200
     foreign_section = foreign_section_response.json()
     assert client.put(f"/paket-ujian/{paket_id}/bagian/{section['id']}", json={"durasi_menit": 20}, headers=headers).status_code == 422
-    # Admin tidak mengubah durasi bagian secara langsung; hanya guru pengampu yang bisa.
-    assert client.patch(f"/paket-ujian/{paket_id}/bagian/{section['id']}/durasi", json={"durasi_menit": 35}, headers=headers).status_code == 403
+    # Revisi 25 Sep: admin boleh mengatur durasi; tanpa soal bagian tetap draft.
+    by_admin = client.patch(f"/paket-ujian/{paket_id}/bagian/{section['id']}/durasi", json={"durasi_menit": 35}, headers=headers)
+    assert by_admin.status_code == 200
+    assert by_admin.json()["status"] == "draft"
     assert client.put(f"/paket-ujian/{paket_id}/penugasan", json=[assigned_id], headers=headers).status_code == 410
 
     assigned_headers = _headers(assigned_name, "Guru123")

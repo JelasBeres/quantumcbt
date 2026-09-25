@@ -18,7 +18,7 @@ client = TestClient(app)
 def test_riwayat_latihan_berisi_sesi_latihan_selesai_saja():
     headers, paket, _ = setup_exam(tipe="latihan", sections=True)
     with SessionLocal() as db:
-        bagian_id = db.query(BagianPaket.id).filter(BagianPaket.paket_ujian_id == paket).order_by(BagianPaket.urutan).first()[0]
+        bagian_id, pelajaran_id = db.query(BagianPaket.id, BagianPaket.pelajaran_id).filter(BagianPaket.paket_ujian_id == paket).order_by(BagianPaket.urutan).first()
 
     ujian = client.post("/ujian-siswa/mulai-latihan", headers=headers, json={"paket_ujian_id": paket, "mode": "drill", "bagian_id": bagian_id}).json()["ujian_siswa_id"]
     # Sesi yang belum dikumpulkan belum masuk riwayat.
@@ -30,6 +30,8 @@ def test_riwayat_latihan_berisi_sesi_latihan_selesai_saja():
     row = rows[0]
     assert row["ujian_siswa_id"] == ujian and row["sumber"] == "latihan"
     assert row["mode_latihan"] == "drill" and row["bagian_id"] == bagian_id and row["bagian_nama"] == "Subject 0"
+    # pelajaran_id dipakai frontend untuk mengelompokkan riwayat per mapel.
+    assert row["pelajaran_id"] == pelajaran_id
     assert row["finished_at"] is not None
     # Grup Tryout tidak ikut berisi latihan.
     assert client.get("/siswa/riwayat-ujian", headers=headers).json() == []

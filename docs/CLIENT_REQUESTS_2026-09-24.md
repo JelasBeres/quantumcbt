@@ -4,6 +4,8 @@ Dokumen ini menggantikan aturan 17 September yang bertentangan.
 
 ## Revisi soal approved
 
+> Diganti oleh revisi 25 September (`CLIENT_REQUESTS_2026-09-25.md`): soal approved kini diedit langsung tanpa revisi/review.
+
 - Guru dapat membuat revisi dari soal approved **milik sendiri maupun milik guru lain** dalam cakupan mapel/kelas penugasannya (sebelumnya hanya soal guru lain).
 - Revisi selalu berupa draft baru milik guru yang merevisi, diajukan ke admin, dan hanya admin yang dapat menyetujuinya. Guru tidak dapat menyetujui soal apa pun, termasuk soal atau revisinya sendiri.
 - Soal sumber tetap approved dan dipakai sampai revisi disetujui. Revisi yang di-ACC mengganti relasi soal hanya pada paket yang belum dimulai (aturan 18 September tetap berlaku).
@@ -32,7 +34,7 @@ Dokumen ini menggantikan aturan 17 September yang bertentangan.
 
 ## Pemberitahuan siswa
 
-- Menu **Pemberitahuan** di navigasi siswa (desktop) dan ikon lonceng di header (HP), dengan badge jumlah belum dibaca. Halaman daftar punya filter Semua/Belum dibaca dan tombol tandai semua dibaca.
+- Menu **Pemberitahuan** di navigasi siswa (desktop) dan ikon lonceng di header (HP), dengan badge jumlah belum dibaca. Halaman daftar menampilkan semua pemberitahuan (yang belum dibaca bertitik merah) dan tombol tandai semua dibaca; tanpa filter karena popup sudah menandai dibaca.
 - **Popup** saat siswa membuka aplikasi untuk pemberitahuan baru yang ditandai popup (maks. 5 antre, satu per satu). Ditutup/dilihat = ditandai dibaca, jadi tidak muncul lagi. Popup tidak tampil di ruang ujian.
 - Admin mengelola di **Sistem → Pemberitahuan Siswa**: judul, isi, jenis (Promo/Info/Paket Baru), tautan opsional (`/siswa/...` atau `https://`), target program/kelas, batas tayang, opsi popup, aktif/nonaktif, dan jumlah siswa yang sudah membaca.
 - **Otomatis**: saat jadwal tryout dipublikasikan (publish langsung atau ACC review) dibuat pemberitahuan "Paket ujian baru: …" untuk program/kelas jadwal itu, bertautan ke halaman paket dan tayang sampai jadwal selesai. Jadwal ditarik/ditolak/dihapus → pemberitahuan disembunyikan; publikasi ulang tidak membuat duplikat.

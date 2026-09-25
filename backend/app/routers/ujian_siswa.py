@@ -242,7 +242,7 @@ def start_ujian_siswa(
         raise HTTPException(status_code=400, detail="Jadwal ujian telah berakhir")
 
     if paket.is_archived or paket.tipe != "ujian":
-        raise HTTPException(status_code=409, detail="Paket tidak tersedia sebagai Tryout. Gunakan menu Latihan untuk berlatih.")
+        raise HTTPException(status_code=409, detail="Paket tidak tersedia sebagai Try Out. Gunakan menu Latihan untuk berlatih.")
 
     # Cegah mengerjakan ulang: siswa hanya boleh satu kali per jadwal ujian
     submitted_ujian = (
@@ -297,7 +297,7 @@ def start_latihan(payload: LatihanStartRequest, db: Session = Depends(get_db), c
         if not paket.izinkan_pilih_mapel:
             raise HTTPException(status_code=409, detail="Paket ini hanya bisa dikerjakan penuh berurutan, bukan per mapel")
         if payload.bagian_id is None:
-            raise HTTPException(status_code=400, detail="Pilih mapel untuk latihan dari paket tryout ini")
+            raise HTTPException(status_code=400, detail="Pilih mapel untuk latihan dari paket try out ini")
         # Latihan mapel baru terbuka setelah tryout selesai dikerjakan, agar siswa
         # tidak bisa melihat soal lebih dulu lewat mode latihan.
         sudah_tryout = db.query(UjianSiswa.id).filter(
@@ -307,7 +307,7 @@ def start_latihan(payload: LatihanStartRequest, db: Session = Depends(get_db), c
             UjianSiswa.is_submitted == True,
         ).first()
         if not sudah_tryout:
-            raise HTTPException(status_code=409, detail="Latihan mapel tersedia setelah tryout ini selesai dikerjakan")
+            raise HTTPException(status_code=409, detail="Latihan mapel tersedia setelah try out ini selesai dikerjakan")
     if (paket.program_id is not None and paket.program_id != siswa.program_id) or (paket.kelas_id is not None and paket.kelas_id != siswa.kelas_id):
         raise HTTPException(status_code=403, detail="Latihan di luar program atau kelas Anda")
     bagian_id = payload.bagian_id

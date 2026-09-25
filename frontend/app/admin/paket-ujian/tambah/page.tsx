@@ -146,7 +146,7 @@ export default function TambahPaketUjianPage() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-3xl font-bold text-heading-dark">{editId ? "Edit Paket" : formData.tipe === "latihan" ? "Buat Latihan" : "Buat Tryout"}</h1>
+        <h1 className="text-3xl font-bold text-heading-dark">{editId ? "Edit Paket" : formData.tipe === "latihan" ? "Buat Latihan" : "Buat Paket"}</h1>
         <p className="mt-1 text-sm text-text-muted">Simpan paket, lalu tambahkan mata pelajaran/bagian dan isi soalnya.</p>
       </header>
       <Card>
@@ -168,7 +168,7 @@ export default function TambahPaketUjianPage() {
                   options={[{ value: "ya", label: "Ya - tampilkan daftar mapel & izinkan latihan per mapel" }, { value: "tidak", label: "Tidak - langsung ke ujian" }]}
                 />
               </div>
-              <p className="mt-3 text-xs text-text-muted">Jika "Ya", siswa melihat daftar mapel/bagian dulu (tombol "Lihat Mapel") dan bisa latihan per mapel sebelum tryout. Jika "Tidak", tombol paket langsung "Mulai Ujian" tanpa breakdown mapel.</p>
+              <p className="mt-3 text-xs text-text-muted">Jika "Ya", siswa melihat daftar mapel/bagian dulu (tombol "Lihat Mapel") dan bisa latihan per mapel sebelum try out. Jika "Tidak", tombol paket langsung "Mulai Ujian" tanpa breakdown mapel.</p>
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 <Select
                   label="Metode Penilaian"

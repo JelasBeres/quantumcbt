@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowLeft, ArrowRight, CalendarCheck, Search } from "lucide-react";
 import { api, getErrorMessage } from "@/lib/api";
+import RiwayatPaging, { useDataPerItem, useHalaman } from "@/components/RiwayatPaging";
 import {
   DetailHasil,
   KATEGORI_LAINNYA,
@@ -22,7 +23,6 @@ export default function RiwayatPerKategoriPage() {
   const params = useParams<{ kategori: string }>();
   const kategori = decodeURIComponent(params.kategori);
   const [items, setItems] = useState<RiwayatItem[]>([]);
-  const [ringkasan, setRingkasan] = useState<Record<number, (Ringkasan & { ditahan: boolean }) | null>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [cari, setCari] = useState("");
@@ -35,16 +35,6 @@ export default function RiwayatPerKategoriPage() {
         if (cancelled) return;
         setItems(cocok);
         setLoading(false);
-        const entries = await Promise.all(cocok.map(async (item) => {
-          try {
-            const { data } = await api.get<DetailHasil>(`/hasil-ujian/ujian/${item.ujian_siswa_id}/detail`);
-            const ditahan = !!data.kunci_disembunyikan;
-            return [item.ujian_siswa_id, { ...ringkas(data.soal ?? [], ditahan), ditahan }] as const;
-          } catch {
-            return [item.ujian_siswa_id, null] as const;
-          }
-        }));
-        if (!cancelled) setRingkasan(Object.fromEntries(entries));
       } catch (e) {
         if (!cancelled) {
           setError(getErrorMessage(e, "Riwayat gagal dimuat."));
@@ -60,13 +50,22 @@ export default function RiwayatPerKategoriPage() {
     return kata ? items.filter((item) => item.nama_paket.toLowerCase().includes(kata)) : items;
   }, [items, cari]);
 
+  const paging = useHalaman(hasilCari, cari);
+  // Ringkasan benar/salah hanya diambil untuk kartu di halaman yang tampil.
+  const ambilRingkasan = useCallback(async (id: number): Promise<Ringkasan & { ditahan: boolean }> => {
+    const { data } = await api.get<DetailHasil>(`/hasil-ujian/ujian/${id}/detail`);
+    const ditahan = !!data.kunci_disembunyikan;
+    return { ...ringkas(data.soal ?? [], ditahan), ditahan };
+  }, []);
+  const ringkasan = useDataPerItem(paging.tampil.map((item) => item.ujian_siswa_id), ambilRingkasan);
+
   const labelKategori = items[0]?.kategori_nama || (kategori === KATEGORI_LAINNYA ? "Lainnya" : kategori.replace(/_/g, " ").toUpperCase());
 
   return (
     <main className="student-home student-split-page">
-      <Link href="/siswa/riwayat/tryout" className="student-back"><ArrowLeft size={15} aria-hidden="true" /> Kategori Tryout</Link>
+      <Link href="/siswa/riwayat/tryout" className="student-back"><ArrowLeft size={15} aria-hidden="true" /> Kategori Try Out</Link>
       <header className="student-split-head">
-        <h1>Riwayat Tryout {labelKategori}</h1>
+        <h1>Riwayat Try Out {labelKategori}</h1>
       </header>
 
       {error && <p role="alert" className="student-notice mb-4">{error}</p>}
@@ -74,17 +73,18 @@ export default function RiwayatPerKategoriPage() {
       {!loading && items.length > 1 && (
         <label className="student-search mt-5">
           <Search size={16} aria-hidden="true" />
-          <input type="search" value={cari} onChange={(e) => setCari(e.target.value)} placeholder="Cari tryout..." aria-label="Cari tryout" />
+          <input type="search" value={cari} onChange={(e) => setCari(e.target.value)} placeholder="Cari try out..." aria-label="Cari try out" />
         </label>
       )}
 
       {loading ? <p className="student-notice mt-6">Memuat…</p> : items.length === 0 ? (
-        <p className="student-notice mt-6">Belum ada tryout yang selesai pada kategori ini.</p>
+        <p className="student-notice mt-6">Belum ada try out yang selesai pada kategori ini.</p>
       ) : hasilCari.length === 0 ? (
-        <p className="student-notice mt-6">Tidak ada tryout yang cocok dengan &ldquo;{cari.trim()}&rdquo;.</p>
+        <p className="student-notice mt-6">Tidak ada try out yang cocok dengan &ldquo;{cari.trim()}&rdquo;.</p>
       ) : (
-        <div className="student-tryouts student-riwayat-list">
-          {hasilCari.map((item) => {
+        <>
+        <div className="student-tryouts student-list-compact">
+          {paging.tampil.map((item) => {
             const r = ringkasan[item.ujian_siswa_id];
             return (
               <article key={item.ujian_siswa_id} className="student-tryout">
@@ -120,6 +120,8 @@ export default function RiwayatPerKategoriPage() {
             );
           })}
         </div>
+        <RiwayatPaging {...paging} onGanti={paging.setHalaman} />
+        </>
       )}
     </main>
   );

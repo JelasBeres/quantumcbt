@@ -26,7 +26,7 @@ export default function LatihanList() {
   };
   return <section className="my-6 space-y-4">
     <h2 className="text-xl font-bold">Latihan mandiri</h2>
-    <p className="text-sm text-text-muted">Tersedia kapan saja tanpa jadwal. Bisa diulang setelah selesai dan tidak masuk riwayat Tryout.</p>
+    <p className="text-sm text-text-muted">Tersedia kapan saja tanpa jadwal. Bisa diulang setelah selesai dan tidak masuk riwayat Try Out.</p>
     <Input label="Cari latihan" value={query} onChange={(e) => setQuery(e.target.value)} />
     {error && <p role="alert" className="text-red-600">{error}</p>}
     {loading ? <p>Memuat latihan...</p> : <div className="grid gap-4 sm:grid-cols-2">{items.filter((i) => `${i.nama} ${i.deskripsi ?? ""}`.toLowerCase().includes(query.toLowerCase())).map((item) => <Card key={item.id} title={item.nama}>

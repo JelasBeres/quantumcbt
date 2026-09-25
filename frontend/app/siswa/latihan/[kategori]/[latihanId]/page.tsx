@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { api, getErrorMessage } from "@/lib/api";
 import { ArrowLeft, CheckCircle2, ClipboardList, Clock3, FileText, Timer } from "lucide-react";
-import SetSoalPerMapel from "@/components/SetSoalPerMapel";
+import SetSoalPerMapel, { durasiSingkat } from "@/components/SetSoalPerMapel";
 
 // Detail 1 paket latihan: kiri daftar mapel, kanan kartu set soal (bagian) mapel tersebut.
 // Setiap kartu = 1 set; tombol Mulai pada kartu itu HANYA memulai soal set tersebut
@@ -129,7 +129,7 @@ export default function DetailLatihanPage() {
                 renderMeta={(b) => (
                   <div className="student-meta">
                     <span><FileText size={14} aria-hidden="true" />{b.jumlah_soal ?? 0} soal</span>
-                    <span><Clock3 size={14} aria-hidden="true" />{formatDurasi(b.durasi_menit ?? latihan.durasi_menit)}</span>
+                    <span><Clock3 size={14} aria-hidden="true" />{durasiSingkat(b.durasi_menit ?? latihan.durasi_menit)}</span>
                   </div>
                 )}
                 renderActions={(b) => (

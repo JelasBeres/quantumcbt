@@ -426,6 +426,7 @@ def get_siswa_riwayat_latihan(db: Session = Depends(get_db), current_user=Depend
                 mode_latihan=ujian.mode_latihan or "latihan",
                 bagian_id=ujian.latihan_bagian_id,
                 bagian_nama=bagian.nama if bagian else None,
+                pelajaran_id=bagian.pelajaran_id if bagian else None,
                 pelajaran_nama=pelajaran_map.get(bagian.pelajaran_id) if bagian else None,
                 started_at=ujian.started_at,
                 finished_at=ujian.finished_at,

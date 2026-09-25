@@ -22,7 +22,7 @@ def test_latihan_mapel_tryout_terbuka_setelah_tryout_selesai():
 
     blocked = client.post("/ujian-siswa/mulai-latihan", headers=headers, json=payload)
     assert blocked.status_code == 409
-    assert "setelah tryout" in blocked.json()["detail"]
+    assert "setelah try out" in blocked.json()["detail"]
 
     jadwal_id = active_schedule_id(paket)
     with SessionLocal() as db:
