@@ -44,6 +44,7 @@ class SiswaOut(BaseModel):
     kelas_id: Optional[int] = None
     program_nama: Optional[str] = None
     kelas_nama: Optional[str] = None
+    username: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

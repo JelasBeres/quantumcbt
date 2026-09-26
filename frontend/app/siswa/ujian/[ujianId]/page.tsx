@@ -702,8 +702,10 @@ export default function ExamRoomPage() {
             )}
           </section>
 
-          {/* ===== KANAN: JAWABAN ===== */}
-          <section className="rounded-card border border-card-border bg-card-bg p-4 shadow-card sm:p-5">
+          {/* ===== KANAN: JAWABAN =====
+              Desktop: kolom jawaban menempel (sticky) di bawah header + strip nomor,
+              jadi saat soal panjang di-scroll hanya kolom soal yang bergerak. */}
+          <section className="rounded-card border border-card-border bg-card-bg p-4 shadow-card sm:p-5 lg:sticky lg:top-[10.5rem] lg:max-h-[calc(100dvh-10.5rem-6rem)] lg:overflow-y-auto">
             {loading || !question ? (
               <div className="space-y-3 py-10">
                 {[0, 1, 2, 3].map((i) => (

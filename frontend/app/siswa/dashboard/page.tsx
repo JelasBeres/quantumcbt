@@ -15,6 +15,7 @@ import { api, getErrorMessage } from "@/lib/api";
 import { getUser } from "@/lib/auth";
 import Skeleton from "@/components/Skeleton";
 import { formatWaktuJadwal } from "@/lib/waktu-jadwal";
+import { kategoriKey } from "@/lib/riwayat";
 
 type SiswaDashboard = {
   siswa: {
@@ -33,9 +34,31 @@ type Riwayat = {
   ujian_siswa_id: number;
   jadwal_ujian_id?: number | null;
   nama_paket: string;
+  kategori?: string | null;
   started_at?: string | null;
+  finished_at?: string | null;
   is_submitted: boolean;
   skor?: number | null;
+};
+
+type RiwayatLatihan = {
+  ujian_siswa_id: number;
+  nama_paket: string;
+  kategori?: string | null;
+  pelajaran_nama?: string | null;
+  finished_at?: string | null;
+  skor?: number | null;
+};
+
+const rataRataSkor = (items: Array<{ skor?: number | null }>) => {
+  const skor = items.map((item) => item.skor).filter((value): value is number => value != null);
+  return skor.length ? { rata: skor.reduce((a, b) => a + b, 0) / skor.length, tertinggi: Math.max(...skor), jumlah: skor.length } : null;
+};
+
+const waktuMs = (value?: string | null) => {
+  if (!value) return 0;
+  const time = new Date(/[Zz]|[+-]\d{2}:\d{2}$/.test(value) ? value : `${value}Z`).getTime();
+  return Number.isFinite(time) ? time : 0;
 };
 
 function subjectIcon(pelajaran?: string | null) {
@@ -85,6 +108,7 @@ export default function SiswaHomePage() {
   const router = useRouter();
   const [data, setData] = useState<SiswaDashboard | null>(null);
   const [riwayat, setRiwayat] = useState<Riwayat[]>([]);
+  const [riwayatLatihan, setRiwayatLatihan] = useState<RiwayatLatihan[]>([]);
   const [jadwal, setJadwal] = useState<Jadwal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -106,12 +130,15 @@ export default function SiswaHomePage() {
     let cancelled = false;
     (async () => {
       try {
-        const [dashboardRes, riwayatRes, jadwalRes] = await Promise.all([
+        const [dashboardRes, riwayatRes, jadwalRes, latihanRes] = await Promise.all([
           api.get("/siswa/dashboard"),
           api.get("/siswa/riwayat-ujian"),
-          api.get("/siswa/jadwal-ujian")
+          api.get("/siswa/jadwal-ujian"),
+          // Ringkasan latihan tidak wajib: beranda tetap tampil bila gagal dimuat.
+          api.get("/siswa/riwayat-latihan").catch(() => ({ data: [] }))
         ]);
         if (cancelled) return;
+        setRiwayatLatihan(latihanRes.data ?? []);
         setData(dashboardRes.data);
         setRiwayat(riwayatRes.data ?? []);
         setJadwal(jadwalRes.data ?? []);
@@ -159,18 +186,35 @@ export default function SiswaHomePage() {
   const nama = data?.siswa?.nama_lengkap ?? "";
   const { label: waktuLabel, Icon: WaktuIcon } = salamWaktu();
 
-  const ujianSelesai = riwayat.filter((r) => r.is_submitted);
-  const skorTerkumpul = ujianSelesai
-    .map((r) => r.skor)
-    .filter((s): s is number => s != null);
-  const rataRata = skorTerkumpul.length > 0
-    ? skorTerkumpul.reduce((a, b) => a + b, 0) / skorTerkumpul.length
-    : null;
+  // Try out = sesi berjadwal; sesi tanpa jadwal dari paket tryout termasuk latihan per-mapel.
+  const tryoutSelesai = riwayat.filter((r) => r.is_submitted && r.jadwal_ujian_id != null);
+  const statTryout = rataRataSkor(tryoutSelesai);
+  const statLatihan = rataRataSkor(riwayatLatihan);
+  const tryoutBelumDikerjakan = jadwalTersedia.filter((item) => item.status === "berlangsung" && !jadwalSelesaiSet.has(item.jadwal_ujian_id)).length;
+  const terakhir = [
+    ...tryoutSelesai.map((r) => ({ jenis: "Try Out" as const, nama: r.nama_paket, skor: r.skor, waktu: waktuMs(r.finished_at ?? r.started_at), href: `/siswa/riwayat/tryout/${encodeURIComponent(kategoriKey(r))}/${r.ujian_siswa_id}` })),
+    ...riwayatLatihan.map((r) => ({ jenis: "Latihan" as const, nama: r.pelajaran_nama ? `${r.nama_paket} · ${r.pelajaran_nama}` : r.nama_paket, skor: r.skor, waktu: waktuMs(r.finished_at), href: "/siswa/riwayat/latihan" }))
+  ].sort((a, b) => b.waktu - a.waktu)[0];
+  const fmt = (value: number) => value.toFixed(1);
 
   const stats = [
-    { label: "Rata-rata Nilai", value: rataRata != null ? rataRata.toFixed(1) : "-", icon: Award },
-    { label: "Ujian Selesai", value: String(ujianSelesai.length), icon: CheckCircle2 },
-    { label: "Skor Terakhir", value: data?.hasil_terakhir != null ? data.hasil_terakhir.toFixed(1) : "-", icon: Sparkles }
+    {
+      label: "Rata-rata Nilai Try Out", tag: "Try Out", value: statTryout ? fmt(statTryout.rata) : "-", icon: Award, href: "/siswa/riwayat/tryout",
+      detail: statTryout ? `Dari ${statTryout.jumlah} try out · tertinggi ${fmt(statTryout.tertinggi)}` : "Belum ada try out yang dinilai", cta: "Lihat riwayat try out"
+    },
+    {
+      label: "Rata-rata Nilai Latihan", tag: "Latihan", value: statLatihan ? fmt(statLatihan.rata) : "-", icon: BookOpen, href: "/siswa/riwayat/latihan",
+      detail: statLatihan ? `Dari ${statLatihan.jumlah} latihan · tertinggi ${fmt(statLatihan.tertinggi)}` : "Belum ada latihan yang selesai", cta: "Lihat riwayat latihan"
+    },
+    {
+      label: "Try Out Selesai", tag: "Try Out", value: String(tryoutSelesai.length), icon: CheckCircle2, href: tryoutBelumDikerjakan > 0 ? "/siswa/tryout" : "/siswa/riwayat/tryout",
+      detail: tryoutBelumDikerjakan > 0 ? `${tryoutBelumDikerjakan} try out sedang dibuka & belum dikerjakan` : `${riwayatLatihan.length} latihan juga sudah diselesaikan`,
+      cta: tryoutBelumDikerjakan > 0 ? "Kerjakan sekarang" : "Lihat riwayat"
+    },
+    {
+      label: "Nilai Terakhir", tag: terakhir?.jenis ?? null, value: terakhir?.skor != null ? fmt(terakhir.skor) : "-", icon: Sparkles, href: terakhir?.href ?? "/siswa/riwayat",
+      detail: terakhir ? terakhir.nama : "Belum ada ujian yang selesai", cta: terakhir ? "Lihat hasil" : "Buka riwayat"
+    }
   ];
 
   return (
@@ -222,7 +266,7 @@ export default function SiswaHomePage() {
           {jadwalTersedia.length === 0 ? (
             <div className="student-notice">Belum ada try out.</div>
           ) : (
-            <div className="student-tryouts">
+            <div className={`student-tryouts${jadwalTersedia.length === 1 ? " student-tryouts-single" : ""}`}>
               {[...jadwalTersedia].sort((a, b) => b.jadwal_ujian_id - a.jadwal_ujian_id).map((item) => {
                 const selesai = jadwalSelesaiSet.has(item.jadwal_ujian_id);
                 const SubjectIcon = subjectIcon(item.pelajaran);
@@ -264,12 +308,18 @@ export default function SiswaHomePage() {
           <h2 id="progress-heading">Ringkasan</h2>
           <Link href="/siswa/riwayat" className="student-outline-link">Riwayat <ArrowRight size={13} aria-hidden="true" /></Link>
         </div>
-        <div className="student-stat-grid">
+        <div className="student-stat-grid student-stat-grid-4">
           {stats.map((stat) => (
-            <div className="student-stat" key={stat.label}>
-              <stat.icon size={20} className="text-violet-300" aria-hidden="true" />
-              <strong>{stat.value}</strong><p className="student-muted">{stat.label}</p>
-            </div>
+            <Link href={stat.href} className="student-stat" key={stat.label}>
+              <span className="student-stat-top">
+                <stat.icon size={20} className="text-violet-300" aria-hidden="true" />
+                {stat.tag && <span className={`student-stat-tag${stat.tag === "Latihan" ? " student-stat-tag-latihan" : ""}`}>{stat.tag}</span>}
+              </span>
+              <strong>{stat.value}</strong>
+              <span className="student-stat-name">{stat.label}</span>
+              <span className="student-stat-detail">{stat.detail}</span>
+              <span className="student-stat-link">{stat.cta} <ArrowRight size={12} aria-hidden="true" /></span>
+            </Link>
           ))}
         </div>
       </section>

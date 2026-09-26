@@ -448,14 +448,13 @@ export default function PaketUjianPage() {
       setScheduleSaving(false);
     }
   };
-  const crumbs = [
-    "Ujian",
-    activeTipe
-      ? tipeCards.find((item) => item.value === activeTipe)?.label
-      : null,
-    activeKategori ? kategoriCards.find((item) => item.value === activeKategori)?.label : null,
-    activePaket?.nama,
-  ].filter(Boolean);
+  // Breadcrumb bisa diklik: tiap level kembali ke tampilan level tersebut.
+  const crumbs: Array<{ label: string; onClick: () => void }> = [
+    { label: "Ujian", onClick: () => { setActiveTipe(null); setActiveKategori(null); setActivePaket(null); } },
+    ...(activeTipe ? [{ label: tipeCards.find((item) => item.value === activeTipe)?.label ?? activeTipe, onClick: () => { setActiveKategori(null); setActivePaket(null); } }] : []),
+    ...(activeKategori ? [{ label: kategoriCards.find((item) => item.value === activeKategori)?.label ?? "Kategori", onClick: () => setActivePaket(null) }] : []),
+    ...(activePaket ? [{ label: activePaket.nama, onClick: () => undefined }] : []),
+  ];
 
   if (loading)
     return (
@@ -474,25 +473,20 @@ export default function PaketUjianPage() {
             : "Admin menentukan bagian mapel. Bagian otomatis tersedia bagi guru pengampu mapel yang sesuai program dan kelas."}
         </p>
       </header>
-      <div className="flex flex-wrap items-center gap-2 text-sm text-text-muted">
+      <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-2 text-sm text-text-muted">
         {crumbs.map((crumb, index) => (
-          <span
-            key={`${crumb}-${index}`}
-            className="inline-flex items-center gap-2"
-          >
-            {index > 0 && <ChevronRight className="h-3.5 w-3.5" />}
-            <span
-              className={
-                index === crumbs.length - 1
-                  ? "font-semibold text-heading-dark"
-                  : ""
-              }
-            >
-              {crumb}
-            </span>
+          <span key={`${crumb.label}-${index}`} className="inline-flex items-center gap-2">
+            {index > 0 && <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />}
+            {index === crumbs.length - 1 ? (
+              <span aria-current="page" className="font-semibold text-heading-dark">{crumb.label}</span>
+            ) : (
+              <button type="button" onClick={crumb.onClick} className="rounded px-1 font-semibold text-brand-primary hover:bg-brand-primary/10 hover:underline">
+                {crumb.label}
+              </button>
+            )}
           </span>
         ))}
-      </div>
+      </nav>
 
       {!activeTipe && (
         <Card title="Pilih Jenis">

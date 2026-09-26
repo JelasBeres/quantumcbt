@@ -124,15 +124,17 @@ export default function LatihanSetSoal() {
             : "Tambah set soal untuk mapel ini, lalu isi soal dan durasinya sendiri atau serahkan ke guru pengampu. Set yang diisi admin langsung disetujui."}
         </p>
       </header>
-      <div className="flex flex-wrap items-center gap-2 text-sm text-text-muted">
-        <span>Ujian</span>
-        <ChevronRight className="h-3.5 w-3.5" />
-        <span>Latihan</span>
-        <ChevronRight className="h-3.5 w-3.5" />
-        <Link href={paketHref} className="hover:text-brand-primary">{paket.nama}</Link>
-        <ChevronRight className="h-3.5 w-3.5" />
-        <span className="font-semibold text-heading-dark">{mapelNama}</span>
-      </div>
+      <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-2 text-sm text-text-muted">
+        <Link href={`${basePath}/paket-ujian`} className="rounded px-1 font-semibold text-brand-primary hover:bg-brand-primary/10 hover:underline">Ujian</Link>
+        <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+        <Link href={`${basePath}/paket-ujian?tipe=latihan`} className="rounded px-1 font-semibold text-brand-primary hover:bg-brand-primary/10 hover:underline">Latihan</Link>
+        <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+        <Link href={`${basePath}/paket-ujian?tipe=latihan&kategori_id=${paket.kategori_id ?? "belum"}`} className="rounded px-1 font-semibold text-brand-primary hover:bg-brand-primary/10 hover:underline">{paket.kategori_nama || paket.kategori || "Belum Berkategori"}</Link>
+        <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+        <Link href={paketHref} className="rounded px-1 font-semibold text-brand-primary hover:bg-brand-primary/10 hover:underline">{paket.nama}</Link>
+        <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+        <span aria-current="page" className="font-semibold text-heading-dark">{mapelNama}</span>
+      </nav>
       <Card>
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-card-border pb-4">
           <Link href={paketHref} className="inline-flex items-center gap-2 text-sm font-semibold text-brand-primary">

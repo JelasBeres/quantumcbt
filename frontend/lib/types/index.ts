@@ -45,6 +45,7 @@ export type Siswa = {
   no_induk?: string | null;
   program_id?: number | null;
   kelas_id?: number | null;
+  username?: string | null;
 };
 
 export type KategoriPaket = {

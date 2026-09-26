@@ -272,36 +272,20 @@ export default function SoalFormModal({
             <h2 id="soal-form-title" className="text-lg font-bold text-heading-dark">{editSoalId ? "Edit Soal" : "Buat Soal Baru"}</h2>
             {description && <p className="mt-1 text-sm text-text-muted">{description}</p>}
           </div>
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+            <Button type="button" variant="outline" onClick={onClose} disabled={saving}>Batal</Button>
+            <Button type="button" variant="blue" disabled={saving || loadingDetail || !detailReady} onClick={handleSubmit}>
+              {saving ? "Menyimpan..." : "Simpan Soal"}
+            </Button>
+          </div>
           {!pageMode && <button type="button" onClick={onClose} className="rounded-lg px-2 py-1 text-xl text-text-muted transition hover:bg-neutral hover:text-heading-dark" aria-label="Tutup">×</button>}
         </div>
 
         <fieldset disabled={saving || loadingDetail || !detailReady} className="space-y-4 p-4 sm:p-6">
           {loadingDetail && <p role="status">Memuat detail soal...</p>}
-          {/* Lima pilihan klasifikasi soal dalam satu baris (layar lebar). */}
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-            <Select
-              label="Tipe Soal"
-              required
-              value={formData.tipe}
-              onChange={(e) => handleTipeChange(e.target.value)}
-              options={[
-                { value: "pilihan_ganda", label: "Pilihan Ganda" },
-                { value: "pilihan_lebih_dari_satu", label: "Pilihan Lebih dari Satu" },
-                { value: "benar_salah", label: "Benar / Salah" },
-                { value: "esai", label: "Esai" },
-                { value: "isian", label: "Isian" }
-              ]}
-            />
-            <Select
-              label="Pelajaran"
-              required
-              value={formData.pelajaran_id}
-               onChange={(e) => setFormData({ ...formData, pelajaran_id: e.target.value, topik_id: "", subbab_id: "", subbab: "" })}
-              options={[
-                { value: "", label: "- Pilih Pelajaran -" },
-                ...pelajaranList.map((p) => ({ value: p.id, label: p.nama }))
-              ]}
-            />
+          {error && <div role="alert" className="rounded-input border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+          {/* Klasifikasi soal dalam satu baris (layar lebar): Kelas, Mapel, Bab, Sub Bab, Tipe, Kesulitan, Poin. */}
+          <div className={`grid gap-3 sm:grid-cols-2 md:grid-cols-4 ${pageMode ? "xl:grid-cols-7" : ""}`}>
             <Select
               label="Kelas"
               value={formData.kelas_id}
@@ -312,7 +296,17 @@ export default function SoalFormModal({
               ]}
             />
             <Select
-              label="Bab (opsional)"
+              label="Mapel"
+              required
+              value={formData.pelajaran_id}
+               onChange={(e) => setFormData({ ...formData, pelajaran_id: e.target.value, topik_id: "", subbab_id: "", subbab: "" })}
+              options={[
+                { value: "", label: "- Pilih Mapel -" },
+                ...pelajaranList.map((p) => ({ value: p.id, label: p.nama }))
+              ]}
+            />
+            <Select
+              label="Bab"
               value={formData.topik_id}
                onChange={(e) => setFormData({ ...formData, topik_id: e.target.value, subbab_id: "", subbab: "" })}
               options={[
@@ -321,7 +315,7 @@ export default function SoalFormModal({
               ]}
             />
           <Select
-            label="Sub Bab (opsional)"
+            label="Sub Bab"
             disabled={!formData.topik_id}
             value={formData.subbab_id || (formData.subbab ? "legacy" : "")}
             onChange={(e) => {
@@ -335,19 +329,21 @@ export default function SoalFormModal({
               ...subbabUntukTopik.map((item) => ({ value: item.id, label: item.nama }))
             ]}
           />
-          </div>
-
-            <RichEditor
-              label="Teks Soal"
+            <Select
+              label="Tipe Soal"
               required
-              value={formData.teks_soal}
-              onChange={(html) => setFormData({ ...formData, teks_soal: html })}
-              placeholder="Tulis soal di sini. Gunakan tombol Σ untuk menyisipkan rumus matematika."
+              value={formData.tipe}
+              onChange={(e) => handleTipeChange(e.target.value)}
+              options={[
+                { value: "pilihan_ganda", label: "Pilihan Ganda" },
+                { value: "pilihan_lebih_dari_satu", label: "Pilihan Lebih dari Satu" },
+                { value: "benar_salah", label: "Benar / Salah" },
+                { value: "esai", label: "Esai" },
+                { value: "isian", label: "Isian" }
+              ]}
             />
-
-              <div className="grid gap-4 sm:grid-cols-3">
                <Select
-                label="Tingkat Kesulitan"
+                label="Kesulitan"
                 value={formData.tingkat_kesulitan}
                 onChange={(e) => setFormData({ ...formData, tingkat_kesulitan: e.target.value })}
                 options={[
@@ -365,15 +361,24 @@ export default function SoalFormModal({
                  value={formData.poin}
                  onChange={(e) => setFormData({ ...formData, poin: e.target.value })}
                />
-               {formData.tipe === "isian" && (
-                <Input
-                  label="Kunci Jawaban Isian"
-                  value={formData.kunci_jawaban}
-                  onChange={(e) => setFormData({ ...formData, kunci_jawaban: e.target.value })}
-                  placeholder="Contoh: Jakarta | Batavia (pisahkan alternatif dengan |)"
-                />
-              )}
-            </div>
+          </div>
+
+            <RichEditor
+              label="Teks Soal"
+              required
+              value={formData.teks_soal}
+              onChange={(html) => setFormData({ ...formData, teks_soal: html })}
+              placeholder="Tulis soal di sini. Gunakan tombol Σ untuk menyisipkan rumus matematika."
+            />
+
+            {formData.tipe === "isian" && (
+              <Input
+                label="Kunci Jawaban Isian"
+                value={formData.kunci_jawaban}
+                onChange={(e) => setFormData({ ...formData, kunci_jawaban: e.target.value })}
+                placeholder="Contoh: Jakarta | Batavia (pisahkan alternatif dengan |)"
+              />
+            )}
 
             {formData.tipe === "esai" && (
               <RichEditor
@@ -479,7 +484,7 @@ export default function SoalFormModal({
 
           <div className="flex flex-wrap justify-end gap-2 border-t border-card-border pt-4">
             <Button type="button" variant="outline" onClick={onClose}>Batal</Button>
-            <Button type="button" disabled={saving} onClick={handleSubmit}>
+            <Button type="button" variant="blue" disabled={saving} onClick={handleSubmit}>
               {saving ? "Menyimpan..." : "Simpan Soal"}
             </Button>
           </div>

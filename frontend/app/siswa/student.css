@@ -172,8 +172,18 @@ a.student-kategori:hover { border-color: var(--st-accent-soft); }
 
 /* ---------- Statistik & notice ---------- */
 .student-stat-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
-.student-stat { border: 1px solid var(--st-border); border-radius: var(--st-radius-lg); padding: 20px; background: var(--st-surface); }
+.student-stat { display: flex; flex-direction: column; border: 1px solid var(--st-border); border-radius: var(--st-radius-lg); padding: 20px; background: var(--st-surface); color: inherit; text-decoration: none; transition: border-color .2s, box-shadow .2s, transform .2s; }
+a.student-stat:hover { border-color: #2d3c8f; box-shadow: 0 6px 18px rgba(45, 60, 143, .12); transform: translateY(-1px); }
+a.student-stat:focus-visible { outline: 2px solid #2d3c8f; outline-offset: 2px; }
 .student-stat strong { display: block; font-size: 26px; font-weight: 700; margin: 12px 0 2px; color: var(--st-heading); }
+.student-stat-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.student-stat-tag { border-radius: 999px; padding: 2px 8px; font-size: 11px; font-weight: 700; background: #2d3c8f1a; color: #2d3c8f; }
+.student-stat-tag-latihan { background: #0f766e1a; color: #0f766e; }
+.student-stat-name { font-size: 13px; font-weight: 600; color: var(--st-heading); }
+.student-stat-detail { margin-top: 6px; font-size: 12px; color: var(--st-muted); line-height: 1.45; }
+.student-stat-link { margin-top: auto; padding-top: 10px; display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; color: #2d3c8f; }
+.student-stat-grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 900px) { .student-stat-grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .student-notice { border: 1px solid var(--st-border); border-radius: 18px; padding: 18px 20px; background: var(--st-surface); color: var(--st-text); font-size: 13px; }
 
 /* ---------- Bottom nav pill (semua ukuran layar, seperti Bisadanedu) ---------- */
@@ -231,6 +241,8 @@ a.student-kategori:hover { border-color: var(--st-accent-soft); }
   .student-tryouts { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 14px; margin: 0 -16px; padding: 0 16px 8px; scrollbar-width: none; }
   .student-tryouts::-webkit-scrollbar { display: none; }
   .student-tryout { flex: 0 0 78%; scroll-snap-align: center; }
+  /* Hanya satu try out: kartu dibuat selebar layar, tidak perlu geser. */
+  .student-tryouts-single .student-tryout { flex-basis: 100%; }
   .student-tryout-cover { min-height: 190px; }
   .student-split-page { padding-top: 40px; }
   .student-back { margin-bottom: 18px; }

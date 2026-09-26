@@ -11,11 +11,15 @@ export function matchesMeta(s: Soal, f: MetaFilter) {
   if (f.to && (!Number.isFinite(timestamp) || timestamp > new Date(`${f.to}T23:59:59.999`).getTime())) return false;
   return true;
 }
-export default function QuestionMetaFilters({ items, value, onChange }: { items: Soal[]; value: MetaFilter; onChange: (v: MetaFilter) => void }) {
+// `bare` merender ketiga field tanpa pembungkus grid agar halaman bisa menyusunnya
+// dalam baris filter sendiri.
+export default function QuestionMetaFilters({ items, value, onChange, bare = false }: { items: Soal[]; value: MetaFilter; onChange: (v: MetaFilter) => void; bare?: boolean }) {
   const creators = new Map(items.filter((s) => s.created_by != null).map((s) => [String(s.created_by), s.created_by_name || `Guru #${s.created_by}`]));
-  return <div className="my-3 grid gap-3 sm:grid-cols-3">
+  const fields = <>
     <Select label="Pembuat soal" value={value.creator} onChange={(e) => onChange({ ...value, creator: e.target.value })} options={[{ value: "", label: "Semua pembuat" }, ...Array.from(creators, ([value, label]) => ({ value, label }))]} />
     <Input label="Dibuat mulai tanggal" type="date" value={value.from} onChange={(e) => onChange({ ...value, from: e.target.value })} />
     <Input label="Sampai tanggal" type="date" value={value.to} onChange={(e) => onChange({ ...value, to: e.target.value })} />
-  </div>;
+  </>;
+  if (bare) return fields;
+  return <div className="my-3 grid gap-3 sm:grid-cols-3">{fields}</div>;
 }

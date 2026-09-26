@@ -1,7 +1,7 @@
 import { ButtonHTMLAttributes, ReactNode } from "react";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "primary" | "secondary" | "danger" | "outline" | "ghost";
+  variant?: "primary" | "blue" | "secondary" | "danger" | "outline" | "ghost";
   size?: "sm" | "md" | "lg";
   children: ReactNode;
 }
@@ -12,6 +12,7 @@ export default function Button({ variant = "primary", size = "md", children, cla
 
   const variantStyles = {
     primary: "bg-cta text-heading-light hover:bg-cta-alt focus-visible:ring-cta",
+    blue: "bg-brand-primary text-heading-light hover:bg-brand-primary-light focus-visible:ring-brand-primary",
     secondary: "bg-neutral text-body-dark hover:bg-card-border focus-visible:ring-brand-primary",
     danger: "bg-red-600 text-heading-light hover:bg-red-700 focus-visible:ring-red-600",
     outline: "border border-card-border bg-card-bg text-brand-primary hover:bg-neutral focus-visible:ring-brand-primary",

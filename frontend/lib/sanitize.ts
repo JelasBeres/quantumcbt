@@ -29,7 +29,7 @@ const ALLOWED_URI_REGEXP = /^(?:https:|mailto:|\/|#|data:image\/(?:png|jpe?g|gif
 
 const ALLOWED_STYLE_PROPS = new Set([
   "text-align", "vertical-align", "color", "background-color",
-  "font-weight", "font-style", "font-size", "text-decoration", "text-decoration-line",
+  "font-weight", "font-style", "font-size", "font-family", "text-decoration", "text-decoration-line",
   "width", "height", "max-width", "min-width", "max-height",
   "border", "border-width", "border-style", "border-color", "border-collapse",
   "border-top", "border-right", "border-bottom", "border-left",

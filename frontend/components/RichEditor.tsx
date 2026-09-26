@@ -6,6 +6,19 @@ import MathContent from "@/components/MathContent";
 import { api } from "@/lib/api";
 import { sanitizeHtml } from "@/lib/sanitize";
 
+// Pilihan font & ukuran di toolbar. Nilai disimpan sebagai inline style pada <span>
+// (tag <font> tidak lolos sanitasi).
+const FONT_OPTIONS = [
+  { label: "Arial", value: "Arial, Helvetica, sans-serif" },
+  { label: "Calibri", value: "Calibri, Carlito, sans-serif" },
+  { label: "Times New Roman", value: "\"Times New Roman\", Times, serif" },
+  { label: "Georgia", value: "Georgia, serif" },
+  { label: "Verdana", value: "Verdana, Geneva, sans-serif" },
+  { label: "Tahoma", value: "Tahoma, Geneva, sans-serif" },
+  { label: "Cambria", value: "Cambria, Caladea, serif" }
+];
+const SIZE_OPTIONS = ["10", "11", "12", "13", "14", "16", "18", "20", "24"];
+
 interface RichEditorProps {
   value: string;
   onChange: (html: string) => void;
@@ -25,6 +38,8 @@ export default function RichEditor({ value, onChange, placeholder, minHeight = "
   const [tableForm, setTableForm] = useState({ rows: 3, cols: 3, header: true });
   const [activeCell, setActiveCell] = useState<HTMLTableCellElement | null>(null);
   const tableRangeRef = useRef<Range | null>(null);
+  // Seleksi terakhir di dalam editor; dropdown font mencuri fokus sehingga seleksi perlu dipulihkan.
+  const lastRangeRef = useRef<Range | null>(null);
 
   const emit = useCallback(() => {
     if (editorRef.current) {
@@ -48,6 +63,38 @@ export default function RichEditor({ value, onChange, placeholder, minHeight = "
     editorRef.current?.focus();
   }, [emit]);
 
+  // Terapkan font/ukuran ke teks terpilih: execCommand membuat <font> sementara yang
+  // langsung diganti <span style>. Tanpa seleksi teks, tidak ada yang diubah.
+  const applyFontStyle = useCallback((prop: "font-family" | "font-size", value: string) => {
+    const editor = editorRef.current;
+    const range = lastRangeRef.current;
+    if (!editor || !value) return;
+    if (!range || range.collapsed || !editor.contains(range.commonAncestorContainer)) {
+      window.alert("Blok (seleksi) dulu teks yang ingin diubah font atau ukurannya.");
+      return;
+    }
+    editor.focus();
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+    document.execCommand("styleWithCSS", false, "false");
+    if (prop === "font-family") document.execCommand("fontName", false, "__qfont__");
+    else document.execCommand("fontSize", false, "7");
+    const selector = prop === "font-family" ? 'font[face="__qfont__"]' : 'font[size="7"]';
+    editor.querySelectorAll(selector).forEach((font) => {
+      const span = document.createElement("span");
+      span.style.setProperty(prop, prop === "font-size" ? `${value}pt` : value);
+      while (font.firstChild) span.appendChild(font.firstChild);
+      // Ukuran/font lama di dalam seleksi dibuang agar pilihan baru yang berlaku.
+      span.querySelectorAll<HTMLElement>("[style]").forEach((child) => {
+        child.style.removeProperty(prop);
+        if (!child.getAttribute("style")) child.removeAttribute("style");
+      });
+      font.replaceWith(span);
+    });
+    emit();
+  }, [emit]);
+
   // Sel tabel tempat kursor berada (untuk menampilkan alat tambah/hapus baris & kolom).
   useEffect(() => {
     const onSelection = () => {
@@ -57,6 +104,8 @@ export default function RichEditor({ value, onChange, placeholder, minHeight = "
         setActiveCell(null);
         return;
       }
+      const selection = window.getSelection();
+      if (selection?.rangeCount) lastRangeRef.current = selection.getRangeAt(0).cloneRange();
       const el = node.nodeType === Node.ELEMENT_NODE ? (node as Element) : node.parentElement;
       const cell = el?.closest("td, th") as HTMLTableCellElement | null;
       setActiveCell(cell && editor.contains(cell) ? cell : null);
@@ -264,7 +313,28 @@ export default function RichEditor({ value, onChange, placeholder, minHeight = "
         </label>
       )}
       <div className="overflow-hidden rounded-input border border-card-border">
-        <div className="flex flex-wrap gap-0.5 border-b border-card-border bg-neutral px-2 py-1.5">
+        <div className="flex flex-wrap items-center gap-0.5 border-b border-card-border bg-neutral px-2 py-1.5">
+          <select
+            aria-label="Jenis font"
+            title="Jenis font (blok teks dulu)"
+            value=""
+            onChange={(e) => applyFontStyle("font-family", e.target.value)}
+            className="h-7 rounded border border-card-border bg-card-bg px-1.5 text-xs text-body-dark"
+          >
+            <option value="">Font</option>
+            {FONT_OPTIONS.map((font) => <option key={font.label} value={font.value} style={{ fontFamily: font.value }}>{font.label}</option>)}
+          </select>
+          <select
+            aria-label="Ukuran font"
+            title="Ukuran font (blok teks dulu)"
+            value=""
+            onChange={(e) => applyFontStyle("font-size", e.target.value)}
+            className="h-7 rounded border border-card-border bg-card-bg px-1.5 text-xs text-body-dark"
+          >
+            <option value="">Ukuran</option>
+            {SIZE_OPTIONS.map((size) => <option key={size} value={size}>{size} pt</option>)}
+          </select>
+          <span className="mx-1 h-5 w-px bg-card-border" />
           <ToolbarButton onClick={() => exec("bold")} title="Tebal">
             <strong>B</strong>
           </ToolbarButton>

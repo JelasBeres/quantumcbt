@@ -2,7 +2,7 @@ from typing import Dict, List, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy import func, or_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.core.security import get_current_active_user, get_password_hash, require_roles
 from app.core.timeutils import ensure_utc, utc_now
@@ -165,7 +165,9 @@ def import_siswa_csv(
 
 @router.get("/", response_model=List[SiswaOut])
 def list_siswa(db: Session = Depends(get_db), current_user=Depends(require_roles(["admin", "guru"]))):
-    return db.query(Siswa).all()
+    # Username ikut dikirim agar admin bisa melihat akun login saat reset password siswa.
+    rows = db.query(Siswa).options(joinedload(Siswa.user)).all()
+    return [SiswaOut(**SiswaOut.model_validate(s).model_dump(exclude={"username"}), username=s.user.username if s.user else None) for s in rows]
 
 
 def _siswa_out_with_akademik(db: Session, siswa: Siswa) -> SiswaOut:

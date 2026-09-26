@@ -6,7 +6,6 @@ import { ArrowLeft, BookOpen, CheckSquare, ChevronRight, ClipboardList, FileText
 import QuestionMetaFilters, { emptyMetaFilter, matchesMeta } from "@/components/QuestionMetaFilters";
 import Button from "@/components/Button";
 import Card from "@/components/Card";
-import Input from "@/components/Input";
 import MathContent from "@/components/MathContent";
 import Select from "@/components/Select";
 import SoalPreviewDialog from "@/components/SoalPreviewDialog";
@@ -40,7 +39,7 @@ export default function SoalPage() {
   const [selectedSubbab, setSelectedSubbab] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [previewId, setPreviewId] = useState<number | null>(null);
-  const [bankFilter, setBankFilter] = useState({ q: "", kelas: "", bab: "", subbab: "", kesulitan: "", status: "" });
+  const [bankFilter, setBankFilter] = useState({ kelas: "", bab: "", subbab: "", kesulitan: "" });
   const { showConfirm, dialog } = useAppDialog();
 
   const loadData = async () => {
@@ -107,12 +106,10 @@ export default function SoalPage() {
   }, [bankFilter.bab, soal, subbabList]);
 
   const globalFiltered = useMemo(() => soal.filter((item) => matchesMeta(item, metaFilter) &&
-    (!bankFilter.q || `${item.id} ${teksPolos(item.teks_soal)}`.toLowerCase().includes(bankFilter.q.toLowerCase())) &&
     (!bankFilter.kelas || String(item.kelas_id) === bankFilter.kelas) &&
     (!bankFilter.bab || String(item.topik_id) === bankFilter.bab) &&
     (!bankFilter.subbab || item.subbab === bankFilter.subbab) &&
-    (!bankFilter.kesulitan || item.tingkat_kesulitan === bankFilter.kesulitan) &&
-    (!bankFilter.status || item.status === bankFilter.status)), [soal, bankFilter, metaFilter]);
+    (!bankFilter.kesulitan || item.tingkat_kesulitan === bankFilter.kesulitan)), [soal, bankFilter, metaFilter]);
 
   const activeSoal = useMemo(() => activeTipe ? globalFiltered.filter((item) => item.tipe === activeTipe) : [], [activeTipe, globalFiltered]);
   const tipeCounts = useMemo(() => globalFiltered.reduce<Record<string, number>>((counts, item) => {
@@ -224,6 +221,14 @@ export default function SoalPage() {
     { header: "Aksi", accessor: (row: Soal) => <div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => setPreviewId(row.id)}>Lihat</Button><Link href={`/admin/tambah-soal?id=${row.id}`} className="inline-flex items-center justify-center rounded-btn border border-card-border bg-card-bg px-3 py-1.5 text-sm font-semibold text-brand-primary transition hover:bg-neutral">Edit</Link><Button size="sm" variant="danger" onClick={() => handleDelete(row.id)}>Hapus</Button></div> }
   ];
 
+  // Breadcrumb bisa diklik untuk lompat ke level mana pun di atas posisi sekarang.
+  const breadcrumb: Array<{ label: string; onClick?: () => void }> = [{ label: "Tipe Soal", onClick: resetNavigation }];
+  if (activeTipe) breadcrumb.push({ label: labelTipeSoal(activeTipe), onClick: level !== "kelas" ? () => selectTipe(activeTipe) : undefined });
+  if (level !== "tipe" && level !== "kelas") breadcrumb.push({ label: selectedKelas == null ? "Tanpa Kelas" : getNama(kelasList, selectedKelas) || "Tanpa Kelas", onClick: level !== "pelajaran" ? () => selectKelas(selectedKelas) : undefined });
+  if (["subbab", "soal"].includes(level) || level === "bab") breadcrumb.push({ label: selectedPelajaran == null ? "Tanpa Mata Pelajaran" : getNama(pelajaranList, selectedPelajaran) || "Tanpa Mata Pelajaran", onClick: level !== "bab" ? () => selectPelajaran(selectedPelajaran) : undefined });
+  if (["subbab", "soal"].includes(level)) breadcrumb.push({ label: selectedBab == null ? "Tanpa Bab" : getNama(topikList, selectedBab) || "Tanpa Bab", onClick: level !== "subbab" ? () => selectBab(selectedBab) : undefined });
+  if (level === "soal") breadcrumb.push({ label: selectedSubbab || "Tanpa Subbab" });
+
   const levelTitle = level === "kelas" ? "Kelas" : level === "pelajaran" ? "Mata Pelajaran" : level === "bab" ? "Bab" : level === "subbab" ? "Subbab" : "Daftar Soal";
   const searchPlaceholder = level === "kelas" ? "Cari kelas..." : level === "pelajaran" ? "Cari mata pelajaran..." : level === "bab" ? "Cari bab..." : level === "subbab" ? "Cari subbab..." : "Cari soal / ID...";
   const contextDefaults = queryDefaults();
@@ -235,19 +240,22 @@ export default function SoalPage() {
     <div className="space-y-6">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div><h1 className="text-3xl font-bold text-heading-dark">Bank Soal</h1><p className="mt-1 text-sm text-text-muted">Telusuri, filter, dan kelola koleksi soal.</p></div>
-        <Link href={addHref} className="inline-flex items-center justify-center rounded-btn bg-cta px-4 py-2 text-sm font-semibold text-heading-light transition hover:bg-cta-alt">Tambah Soal</Link>
+        <Link href={addHref} className="inline-flex items-center justify-center rounded-btn bg-brand-primary px-4 py-2 text-sm font-semibold text-heading-light transition hover:bg-brand-primary-light">Tambah Soal</Link>
       </header>
 
       <Card title="Filter bank soal">
-        <QuestionMetaFilters items={soal} value={metaFilter} onChange={setMetaFilter} />
-        <div className="grid gap-3 sm:grid-cols-3">
-          <Input label="Cari isi soal / ID" value={bankFilter.q} onChange={(e) => setBankFilter({ ...bankFilter, q: e.target.value })} />
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Select label="Kelas" value={bankFilter.kelas} onChange={(e) => setBankFilter({ ...bankFilter, kelas: e.target.value })} options={[{ value: "", label: "Semua kelas" }, ...kelasList.map((item) => ({ value: item.id, label: item.nama }))]} />
           <Select label="Bab" value={bankFilter.bab} onChange={(e) => setBankFilter({ ...bankFilter, bab: e.target.value, subbab: "" })} options={[{ value: "", label: "Semua bab" }, ...topikList.map((item) => ({ value: item.id, label: item.nama }))]} />
-          <Select label="Subbab" value={bankFilter.subbab} onChange={(e) => setBankFilter({ ...bankFilter, subbab: e.target.value })} options={[{ value: "", label: "Semua subbab" }, ...subbabFilterOptions.map((item) => ({ value: item, label: item }))]} />
+          <Select label="Sub Bab" value={bankFilter.subbab} onChange={(e) => setBankFilter({ ...bankFilter, subbab: e.target.value })} options={[{ value: "", label: "Semua sub bab" }, ...subbabFilterOptions.map((item) => ({ value: item, label: item }))]} />
           <Select label="Kesulitan" value={bankFilter.kesulitan} onChange={(e) => setBankFilter({ ...bankFilter, kesulitan: e.target.value })} options={[{ value: "", label: "Semua tingkat" }, ...["mudah", "sedang", "sulit"].map((item) => ({ value: item, label: item }))]} />
-          <Select label="Status" value={bankFilter.status} onChange={(e) => setBankFilter({ ...bankFilter, status: e.target.value })} options={[{ value: "", label: "Semua status" }, { value: "draft", label: "Draft" }, { value: "pending_review", label: "Menunggu review" }, { value: "approved", label: "Disetujui" }, { value: "rejected", label: "Perlu revisi" }]} />
-          <ResetFilterButton className="self-end" active={Object.values(bankFilter).some(Boolean) || Object.values(metaFilter).some(Boolean)} onReset={() => { setBankFilter({ q: "", kelas: "", bab: "", subbab: "", kesulitan: "", status: "" }); setMetaFilter(emptyMetaFilter); }} />
+        </div>
+        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+          <QuestionMetaFilters bare items={soal} value={metaFilter} onChange={setMetaFilter} />
+        </div>
+        <div className="mt-3 flex items-center justify-between gap-3 text-sm text-text-muted">
+          <span>{globalFiltered.length} soal sesuai filter</span>
+          <ResetFilterButton active={Object.values(bankFilter).some(Boolean) || Object.values(metaFilter).some(Boolean)} onReset={() => { setBankFilter({ kelas: "", bab: "", subbab: "", kesulitan: "" }); setMetaFilter(emptyMetaFilter); }} />
         </div>
       </Card>
 
@@ -265,9 +273,14 @@ export default function SoalPage() {
               <button type="button" onClick={() => { if (level === "kelas") resetNavigation(); else if (level === "pelajaran") { setLevel("kelas"); setSearchQuery(""); } else if (level === "bab") { setLevel("pelajaran"); setSearchQuery(""); } else if (level === "subbab") { setLevel("bab"); setSearchQuery(""); } else { setLevel("subbab"); setSearchQuery(""); } }} className="flex items-center gap-2 rounded-btn px-3 py-1.5 text-sm font-semibold text-brand-primary hover:bg-brand-primary/10"><ArrowLeft className="h-4 w-4" aria-hidden="true" /> Kembali</button>
               <div className="text-right"><div className="text-sm font-bold text-heading-dark">{labelTipeSoal(activeTipe || "")}</div><div className="text-xs text-text-muted">{levelTitle}</div></div>
             </div>
-            <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1 text-xs text-text-muted"><button type="button" onClick={resetNavigation} className="font-semibold text-brand-primary hover:underline">Tipe Soal</button><ChevronRight className="h-3 w-3" aria-hidden="true" /><span>{labelTipeSoal(activeTipe || "")}</span>{level !== "kelas" && <><ChevronRight className="h-3 w-3" aria-hidden="true" /><span>{selectedKelas == null ? "Tanpa Kelas" : getNama(kelasList, selectedKelas) || "Tanpa Kelas"}</span></>}{["bab", "subbab", "soal"].includes(level) && <><ChevronRight className="h-3 w-3" aria-hidden="true" /><span>{selectedPelajaran == null ? "Tanpa Mata Pelajaran" : getNama(pelajaranList, selectedPelajaran) || "Tanpa Mata Pelajaran"}</span></>}{["subbab", "soal"].includes(level) && <><ChevronRight className="h-3 w-3" aria-hidden="true" /><span>{selectedBab == null ? "Tanpa Bab" : getNama(topikList, selectedBab) || "Tanpa Bab"}</span></>}{level === "soal" && <><ChevronRight className="h-3 w-3" aria-hidden="true" /><span>{selectedSubbab || "Tanpa Subbab"}</span></>}</nav>
+            <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1 text-xs text-text-muted">
+              {breadcrumb.map((crumb, index) => <span key={crumb.label + index} className="inline-flex items-center gap-1">
+                {index > 0 && <ChevronRight className="h-3 w-3" aria-hidden="true" />}
+                {crumb.onClick ? <button type="button" onClick={crumb.onClick} className="rounded px-1 py-0.5 font-semibold text-brand-primary hover:bg-brand-primary/10 hover:underline">{crumb.label}</button> : <span aria-current="page" className="px-1 py-0.5 font-semibold text-heading-dark">{crumb.label}</span>}
+              </span>)}
+            </nav>
             <div className="relative w-full max-w-xs"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" aria-hidden="true" /><input type="search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder={searchPlaceholder} className="w-full rounded-input border border-card-border bg-card-bg py-2.5 pl-9 pr-3 text-sm text-body-dark outline-none focus:border-brand-primary" /></div>
-            {level !== "soal" ? displayedGroups.length === 0 ? <div className="rounded-card border border-card-border bg-neutral/30 p-10 text-center"><p className="text-sm text-text-muted">Tidak ada kelompok yang cocok.</p><Link href={addHref} className="mt-3 inline-flex items-center justify-center rounded-btn border border-card-border bg-card-bg px-3 py-1.5 text-sm font-semibold text-brand-primary hover:bg-neutral">Buat Soal Sekarang</Link></div> : <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 max-h-[440px] overflow-y-auto rounded-card border border-card-border bg-neutral/30 p-3">{displayedGroups.map((group) => <button key={group.key} type="button" onClick={() => level === "kelas" ? selectKelas(group.value as number | null) : level === "pelajaran" ? selectPelajaran(group.value as number | null) : level === "bab" ? selectBab(group.value as number | null) : selectSubbab(group.value as string | null)} className="group flex flex-col justify-between rounded-card border border-card-border bg-card-bg p-4 text-left shadow-sm transition hover:border-brand-primary hover:shadow-md"><div className="flex items-start justify-between gap-2"><span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-primary/10 text-brand-primary"><BookOpen className="h-4 w-4" aria-hidden="true" /></span><span className="rounded-full bg-neutral px-2.5 py-0.5 text-xs font-semibold text-text-muted">{group.items.length} soal</span></div><div className="mt-3"><h4 className="text-sm font-bold text-heading-dark group-hover:text-brand-primary">{group.label}</h4><p className="mt-1 flex items-center gap-1 text-xs text-text-muted">Klik untuk buka <ChevronRight className="h-3 w-3" aria-hidden="true" /></p></div></button>)}</div> : finalSoal.length === 0 ? <div className="rounded-card border border-card-border bg-neutral/30 p-10 text-center"><p className="text-sm text-text-muted">Tidak ada soal pada kelompok ini.</p><Link href={addHref} className="mt-3 inline-flex items-center justify-center rounded-btn border border-card-border bg-card-bg px-3 py-1.5 text-sm font-semibold text-brand-primary hover:bg-neutral">Buat Soal Sekarang</Link></div> : <div className="max-h-[440px] overflow-y-auto rounded-card border border-card-border p-1"><Table data={finalSoal} columns={columns} /></div>}
+            {level !== "soal" ? displayedGroups.length === 0 ? <div className="rounded-card border border-card-border bg-neutral/30 p-10 text-center"><p className="text-sm text-text-muted">Tidak ada kelompok yang cocok.</p><Link href={addHref} className="mt-3 inline-flex items-center justify-center rounded-btn border border-card-border bg-card-bg px-3 py-1.5 text-sm font-semibold text-brand-primary hover:bg-neutral">Buat Soal Sekarang</Link></div> : <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5 max-h-[440px] overflow-y-auto rounded-card border border-card-border bg-neutral/30 p-3">{displayedGroups.map((group) => <button key={group.key} type="button" onClick={() => level === "kelas" ? selectKelas(group.value as number | null) : level === "pelajaran" ? selectPelajaran(group.value as number | null) : level === "bab" ? selectBab(group.value as number | null) : selectSubbab(group.value as string | null)} className="group flex flex-col justify-between rounded-card border border-card-border bg-card-bg p-4 text-left shadow-sm transition hover:border-brand-primary hover:shadow-md"><div className="flex items-start justify-between gap-2"><span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-primary/10 text-brand-primary"><BookOpen className="h-4 w-4" aria-hidden="true" /></span><span className="rounded-full bg-neutral px-2.5 py-0.5 text-xs font-semibold text-text-muted">{group.items.length} soal</span></div><div className="mt-3"><h4 className="text-sm font-bold text-heading-dark group-hover:text-brand-primary">{group.label}</h4><p className="mt-1 flex items-center gap-1 text-xs text-text-muted">Klik untuk buka <ChevronRight className="h-3 w-3" aria-hidden="true" /></p></div></button>)}</div> : finalSoal.length === 0 ? <div className="rounded-card border border-card-border bg-neutral/30 p-10 text-center"><p className="text-sm text-text-muted">Tidak ada soal pada kelompok ini.</p><Link href={addHref} className="mt-3 inline-flex items-center justify-center rounded-btn border border-card-border bg-card-bg px-3 py-1.5 text-sm font-semibold text-brand-primary hover:bg-neutral">Buat Soal Sekarang</Link></div> : <div className="max-h-[440px] overflow-y-auto rounded-card border border-card-border p-1"><Table data={finalSoal} columns={columns} /></div>}
           </div>
         )}
       </Card>

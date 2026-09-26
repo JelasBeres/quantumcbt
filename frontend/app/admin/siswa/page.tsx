@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, FormEvent } from "react";
-import { api } from "@/lib/api";
+import { api, getErrorMessage } from "@/lib/api";
 import Button from "@/components/Button";
 import Card from "@/components/Card";
 import Input from "@/components/Input";
@@ -25,6 +25,11 @@ export default function SiswaPage() {
   const [showImport, setShowImport] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [error, setError] = useState("");
+  const [resetTarget, setResetTarget] = useState<Siswa | null>(null);
+  const [resetPassword, setResetPassword] = useState("");
+  const [resetting, setResetting] = useState(false);
+  const [resetError, setResetError] = useState("");
+  const [resetSuccess, setResetSuccess] = useState("");
   const { showConfirm, dialog } = useAppDialog();
   const emptyChoices = () => Array.from({ length: 3 }, () => ({ jurusan: "", universitas: "" }));
   const [choices, setChoices] = useState(emptyChoices);
@@ -113,6 +118,7 @@ export default function SiswaPage() {
       kelas_id: item.kelas_id ? String(item.kelas_id) : ""
     });
     setEditingId(item.id);
+    setResetTarget(null);
     setShowForm(true);
   };
 
@@ -129,6 +135,47 @@ export default function SiswaPage() {
       loadData();
     } catch (error) {
       console.error("Failed to delete siswa:", error);
+    }
+  };
+
+  const openReset = (item: Siswa) => {
+    resetForm();
+    setShowImport(false);
+    setResetTarget(item);
+    setResetPassword("");
+    setResetError("");
+    setResetSuccess("");
+  };
+
+  const closeReset = () => {
+    setResetTarget(null);
+    setResetPassword("");
+    setResetError("");
+    setResetSuccess("");
+  };
+
+  const handleResetSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!resetTarget) return;
+    setResetError("");
+    setResetSuccess("");
+    if (resetPassword.length < 8) {
+      setResetError("Password baru minimal 8 karakter.");
+      return;
+    }
+    if (!/[A-Z]/.test(resetPassword) || !/[a-z]/.test(resetPassword) || !/[0-9]/.test(resetPassword)) {
+      setResetError("Password harus mengandung huruf besar, huruf kecil, dan angka.");
+      return;
+    }
+    setResetting(true);
+    try {
+      await api.post("/auth/reset-password", { user_id: resetTarget.user_id, new_password: resetPassword });
+      setResetSuccess(`Password untuk ${resetTarget.nama_lengkap}${resetTarget.username ? ` (${resetTarget.username})` : ""} berhasil di-reset. Siswa perlu login ulang dengan password baru.`);
+      setResetPassword("");
+    } catch (err) {
+      setResetError(getErrorMessage(err, "Gagal reset password."));
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -155,6 +202,7 @@ export default function SiswaPage() {
   const columns = [
     { header: "No. Induk", accessor: "no_induk" as keyof Siswa },
     { header: "Nama Lengkap", accessor: "nama_lengkap" as keyof Siswa },
+    { header: "Username", accessor: (row: Siswa) => <span className="font-mono text-xs">{row.username || "-"}</span> },
     { header: "Sekolah", accessor: "sekolah" as keyof Siswa },
     {
       header: "Program",
@@ -170,6 +218,9 @@ export default function SiswaPage() {
         <div className="flex flex-wrap gap-2">
           <Button size="sm" variant="outline" onClick={() => handleEdit(row)}>
             Edit
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => openReset(row)}>
+            Reset Password
           </Button>
           <Button size="sm" variant="danger" onClick={() => handleDelete(row.id)}>
             Hapus
@@ -259,7 +310,7 @@ export default function SiswaPage() {
             )}
             {editingId && (
               <p className="rounded-input border border-card-border bg-neutral p-3 text-sm text-text-muted">
-                Akun login siswa tidak diubah di sini. Gunakan halaman Akun Pengguna untuk mengubah password.
+                Username tidak diubah di sini. Untuk mengganti password, gunakan tombol Reset Password di daftar siswa.
               </p>
             )}
             <Input
@@ -300,8 +351,37 @@ export default function SiswaPage() {
         </Card>
       )}
 
+      {resetTarget && (
+        <Card
+          title={`Reset Password: ${resetTarget.nama_lengkap}`}
+          action={<Button variant="outline" size="sm" onClick={closeReset} disabled={resetting}>Tutup</Button>}
+        >
+          <form onSubmit={handleResetSubmit} className="space-y-4">
+            {resetError && <div className="rounded-input border border-red-200 bg-red-50 p-3 text-sm text-red-700">{resetError}</div>}
+            {resetSuccess && <div className="rounded-input border border-green-200 bg-green-50 p-3 text-sm text-green-700">{resetSuccess}</div>}
+            <p className="text-sm text-text-muted">
+              Username login: <span className="font-mono font-semibold text-body-dark">{resetTarget.username || "-"}</span>. Setelah di-reset, sampaikan password baru ke siswa.
+            </p>
+            <Input
+              label="Password Baru"
+              type="password"
+              required
+              autoComplete="new-password"
+              value={resetPassword}
+              onChange={(e) => setResetPassword(e.target.value)}
+              placeholder="Min. 8 karakter, huruf besar/kecil & angka"
+              disabled={resetting}
+            />
+            <div className="flex flex-wrap gap-3">
+              <Button type="submit" disabled={resetting || !resetPassword}>{resetting ? "Menyimpan..." : "Reset Password"}</Button>
+              <Button type="button" variant="outline" onClick={closeReset} disabled={resetting}>Batal</Button>
+            </div>
+          </form>
+        </Card>
+      )}
+
       <Card>
-        <Table paginate newestFirst searchText={(row) => [row.nama_lengkap, row.no_induk, row.sekolah, getProgramName(row.program_id), getKelasName(row.kelas_id)].filter(Boolean).join(" ")} data={siswa} columns={columns} emptyMessage="Belum ada siswa. Klik 'Tambah Siswa' untuk mendaftarkan murid." />
+        <Table paginate newestFirst searchText={(row) => [row.nama_lengkap, row.username, row.no_induk, row.sekolah, getProgramName(row.program_id), getKelasName(row.kelas_id)].filter(Boolean).join(" ")} data={siswa} columns={columns} emptyMessage="Belum ada siswa. Klik 'Tambah Siswa' untuk mendaftarkan murid." />
       </Card>
       {dialog}
     </div>
