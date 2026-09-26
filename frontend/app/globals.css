@@ -79,6 +79,9 @@ textarea {
 .rich-content td > p:last-child,
 .rich-content th > p:last-child { margin-bottom: 0; }
 
+/* Kata/rumus panjang tanpa spasi dipatahkan agar tidak melebar keluar layar HP. */
+.rich-content { overflow-wrap: break-word; }
+
 /* Judul, kutipan, dan daftar dari toolbar editor. Plugin typography tidak dipakai,
    jadi tanpa aturan ini preflight Tailwind membuatnya tampil seperti teks biasa
    (daftar bernomor bahkan kehilangan nomornya). */

@@ -112,33 +112,43 @@ function messageByScore(skor: number | null | undefined): string {
   return "Terus berlatih dan coba lagi.";
 }
 
-function teksJawabanUser(soal: HasilSoalDetailItem): string {
+// Jawaban ditampilkan sebagai HTML (dirender MathContent) agar rumus, pangkat, tebal,
+// dll. di opsi tetap tampil; teks ketikan siswa di-escape dulu.
+const escapeHtml = (text: string) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const teksKeHtml = (text: string) => (/<[a-z][\s\S]*>/i.test(text) ? text : escapeHtml(text));
+
+function htmlOpsi(label: string, teks: string): string {
+  const huruf = `<strong>${escapeHtml(label)}.</strong> `;
+  return teks.startsWith("<p>") ? `<p>${huruf}${teks.slice(3)}` : `${huruf}${teks}`;
+}
+
+function htmlJawabanUser(soal: HasilSoalDetailItem): string {
   const jawaban = soal.jawaban_user;
   if (jawaban == null) return "(kosong)";
   if (typeof jawaban === "number") {
     const opsi = soal.opsi.find((o) => o.id === jawaban);
-    return opsi ? `${opsi.label}. ${opsi.teks.replace(/<[^>]*>/g, "")}` : String(jawaban);
+    return opsi ? htmlOpsi(opsi.label, opsi.teks) : String(jawaban);
   }
   if (Array.isArray(jawaban)) {
     if (jawaban.some((item) => typeof item === "object")) return jawaban.length ? `${jawaban.length} pernyataan dijawab` : "(kosong)";
-    const labels = jawaban
-      .map((id) => soal.opsi.find((o) => o.id === id)?.label)
-      .filter(Boolean);
-    return labels.length > 0 ? labels.join(", ") : "(kosong)";
+    const dipilih = jawaban
+      .map((id) => soal.opsi.find((o) => o.id === id))
+      .filter((o): o is NonNullable<typeof o> => Boolean(o));
+    return dipilih.length > 0 ? dipilih.map((o) => htmlOpsi(o.label, o.teks)).join("") : "(kosong)";
   }
-  return jawaban || "(kosong)";
+  return jawaban ? escapeHtml(String(jawaban)) : "(kosong)";
 }
 
-function teksJawabanBenar(soal: HasilSoalDetailItem): string {
+function htmlJawabanBenar(soal: HasilSoalDetailItem): string {
   if (soal.tipe === "pilihan_ganda" || soal.tipe === "benar_salah") {
     const benar = soal.opsi.find((o) => o.is_benar);
-    return benar ? `${benar.label}. ${benar.teks.replace(/<[^>]*>/g, "")}` : "(tidak tersedia)";
+    return benar ? htmlOpsi(benar.label, benar.teks) : "(tidak tersedia)";
   }
   if (soal.tipe === "pilihan_lebih_dari_satu") {
     const benarList = soal.opsi.filter((o) => o.is_benar);
-    return benarList.length > 0 ? benarList.map((o) => `${o.label}. ${o.teks.replace(/<[^>]*>/g, "")}`).join("; ") : "(tidak tersedia)";
+    return benarList.length > 0 ? benarList.map((o) => htmlOpsi(o.label, o.teks)).join("") : "(tidak tersedia)";
   }
-  if (soal.jawaban_benar != null) return String(soal.jawaban_benar);
+  if (soal.jawaban_benar != null) return teksKeHtml(String(soal.jawaban_benar));
   return "(menunggu koreksi)";
 }
 
@@ -410,13 +420,13 @@ export default function HasilDetailPage() {
 
                   {soalAktif.tipe === "benar_salah" && soalAktif.pernyataan && soalAktif.pernyataan.length > 0 && (
                     <div className="overflow-x-auto rounded-input border border-card-border">
-                      <table className="w-full border-collapse text-sm">
+                      <table className="w-full table-fixed border-collapse text-sm">
                         <thead>
-                          <tr className="bg-neutral text-left text-xs font-semibold uppercase tracking-wide text-text-muted">
-                            <th scope="col" className="w-10 px-3 py-2.5 text-center">No</th>
-                            <th scope="col" className="px-3 py-2.5">Pernyataan</th>
-                            <th scope="col" className="w-24 px-2 py-2.5 text-center">Jawabanmu</th>
-                            <th scope="col" className="w-20 px-2 py-2.5 text-center">Kunci</th>
+                          <tr className="bg-neutral text-left text-[11px] font-semibold uppercase tracking-wide text-text-muted sm:text-xs">
+                            <th scope="col" className="w-9 px-1 py-2.5 text-center sm:w-10 sm:px-3">No</th>
+                            <th scope="col" className="px-2 py-2.5 sm:px-3">Pernyataan</th>
+                            <th scope="col" className="w-[4.75rem] break-words px-1 py-2.5 text-center sm:w-24 sm:px-2">Jawabanmu</th>
+                            <th scope="col" className="w-16 break-words px-1 py-2.5 text-center sm:w-20 sm:px-2">Kunci</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -424,9 +434,9 @@ export default function HasilDetailPage() {
                             const label = (value: boolean) => value ? soalAktif.label_benar || "Benar" : soalAktif.label_salah || "Salah";
                             return (
                               <tr key={row.pernyataan_id} className={`border-t border-card-border align-middle ${row.is_correct === false ? "bg-red-50" : ""}`}>
-                                <td className="px-3 py-3 text-center font-semibold text-text-muted">{index + 1}</td>
-                                <td className="px-3 py-3"><MathContent className="prose prose-sm max-w-none prose-p:my-0" html={row.teks} /></td>
-                                <td className="px-2 py-3 text-center">
+                                <td className="px-1 py-3 text-center font-semibold text-text-muted sm:px-3">{index + 1}</td>
+                                <td className="px-2 py-3 sm:px-3"><MathContent className="prose prose-sm max-w-none prose-p:my-0" html={row.teks} /></td>
+                                <td className="break-words px-1 py-3 text-center sm:px-2">
                                   {row.is_correct == null ? (
                                     <span className="font-semibold text-body-dark">{row.jawaban_user == null ? "-" : label(row.jawaban_user)}</span>
                                   ) : (
@@ -437,7 +447,7 @@ export default function HasilDetailPage() {
                                     </span>
                                   )}
                                 </td>
-                                <td className="px-2 py-3 text-center font-semibold text-body-dark">{row.jawaban_benar == null ? "-" : label(row.jawaban_benar)}</td>
+                                <td className="break-words px-1 py-3 text-center font-semibold text-body-dark sm:px-2">{row.jawaban_benar == null ? "-" : label(row.jawaban_benar)}</td>
                               </tr>
                             );
                           })}
@@ -484,14 +494,14 @@ export default function HasilDetailPage() {
                         <p className="flex items-center gap-1.5 text-xs font-bold text-green-800">
                           <Check className="h-3.5 w-3.5" /> Jawaban Anda
                         </p>
-                        <p className="mt-1 text-sm font-medium text-heading-dark">{teksJawabanUser(soalAktif)}</p>
+                        <MathContent className="mt-1 break-words text-sm font-medium text-heading-dark" html={htmlJawabanUser(soalAktif)} />
                       </div>
                     ) : statusAktif === "salah" ? (
                       <div className="rounded-input border border-red-200 bg-red-50 p-3.5">
                         <p className="flex items-center gap-1.5 text-xs font-bold text-red-700">
                           <X className="h-3.5 w-3.5" /> Jawaban Anda
                         </p>
-                        <p className="mt-1 text-sm font-medium text-heading-dark">{teksJawabanUser(soalAktif)}</p>
+                        <MathContent className="mt-1 break-words text-sm font-medium text-heading-dark" html={htmlJawabanUser(soalAktif)} />
                       </div>
                     ) : statusAktif === "kosong" ? (
                       <div className="rounded-input border border-card-border bg-neutral p-3.5">
@@ -503,14 +513,14 @@ export default function HasilDetailPage() {
                     ) : statusAktif === "terjawab" ? (
                       <div className="rounded-input border border-card-border bg-neutral p-3.5">
                         <p className="text-xs font-bold text-body-dark">Jawaban Anda</p>
-                        <p className="mt-1 text-sm font-medium text-heading-dark">{teksJawabanUser(soalAktif)}</p>
+                        <MathContent className="mt-1 break-words text-sm font-medium text-heading-dark" html={htmlJawabanUser(soalAktif)} />
                       </div>
                     ) : (
                       <div className="rounded-input border border-amber-200 bg-amber-50 p-3.5">
                         <p className="flex items-center gap-1.5 text-xs font-bold text-amber-700">
                           <AlertTriangle className="h-3.5 w-3.5" /> Menunggu Koreksi
                         </p>
-                        <p className="mt-1 text-sm font-medium text-heading-dark">{teksJawabanUser(soalAktif)}</p>
+                        <MathContent className="mt-1 break-words text-sm font-medium text-heading-dark" html={htmlJawabanUser(soalAktif)} />
                         {soalAktif.skor_manual != null && (
                           <p className="mt-1 text-xs text-amber-700">Skor: {soalAktif.skor_manual}</p>
                         )}
@@ -525,7 +535,7 @@ export default function HasilDetailPage() {
                         <p className="flex items-center gap-1.5 text-xs font-bold text-green-800">
                           <Check className="h-3.5 w-3.5" /> Jawaban Benar
                         </p>
-                        <p className="mt-1 text-sm font-medium text-heading-dark">{teksJawabanBenar(soalAktif)}</p>
+                        <MathContent className="mt-1 break-words text-sm font-medium text-heading-dark" html={htmlJawabanBenar(soalAktif)} />
                       </div>
                     </div>
                   )}

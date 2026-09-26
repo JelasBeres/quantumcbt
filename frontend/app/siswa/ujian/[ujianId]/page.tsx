@@ -676,7 +676,7 @@ export default function ExamRoomPage() {
 
         <div className="grid gap-5 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start">
           {/* ===== KIRI: PERTANYAAN ===== */}
-          <section className="rounded-card border border-card-border bg-card-bg p-5 shadow-card sm:p-7">
+          <section className="min-w-0 rounded-card border border-card-border bg-card-bg p-5 shadow-card sm:p-7">
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-base font-bold text-heading-dark sm:text-lg">
                 Soal {nomorSoal(question?.soal_id ?? state?.soal_urutan[nomor - 1], nomor)}
@@ -705,7 +705,7 @@ export default function ExamRoomPage() {
           {/* ===== KANAN: JAWABAN =====
               Desktop: kolom jawaban menempel (sticky) di bawah header + strip nomor,
               jadi saat soal panjang di-scroll hanya kolom soal yang bergerak. */}
-          <section className="rounded-card border border-card-border bg-card-bg p-4 shadow-card sm:p-5 lg:sticky lg:top-[10.5rem] lg:max-h-[calc(100dvh-10.5rem-6rem)] lg:overflow-y-auto">
+          <section className="min-w-0 rounded-card border border-card-border bg-card-bg p-4 shadow-card sm:p-5 lg:sticky lg:top-[10.5rem] lg:max-h-[calc(100dvh-10.5rem-6rem)] lg:overflow-y-auto">
             {loading || !question ? (
               <div className="space-y-3 py-10">
                 {[0, 1, 2, 3].map((i) => (
