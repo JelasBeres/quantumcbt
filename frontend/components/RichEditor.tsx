@@ -59,6 +59,34 @@ export default function RichEditor({ value, onChange, placeholder, minHeight = "
 
   const exec = useCallback((cmd: string, val?: string) => {
     document.execCommand(cmd, false, val);
+    // Chrome membuat daftar di dalam <p> (<p><ol>..</ol></p>), yang tidak valid dan
+    // memunculkan paragraf kosong saat dirender. Keluarkan daftar dari <p> pembungkusnya.
+    if (cmd === "insertOrderedList" || cmd === "insertUnorderedList") {
+      editorRef.current?.querySelectorAll("p > ol, p > ul").forEach((list) => {
+        const p = list.parentElement!;
+        const selection = window.getSelection();
+        const range = selection?.rangeCount ? selection.getRangeAt(0).cloneRange() : null;
+        while (p.firstChild) p.before(p.firstChild);
+        p.remove();
+        if (range && range.startContainer.isConnected) {
+          selection?.removeAllRanges();
+          selection?.addRange(range);
+        }
+      });
+    }
+    // Chrome kadang menyalin ukuran font bawaan editor ke <span style="font-size">
+    // (mis. saat membatalkan daftar). Span itu tidak dipilih pengguna, jadi dilepas
+    // agar ukuran teks tetap mengikuti tampilan tempat soal dirender.
+    const editor = editorRef.current;
+    if (editor) {
+      const ukuranBawaan = getComputedStyle(editor).fontSize;
+      editor.querySelectorAll<HTMLSpanElement>("span[style]").forEach((span) => {
+        if (span.style.length !== 1 || !span.style.fontSize) return;
+        if (getComputedStyle(span).fontSize !== ukuranBawaan) return;
+        while (span.firstChild) span.before(span.firstChild);
+        span.remove();
+      });
+    }
     emit();
     editorRef.current?.focus();
   }, [emit]);
