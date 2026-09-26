@@ -145,6 +145,7 @@ export default function SiswaPage() {
     setResetPassword("");
     setResetError("");
     setResetSuccess("");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const closeReset = () => {
@@ -199,18 +200,28 @@ export default function SiswaPage() {
     return kelasItem ? kelasItem.nama : "-";
   };
 
+  // Kolom diringkas (sekolah di bawah nama, kelas di bawah program) agar kolom Aksi
+  // tetap terlihat tanpa scroll ke samping.
   const columns = [
-    { header: "No. Induk", accessor: "no_induk" as keyof Siswa },
-    { header: "Nama Lengkap", accessor: "nama_lengkap" as keyof Siswa },
-    { header: "Username", accessor: (row: Siswa) => <span className="font-mono text-xs">{row.username || "-"}</span> },
-    { header: "Sekolah", accessor: "sekolah" as keyof Siswa },
+    { header: "No. Induk", accessor: (row: Siswa) => <span className="text-xs">{row.no_induk || "-"}</span> },
     {
-      header: "Program",
-      accessor: (row: Siswa) => getProgramName(row.program_id)
+      header: "Nama / Sekolah",
+      accessor: (row: Siswa) => (
+        <div>
+          <div className="font-semibold text-heading-dark">{row.nama_lengkap}</div>
+          <div className="text-xs text-text-muted">{row.sekolah || "-"}</div>
+        </div>
+      )
     },
+    { header: "Username", accessor: (row: Siswa) => <span className="font-mono text-xs">{row.username || "-"}</span> },
     {
-      header: "Kelas",
-      accessor: (row: Siswa) => getKelasName(row.kelas_id)
+      header: "Program / Kelas",
+      accessor: (row: Siswa) => (
+        <div>
+          <div>{getProgramName(row.program_id)}</div>
+          <div className="text-xs text-text-muted">{getKelasName(row.kelas_id)}</div>
+        </div>
+      )
     },
     {
       header: "Aksi",
@@ -219,8 +230,8 @@ export default function SiswaPage() {
           <Button size="sm" variant="outline" onClick={() => handleEdit(row)}>
             Edit
           </Button>
-          <Button size="sm" variant="outline" onClick={() => openReset(row)}>
-            Reset Password
+          <Button size="sm" variant="blue" onClick={() => openReset(row)}>
+            Ganti Password
           </Button>
           <Button size="sm" variant="danger" onClick={() => handleDelete(row.id)}>
             Hapus
@@ -310,7 +321,7 @@ export default function SiswaPage() {
             )}
             {editingId && (
               <p className="rounded-input border border-card-border bg-neutral p-3 text-sm text-text-muted">
-                Username tidak diubah di sini. Untuk mengganti password, gunakan tombol Reset Password di daftar siswa.
+                Username tidak diubah di sini. Untuk mengganti password, gunakan tombol Ganti Password di daftar siswa.
               </p>
             )}
             <Input
@@ -353,7 +364,7 @@ export default function SiswaPage() {
 
       {resetTarget && (
         <Card
-          title={`Reset Password: ${resetTarget.nama_lengkap}`}
+          title={`Ganti Password: ${resetTarget.nama_lengkap}`}
           action={<Button variant="outline" size="sm" onClick={closeReset} disabled={resetting}>Tutup</Button>}
         >
           <form onSubmit={handleResetSubmit} className="space-y-4">
@@ -373,7 +384,7 @@ export default function SiswaPage() {
               disabled={resetting}
             />
             <div className="flex flex-wrap gap-3">
-              <Button type="submit" disabled={resetting || !resetPassword}>{resetting ? "Menyimpan..." : "Reset Password"}</Button>
+              <Button type="submit" disabled={resetting || !resetPassword}>{resetting ? "Menyimpan..." : "Simpan Password Baru"}</Button>
               <Button type="button" variant="outline" onClick={closeReset} disabled={resetting}>Batal</Button>
             </div>
           </form>
