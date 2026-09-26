@@ -15,6 +15,7 @@ import { getUser } from "@/lib/auth";
 import { labelBagianStatus, toneBagianStatus } from "@/lib/bagian-status";
 import { BagianPaket, Kelas, PaketUjian, Pelajaran, Program, Soal, Subbab, Topik } from "@/lib/types";
 import { labelTipeSoal } from "@/lib/tipe-soal";
+import ResetFilterButton from "@/components/ResetFilterButton";
 
 type PickerMode = "manual" | "auto";
 type Kesulitan = "mudah" | "sedang" | "sulit";
@@ -399,7 +400,7 @@ export default function PaketQuestionAssignment() {
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" aria-hidden="true" />
                 <input value={pickerFilter.q} onChange={(event) => setPickerFilter({ ...pickerFilter, q: event.target.value })} placeholder="Cari isi soal / ID..." className="w-full rounded-input border border-card-border bg-card-bg py-2 pl-9 pr-3 text-sm text-body-dark placeholder:text-text-muted outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/25" />
               </div>
-              <Button variant="outline" className="w-full sm:w-auto" onClick={() => { setPickerFilter(emptyPickerFilter); setMetaFilter(emptyMetaFilter); }}>Reset filter</Button>
+              <ResetFilterButton className="w-full sm:w-auto" active={Object.values(pickerFilter).some(Boolean) || Object.values(metaFilter).some(Boolean)} onReset={() => { setPickerFilter(emptyPickerFilter); setMetaFilter(emptyMetaFilter); }} />
             </div>
             <div className="-mx-5 mb-5 flex gap-2 overflow-x-auto border-b border-card-border px-5 pb-3 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
               {tipeList.map((tipe) => {

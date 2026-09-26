@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Clock3, FileText, Search } from "lucide-react";
 import { api, getErrorMessage } from "@/lib/api";
+import { formatWaktuJadwal } from "@/lib/waktu-jadwal";
 
 // Langkah 2: daftar card paket pada kategori terpilih. Klik card baru menampilkan rincian mapel (mengikuti alur admin).
 type Bagian = { bagian_id: number; nama: string; jumlah_soal?: number; pelajaran_id?: number | null };
@@ -20,6 +21,8 @@ type PaketCard = {
   durasi: number;
   status?: "mendatang" | "berlangsung" | "berakhir";
   selesai?: boolean;
+  mulai?: string;
+  tutup?: string;
   izinkanPilihMapel?: boolean;
   href: string;
 };
@@ -79,8 +82,10 @@ export default function SiswaPaketSplit({ tipe, kategori }: { tipe: "latihan" | 
             durasi: j.durasi_menit ?? 0,
             status: j.status,
             selesai: selesaiSet.has(j.jadwal_ujian_id),
+            mulai: j.mulai,
+            tutup: j.selesai,
             izinkanPilihMapel: j.izinkan_pilih_mapel !== false,
-            href: `/siswa/paket/${j.jadwal_ujian_id}?kategori=${encodeURIComponent(kategori)}`,
+            href: `/siswa/paket/${j.jadwal_ujian_id}?kategori=${encodeURIComponent(kategori)}${j.izinkan_pilih_mapel === false ? "&mulai=1" : ""}`,
           })));
         }
       } catch (e) {
@@ -153,6 +158,12 @@ export default function SiswaPaketSplit({ tipe, kategori }: { tipe: "latihan" | 
                   <span><FileText size={15} aria-hidden="true" />{item.jumlahSoal} soal</span>
                   <span><Clock3 size={15} aria-hidden="true" />{formatDurasi(item.durasi)}</span>
                 </div>
+                {!isLatihan && !item.selesai && item.tutup && (
+                  <p className="student-muted mb-3 text-xs">
+                    {item.status === "mendatang" && item.mulai && <>Dibuka {formatWaktuJadwal(item.mulai)}<br /></>}
+                    Ditutup <strong>{formatWaktuJadwal(item.tutup)}</strong>
+                  </p>
+                )}
                 <Link className="student-primary-link" href={item.href}>
                   {!isLatihan && item.izinkanPilihMapel === false ? "Mulai Ujian" : "Lihat Mapel"} <ArrowRight size={15} aria-hidden="true" />
                 </Link>

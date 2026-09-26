@@ -8,6 +8,7 @@ import Card from "@/components/Card";
 import Input from "@/components/Input";
 import Table from "@/components/Table";
 import { LoginActivity } from "@/lib/types";
+import ResetFilterButton from "@/components/ResetFilterButton";
 
 export default function LoginActivityPage() {
   const [items, setItems] = useState<LoginActivity[]>([]);
@@ -16,13 +17,13 @@ export default function LoginActivityPage() {
   const [username, setUsername] = useState("");
   const [statusFilter, setStatusFilter] = useState<"" | "true" | "false">("");
 
-  const load = async () => {
+  const load = async (user = username, status = statusFilter) => {
     setLoading(true);
     setError("");
     try {
       const params: Record<string, string> = {};
-      if (username.trim()) params.username = username.trim();
-      if (statusFilter) params.successful = statusFilter;
+      if (user.trim()) params.username = user.trim();
+      if (status) params.successful = status;
       const response = await api.get("/login-activity/", { params });
       setItems(response.data);
     } catch (err: any) {
@@ -90,9 +91,10 @@ export default function LoginActivityPage() {
               <option value="false">Gagal</option>
             </select>
           </div>
-          <Button type="button" variant="outline" onClick={load}>
+          <Button type="button" variant="outline" onClick={() => load()}>
             Cari
           </Button>
+          <ResetFilterButton active={Boolean(username || statusFilter)} onReset={() => { setUsername(""); setStatusFilter(""); void load("", ""); }} />
         </div>
 
         {loading ? (

@@ -20,6 +20,7 @@ import BagianSetCards from "@/components/BagianSetCards";
 import { useAppDialog } from "@/components/Dialog";
 import { api, getErrorMessage } from "@/lib/api";
 import { getUser } from "@/lib/auth";
+import ResetFilterButton from "@/components/ResetFilterButton";
 import {
   BagianPaket,
   KategoriPaket,
@@ -96,6 +97,8 @@ export default function PaketUjianPage() {
   const basePath = isGuru ? "/guru" : "/admin";
   const [scheduleTarget, setScheduleTarget] = useState<PaketUjian | null>(null);
   const [scheduleMulai, setScheduleMulai] = useState("");
+  const [scheduleSelesai, setScheduleSelesai] = useState("");
+  const [scheduleSelesaiManual, setScheduleSelesaiManual] = useState(false);
   const [scheduleSaving, setScheduleSaving] = useState(false);
   const [scheduleError, setScheduleError] = useState("");
   const [scheduleSuccess, setScheduleSuccess] = useState("");
@@ -405,6 +408,8 @@ export default function PaketUjianPage() {
     }
     setScheduleTarget(item);
     setScheduleMulai("");
+    setScheduleSelesai("");
+    setScheduleSelesaiManual(false);
     setScheduleError("");
     setScheduleSuccess("");
   };
@@ -413,16 +418,23 @@ export default function PaketUjianPage() {
       setScheduleError("Pilih tanggal dan jam mulai ujian terlebih dahulu.");
       return;
     }
+    if (!scheduleSelesai) {
+      setScheduleError("Pilih tanggal dan jam tutup ujian terlebih dahulu.");
+      return;
+    }
+    const mulai = new Date(scheduleMulai);
+    const selesai = new Date(scheduleSelesai);
+    if (selesai.getTime() - mulai.getTime() < scheduleTarget.durasi_menit * 60000) {
+      setScheduleError(`Waktu tutup minimal ${scheduleTarget.durasi_menit} menit (durasi ujian) setelah waktu mulai.`);
+      return;
+    }
     setScheduleSaving(true);
     setScheduleError("");
     try {
-      const mulai = new Date(scheduleMulai);
       await api.post("/jadwal-ujian/", {
         paket_ujian_id: scheduleTarget.id,
         mulai: mulai.toISOString(),
-        selesai: new Date(
-          mulai.getTime() + scheduleTarget.durasi_menit * 60000,
-        ).toISOString(),
+        selesai: selesai.toISOString(),
         is_published: !isGuru,
       });
       setScheduleSuccess(
@@ -575,14 +587,17 @@ export default function PaketUjianPage() {
               </Button>
             )}
           </div>
-          <div className="relative mb-4 max-w-md">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Cari paket..."
-              className="w-full rounded-input border border-card-border py-2.5 pl-9 pr-3 text-sm"
-            />
+          <div className="mb-4 flex flex-wrap items-center gap-3">
+            <div className="relative w-full max-w-md">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Cari paket..."
+                className="w-full rounded-input border border-card-border py-2.5 pl-9 pr-3 text-sm"
+              />
+            </div>
+            <ResetFilterButton active={Boolean(query)} onReset={() => setQuery("")} />
           </div>
           {filteredPaket.length === 0 ? (
             <p className="py-8 text-center text-sm text-text-muted">
@@ -881,8 +896,29 @@ export default function PaketUjianPage() {
                 type="datetime-local"
                 required
                 value={scheduleMulai}
-                onChange={(e) => setScheduleMulai(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setScheduleMulai(value);
+                  // Tutup otomatis = mulai + durasi, selama belum diubah manual.
+                  if (!scheduleSelesaiManual && value) {
+                    setScheduleSelesai(tambahMenitLokal(value, scheduleTarget.durasi_menit));
+                  }
+                }}
               />
+              <Input
+                label="Tutup Ujian"
+                type="datetime-local"
+                required
+                min={scheduleMulai || undefined}
+                value={scheduleSelesai}
+                onChange={(e) => {
+                  setScheduleSelesai(e.target.value);
+                  setScheduleSelesaiManual(true);
+                }}
+              />
+              <p className="-mt-2 text-xs text-text-muted">
+                Siswa bisa mulai mengerjakan sampai waktu tutup. Durasi pengerjaan {scheduleTarget.durasi_menit} menit.
+              </p>
               {scheduleError && (
                 <p className="text-sm text-red-600">{scheduleError}</p>
               )}
@@ -919,4 +955,11 @@ export default function PaketUjianPage() {
       {dialog}
     </div>
   );
+}
+
+// "2026-09-26T08:00" + menit -> format datetime-local lagi (waktu lokal).
+function tambahMenitLokal(value: string, menit: number): string {
+  const d = new Date(new Date(value).getTime() + menit * 60000);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }

@@ -6,6 +6,7 @@ import Button from "@/components/Button";
 import SoalFormModal from "@/components/SoalFormModal";
 import { api } from "@/lib/api";
 import { Kelas, Pelajaran, Topik } from "@/lib/types";
+import { kembaliAtau } from "@/lib/posisi-bank-soal";
 
 export default function TambahSoalPage() {
   const router = useRouter();
@@ -47,14 +48,14 @@ export default function TambahSoalPage() {
           <h1 className="text-3xl font-bold text-heading-dark">{editSoalId ? "Edit Soal" : "Tambah Soal"}</h1>
           <p className="mt-1 text-sm text-text-muted">Tulis soal, pilihan, dan kunci jawaban dalam satu formulir.</p>
         </div>
-        <Button variant="outline" onClick={() => router.push("/admin/soal")}>Bank Soal</Button>
+        <button type="button" onClick={() => router.push("/admin/soal")} className="inline-flex items-center justify-center rounded-btn bg-brand-primary px-4 py-2 text-sm font-semibold text-heading-light transition hover:bg-brand-primary-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2">Bank Soal</button>
       </header>
       <SoalFormModal
         open
         presentation="page"
         editSoalId={editSoalId ? Number(editSoalId) : null}
-        onClose={() => router.push("/admin/soal")}
-        onCreated={() => router.push("/admin/soal")}
+        onClose={() => kembaliAtau(router, "/admin/soal")}
+        onCreated={() => kembaliAtau(router, "/admin/soal")}
         pelajaranList={pelajaranList}
         kelasList={kelasList}
         topikList={topikList}

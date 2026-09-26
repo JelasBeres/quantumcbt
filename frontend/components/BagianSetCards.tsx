@@ -11,6 +11,7 @@ import { api, getErrorMessage } from "@/lib/api";
 import { labelBagianStatus, toneBagianStatus } from "@/lib/bagian-status";
 import { BagianPaket, PaketUjian, Pelajaran, Soal, Topik } from "@/lib/types";
 import { labelTipeSoal } from "@/lib/tipe-soal";
+import { CheckCircle2 } from "lucide-react";
 
 const LAPORAN_SOAL_PRESET = [
   "Soal tidak sesuai mapel",
@@ -333,19 +334,12 @@ export default function BagianSetCards({
                         </button>
                       )}
                     </div>
+                    {soal.gambar_url && <img src={soal.gambar_url} alt="" className="mb-2 max-h-48 w-auto max-w-full rounded-input border border-card-border" />}
                     <MathContent
                       className="prose prose-sm max-w-none"
                       html={soal.teks_soal}
                     />
-                    {soal.opsi_jawaban && soal.opsi_jawaban.length > 0 && (
-                      <ol className="mt-3 space-y-1 pl-5 text-sm text-body-dark">
-                        {soal.opsi_jawaban.map((opsi) => (
-                          <li key={opsi.id} className="list-[upper-alpha]">
-                            <MathContent html={opsi.teks_opsi} />
-                          </li>
-                        ))}
-                      </ol>
-                    )}
+                    <KunciDanPembahasan soal={soal} />
                   </article>
                 ))
               )}
@@ -388,5 +382,48 @@ export default function BagianSetCards({
       )}
       {dialog}
     </>
+  );
+}
+
+// Preview akhir sebelum dijadwalkan: jawaban (kunci ditandai hijau) + pembahasan, dibuat rapat.
+function KunciDanPembahasan({ soal }: { soal: Soal }) {
+  const opsi = soal.opsi_jawaban ?? [];
+  const pernyataan = soal.pernyataan ?? [];
+  const isEsaiAtauIsian = soal.tipe === "isian" || soal.tipe === "esai";
+  return (
+    <div className="mt-2 space-y-2 text-[13px]">
+      {opsi.length > 0 && (
+        <ul className="space-y-1">
+          {opsi.map((item, index) => (
+            <li key={item.id} className={`flex items-start gap-2 rounded-md px-2 py-1 ${item.is_benar ? "bg-green-50 text-green-900 ring-1 ring-green-300" : ""}`}>
+              <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${item.is_benar ? "bg-green-600 text-white" : "bg-neutral text-body-dark"}`}>{String.fromCharCode(65 + index)}</span>
+              <MathContent className="prose prose-sm min-w-0 flex-1 max-w-none text-[13px] [&_p]:my-0" html={item.teks_opsi} />
+              {item.is_benar && <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600" aria-label="Kunci" />}
+            </li>
+          ))}
+        </ul>
+      )}
+      {soal.tipe === "benar_salah" && pernyataan.length > 0 && (
+        <ol className="space-y-1">
+          {pernyataan.map((item, index) => (
+            <li key={item.id} className="flex items-start gap-2 px-2 py-1">
+              <span className="w-4 shrink-0 text-text-muted">{index + 1}.</span>
+              <MathContent className="prose prose-sm min-w-0 flex-1 max-w-none text-[13px] [&_p]:my-0" html={item.teks_pernyataan} />
+              <span className="shrink-0 rounded-full bg-green-50 px-2 py-0.5 text-[11px] font-semibold text-green-700 ring-1 ring-green-300">{item.is_benar ? soal.label_benar || "Benar" : soal.label_salah || "Salah"}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+      {isEsaiAtauIsian && (
+        <div className="flex items-start gap-2 rounded-md bg-green-50 px-2 py-1 ring-1 ring-green-300">
+          <span className="shrink-0 font-semibold text-green-700">Kunci:</span>
+          {soal.kunci_jawaban ? <MathContent className="prose prose-sm min-w-0 flex-1 max-w-none text-[13px] [&_p]:my-0" html={soal.kunci_jawaban} /> : <span className="text-text-muted">Belum ada kunci jawaban.</span>}
+        </div>
+      )}
+      <div className="rounded-md border-l-2 border-brand-primary/40 bg-neutral/50 px-2 py-1.5">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-text-muted">Pembahasan</p>
+        {soal.pembahasan ? <MathContent className="prose prose-sm max-w-none text-[13px] [&_p]:my-0.5" html={soal.pembahasan} /> : <p className="text-text-muted">Belum ada pembahasan.</p>}
+      </div>
+    </div>
   );
 }

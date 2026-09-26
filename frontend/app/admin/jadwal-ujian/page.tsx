@@ -5,27 +5,13 @@ import { api, getErrorMessage } from "@/lib/api";
 import { useAppDialog } from "@/components/Dialog";
 import { JadwalUjian, KategoriPaket, Kelas, PaketUjian, Program } from "@/lib/types";
 import Input from "@/components/Input";
-import Select from "@/components/Select";
+import ResetFilterButton from "@/components/ResetFilterButton";
 
 type TimeStatus = "berlangsung" | "akan_datang" | "selesai" | "tidak_valid";
 type GroupItem = { key: string; label: string; count: number; packageCount: number };
-type ScheduleFilters = {
-  q: string;
-  program: string;
-  kategori: string;
-  kelas: string;
-  publication: string;
-};
 type PackageFilters = { q: string; kategori: string; program: string; kelas: string };
 
 const initialForm = { paket_ujian_id: "", mulai: "", selesai: "" };
-const initialScheduleFilters: ScheduleFilters = {
-  q: "",
-  program: "",
-  kategori: "",
-  kelas: "",
-  publication: ""
-};
 const initialPackageFilters: PackageFilters = { q: "", kategori: "", program: "", kelas: "" };
 const packagePageSize = 10;
 const timeStatuses: Array<{ key: TimeStatus; label: string; description: string }> = [
@@ -53,6 +39,26 @@ function toLocalDateTime(value: string) {
   return new Date(date.getTime() - offset * 60000).toISOString().slice(0, 16);
 }
 
+type ChipOption = { value: string; label: string; count: number };
+
+// Tombol filter sekali klik, gayanya sama dengan filter kategori di Monitoring Ujian.
+function ChipFilter({ label, value, options, onChange }: { label: string; value: string; options: ChipOption[]; onChange: (value: string) => void }) {
+  const visible = options.filter((option) => option.count > 0 || option.value === value);
+  const chipClass = (active: boolean) =>
+    `rounded-btn border px-3 py-1.5 text-sm font-semibold transition ${active ? "border-brand-primary bg-brand-primary/10 text-brand-primary" : "border-card-border bg-card-bg text-text-muted hover:text-body-dark"}`;
+  return (
+    <div role="group" aria-label={label} className="flex flex-wrap items-center gap-2">
+      <span className="w-full text-xs font-semibold uppercase tracking-wide text-text-muted sm:w-20">{label}</span>
+      <button type="button" onClick={() => onChange("")} aria-pressed={value === ""} className={chipClass(value === "")}>Semua</button>
+      {visible.map((option) => (
+        <button key={option.value} type="button" onClick={() => onChange(value === option.value ? "" : option.value)} aria-pressed={value === option.value} className={chipClass(value === option.value)}>
+          {option.label} <span className="ml-1 text-xs font-normal opacity-70">{option.count}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function DrilldownCard({ item, onClick }: { item: GroupItem; onClick: () => void }) {
   return (
     <button
@@ -78,7 +84,6 @@ export default function JadwalUjianPage() {
   const [programList, setProgramList] = useState<Program[]>([]);
   const [kelasList, setKelasList] = useState<Kelas[]>([]);
   const [kategoriList, setKategoriList] = useState<KategoriPaket[]>([]);
-  const [filters, setFilters] = useState<ScheduleFilters>(initialScheduleFilters);
   const [period, setPeriod] = useState({ from: "", to: "" });
   const [form, setForm] = useState(initialForm);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -153,15 +158,7 @@ export default function JadwalUjianPage() {
     setSelectedTimeStatus(null);
     setSelectedCategory(null);
     setSelectedProgram(null);
-  }, [
-    period.from,
-    period.to,
-    filters.q,
-    filters.program,
-    filters.kategori,
-    filters.kelas,
-    filters.publication
-  ]);
+  }, [period.from, period.to]);
 
   const selectedPackage = form.paket_ujian_id ? paketById.get(Number(form.paket_ujian_id)) : undefined;
 
@@ -287,35 +284,17 @@ export default function JadwalUjianPage() {
   };
 
   const filteredJadwal = useMemo(() => {
-    const query = filters.q.trim().toLowerCase();
     const from = period.from ? new Date(`${period.from}T00:00:00`).getTime() : null;
     const to = period.to ? new Date(`${period.to}T23:59:59.999`).getTime() : null;
     return jadwal
       .filter((item) => {
-        const paket = paketById.get(item.paket_ujian_id);
+        // Jadwal masuk rentang bila waktunya beririsan dengan tanggal yang dipilih.
         const start = new Date(item.mulai).getTime();
-        const effectiveProgram = getEffectiveProgramId(item, paket);
-        const effectiveClass = getEffectiveClassId(item, paket);
-        const category = getCategoryIdentity(paket);
-        return (
-          (from === null || start >= from) &&
-          (to === null || start <= to) &&
-          (!query || `${paket?.nama || ""} ${item.paket_ujian_id} ${item.id}`.toLowerCase().includes(query)) &&
-          (!filters.program || String(effectiveProgram ?? "semua-program") === filters.program) &&
-          (!filters.kategori || category.key === filters.kategori) &&
-          (!filters.kelas || String(effectiveClass ?? "semua-kelas") === filters.kelas) &&
-          (!filters.publication || String(item.is_published) === filters.publication)
-        );
+        const end = new Date(item.selesai).getTime();
+        return (from === null || end >= from) && (to === null || start <= to);
       })
       .sort((a, b) => b.id - a.id);
-  }, [
-    filters,
-    jadwal,
-    paketById,
-    period.from,
-    period.to,
-    kategoriById
-  ]);
+  }, [jadwal, period.from, period.to]);
 
   const scheduleGroupItem = (key: string, label: string, items: JadwalUjian[]): GroupItem => ({
     key,
@@ -382,16 +361,19 @@ export default function JadwalUjianPage() {
   const selectedProgramLabel = programGroups.find((item) => item.key === selectedProgram)?.label;
   const examCategories = kategoriList.filter((item) => item.tipe === "ujian" || item.tipe === "keduanya");
 
-  const scheduleCategoryOptions = [
-    { value: "", label: "Semua kategori" },
-    ...examCategories.map((item) => ({ value: `kategori:${item.id}`, label: item.nama })),
-    { value: "tanpa-kategori", label: "Belum Dikategorikan" }
+  // Pilihan tombol filter paket: hanya yang punya paket siap, lengkap dengan jumlahnya.
+  const countPackages = (match: (item: PaketUjian) => boolean) => packageChoices.filter(match).length;
+  const packageCategoryChips = [
+    ...examCategories.map((item) => ({ value: String(item.id), label: item.nama, count: countPackages((p) => p.kategori_id === item.id) })),
+    { value: "tanpa-kategori", label: "Belum Dikategorikan", count: countPackages((p) => p.kategori_id == null) }
   ];
-
-  const packageCategoryOptions = [
-    { value: "", label: "Semua kategori" },
-    ...examCategories.map((item) => ({ value: item.id, label: item.nama })),
-    { value: "tanpa-kategori", label: "Belum Dikategorikan" }
+  const packageProgramChips = [
+    ...programList.map((item) => ({ value: String(item.id), label: item.nama, count: countPackages((p) => p.program_id === item.id) })),
+    { value: "semua-program", label: "Semua Program", count: countPackages((p) => p.program_id == null) }
+  ];
+  const packageClassChips = [
+    ...kelasList.map((item) => ({ value: String(item.id), label: item.nama, count: countPackages((p) => p.kelas_id === item.id) })),
+    { value: "semua-kelas", label: "Semua Kelas", count: countPackages((p) => p.kelas_id == null) }
   ];
 
   return (
@@ -435,40 +417,23 @@ export default function JadwalUjianPage() {
 
           <fieldset className="space-y-3">
             <legend className="text-sm font-bold text-heading-dark">Pilih Paket Try Out</legend>
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-              <Input
-                label="Cari paket / ID paket"
-                value={packageFilters.q}
-                onChange={(event) => updatePackageFilter("q", event.target.value)}
-                placeholder="Nama atau ID paket"
-              />
-              <Select
-                label="Kategori"
-                value={packageFilters.kategori}
-                onChange={(event) => updatePackageFilter("kategori", event.target.value)}
-                options={packageCategoryOptions}
-              />
-              <Select
-                label="Program"
-                value={packageFilters.program}
-                onChange={(event) => updatePackageFilter("program", event.target.value)}
-                options={[
-                  { value: "", label: "Semua program" },
-                  ...programList.map((item) => ({ value: item.id, label: item.nama })),
-                  { value: "semua-program", label: "Tanpa program" }
-                ]}
-              />
-              <Select
-                label="Kelas"
-                value={packageFilters.kelas}
-                onChange={(event) => updatePackageFilter("kelas", event.target.value)}
-                options={[
-                  { value: "", label: "Semua kelas" },
-                  ...kelasList.map((item) => ({ value: item.id, label: item.nama })),
-                  { value: "semua-kelas", label: "Tanpa kelas khusus" }
-                ]}
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="w-full max-w-md">
+                <Input
+                  label="Cari paket / ID paket"
+                  value={packageFilters.q}
+                  onChange={(event) => updatePackageFilter("q", event.target.value)}
+                  placeholder="Nama atau ID paket"
+                />
+              </div>
+              <ResetFilterButton
+                active={Object.values(packageFilters).some(Boolean)}
+                onReset={() => { setPackageFilters(initialPackageFilters); setPackagePage(1); }}
               />
             </div>
+            <ChipFilter label="Kategori" value={packageFilters.kategori} options={packageCategoryChips} onChange={(value) => updatePackageFilter("kategori", value)} />
+            <ChipFilter label="Program" value={packageFilters.program} options={packageProgramChips} onChange={(value) => updatePackageFilter("program", value)} />
+            <ChipFilter label="Kelas" value={packageFilters.kelas} options={packageClassChips} onChange={(value) => updatePackageFilter("kelas", value)} />
 
             <div className="space-y-2" aria-live="polite">
               {visiblePackageChoices.map((item) => {
@@ -563,11 +528,12 @@ export default function JadwalUjianPage() {
         <section className="space-y-5 rounded-card border border-card-border bg-card-bg p-4 shadow-card sm:p-5">
           <div>
             <h2 className="font-bold text-heading-dark">Filter Daftar Jadwal</h2>
-            <p className="mt-1 text-xs text-text-muted">Jumlah pada setiap kartu mengikuti seluruh filter di bawah ini.</p>
+            <p className="mt-1 text-xs text-text-muted">Tampilkan jadwal yang berjalan pada rentang tanggal ini. Kosongkan untuk melihat semua.</p>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="flex flex-wrap items-end gap-3">
+          <div className="grid flex-1 gap-3 sm:grid-cols-2 lg:max-w-xl">
             <Input
-              label="Jadwal mulai tanggal"
+              label="Dari tanggal"
               type="date"
               value={period.from}
               onChange={(event) => setPeriod((current) => ({ ...current, from: event.target.value }))}
@@ -575,51 +541,12 @@ export default function JadwalUjianPage() {
             <Input
               label="Sampai tanggal"
               type="date"
+              min={period.from || undefined}
               value={period.to}
               onChange={(event) => setPeriod((current) => ({ ...current, to: event.target.value }))}
             />
-            <Input
-              label="Cari paket / ID paket / ID jadwal"
-              value={filters.q}
-              onChange={(event) => setFilters((current) => ({ ...current, q: event.target.value }))}
-              placeholder="Nama atau ID"
-            />
-            <Select
-              label="Kategori"
-              value={filters.kategori}
-              onChange={(event) => setFilters((current) => ({ ...current, kategori: event.target.value }))}
-              options={scheduleCategoryOptions}
-            />
-            <Select
-              label="Program"
-              value={filters.program}
-              onChange={(event) => setFilters((current) => ({ ...current, program: event.target.value }))}
-              options={[
-                { value: "", label: "Semua program" },
-                ...programList.map((item) => ({ value: item.id, label: item.nama })),
-                { value: "semua-program", label: "Tanpa program khusus" }
-              ]}
-            />
-            <Select
-              label="Kelas"
-              value={filters.kelas}
-              onChange={(event) => setFilters((current) => ({ ...current, kelas: event.target.value }))}
-              options={[
-                { value: "", label: "Semua kelas" },
-                ...kelasList.map((item) => ({ value: item.id, label: item.nama })),
-                { value: "semua-kelas", label: "Tanpa kelas khusus" }
-              ]}
-            />
-            <Select
-              label="Publikasi"
-              value={filters.publication}
-              onChange={(event) => setFilters((current) => ({ ...current, publication: event.target.value }))}
-              options={[
-                { value: "", label: "Semua status" },
-                { value: "true", label: "Aktif" },
-                { value: "false", label: "Tersimpan" }
-              ]}
-            />
+          </div>
+          <ResetFilterButton active={Boolean(period.from || period.to)} onReset={() => setPeriod({ from: "", to: "" })} />
           </div>
         </section>
 

@@ -22,6 +22,7 @@ from app.models.soal import Soal
 from app.models.opsi_jawaban import OpsiJawaban
 from app.models.pernyataan_benar_salah import PernyataanBenarSalah
 from app.models.siswa import Siswa
+from app.routers.siswa import jadwal_matches_siswa
 from app.schemas.jawaban_siswa import JawabanRaguUpdate
 from app.schemas.jawaban_siswa import JawabanSiswaOut
 from app.schemas.log_kecurangan import LogKecuranganOut, UjianLogKecuranganCreate
@@ -217,11 +218,13 @@ def start_ujian_siswa(
     if not jadwal:
         raise HTTPException(status_code=404, detail="Jadwal Ujian not found")
 
+    paket = db.query(PaketUjian).filter(PaketUjian.id == jadwal.paket_ujian_id).first()
+    if not paket:
+        raise HTTPException(status_code=404, detail="Paket Ujian not found")
+
     if current_user.role == "siswa":
         siswa = get_siswa_for_current_user(current_user, db)
-        if jadwal.program_id is not None and siswa.program_id != jadwal.program_id:
-            raise HTTPException(status_code=403, detail="Insufficient permissions")
-        if jadwal.kelas_id is not None and siswa.kelas_id != jadwal.kelas_id:
+        if not jadwal_matches_siswa(jadwal, siswa, paket):
             raise HTTPException(status_code=403, detail="Insufficient permissions")
     else:
         if payload.siswa_id is None:
@@ -229,10 +232,6 @@ def start_ujian_siswa(
         siswa = db.query(Siswa).filter(Siswa.id == payload.siswa_id).first()
         if not siswa:
             raise HTTPException(status_code=404, detail="Siswa not found")
-
-    paket = db.query(PaketUjian).filter(PaketUjian.id == jadwal.paket_ujian_id).first()
-    if not paket:
-        raise HTTPException(status_code=404, detail="Paket Ujian not found")
 
     now = utc_now()
     if ensure_utc(jadwal.mulai) > now:

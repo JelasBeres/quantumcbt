@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import Card from "@/components/Card";
 import Button from "@/components/Button";
 import DropdownSelect from "@/components/DropdownSelect";
+import ResetFilterButton from "@/components/ResetFilterButton";
 
 type Monitoring = {
   ujian_siswa_id: number;
@@ -210,7 +211,7 @@ export default function MonitoringUjianPage() {
             Paket ujian
             <DropdownSelect value={filter.paket} onChange={(paket) => setFilter({ ...filter, paket })} className="mt-1" buttonClassName="px-3 py-2" searchPlaceholder="Cari paket..." options={[{ value: "", label: "Semua paket" }, ...paketOptions.map(([id, nama]) => ({ value: id, label: nama }))]} />
           </div>
-          <Button variant="outline" className="self-end" onClick={() => setFilter({ q: "", status: "", paket: "" })}>Reset</Button>
+          <ResetFilterButton className="self-end" active={Object.values(filter).some(Boolean)} onReset={() => setFilter({ q: "", status: "", paket: "" })} />
         </div>
         {loading ? (
           <p className="py-8 text-center text-text-muted">Memuat...</p>
@@ -283,7 +284,7 @@ export default function MonitoringUjianPage() {
             Sampai tanggal
             <input type="date" value={logFilter.to} onChange={(event) => setLogFilter({ ...logFilter, to: event.target.value })} className={inputClass} />
           </label>
-          <Button variant="outline" className="self-end" onClick={() => setLogFilter(emptyLogFilter)}>Reset</Button>
+          <ResetFilterButton className="self-end" active={Object.values(logFilter).some(Boolean)} onReset={() => setLogFilter(emptyLogFilter)} />
         </div>
         {scopedLogs.length > 0 && <p className="mb-3 text-xs text-text-muted">Menampilkan {filteredLogs.length} dari {scopedLogs.length} log</p>}
         {scopedLogs.length === 0 ? (

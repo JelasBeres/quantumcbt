@@ -15,6 +15,9 @@ import { useAppDialog } from "@/components/Dialog";
 import { api } from "@/lib/api";
 import { Kelas, Pelajaran, Soal, Subbab, Topik } from "@/lib/types";
 import { labelTipeSoal } from "@/lib/tipe-soal";
+import { ringkasSoal } from "@/lib/ringkas-soal";
+import { useIngatPosisi } from "@/lib/posisi-bank-soal";
+import ResetFilterButton from "@/components/ResetFilterButton";
 
 const teksPolos = (html: string) => html.replace(/<[^>]*>/g, " ").replace(/&nbsp;/gi, " ").trim();
 
@@ -62,6 +65,15 @@ export default function SoalPage() {
   useEffect(() => {
     loadData();
   }, []);
+
+  useIngatPosisi("posisi-bank-soal-admin", { level, activeTipe, selectedKelas, selectedPelajaran, selectedBab, selectedSubbab }, (p) => {
+    if (p.level) setLevel(p.level);
+    if (p.activeTipe !== undefined) setActiveTipe(p.activeTipe);
+    if (p.selectedKelas !== undefined) setSelectedKelas(p.selectedKelas);
+    if (p.selectedPelajaran !== undefined) setSelectedPelajaran(p.selectedPelajaran);
+    if (p.selectedBab !== undefined) setSelectedBab(p.selectedBab);
+    if (p.selectedSubbab !== undefined) setSelectedSubbab(p.selectedSubbab);
+  });
 
   const handleDelete = async (id: number) => {
     const confirmed = await showConfirm({
@@ -204,7 +216,7 @@ export default function SoalPage() {
 
   const columns = [
     { header: "ID", accessor: (row: Soal) => <span className="font-mono text-xs text-text-muted">#{row.id}</span> },
-    { header: "Soal", accessor: (row: Soal) => <MathContent className="prose prose-sm max-w-none line-clamp-2" html={row.teks_soal} /> },
+    { header: "Soal", accessor: (row: Soal) => { const { teks, terpotong } = ringkasSoal(row.teks_soal); return <div title={terpotong ? teksPolos(row.teks_soal) : undefined}><MathContent className="max-w-xs text-sm" html={teks} /></div>; } },
     { header: "Kelas", accessor: (row: Soal) => getNama(kelasList, row.kelas_id) || "Tanpa Kelas" },
     { header: "Bab", accessor: (row: Soal) => getNama(topikList, row.topik_id) || "Tanpa Bab" },
     { header: "Subbab", accessor: (row: Soal) => row.subbab || "Tanpa Subbab" },
@@ -235,7 +247,7 @@ export default function SoalPage() {
           <Select label="Subbab" value={bankFilter.subbab} onChange={(e) => setBankFilter({ ...bankFilter, subbab: e.target.value })} options={[{ value: "", label: "Semua subbab" }, ...subbabFilterOptions.map((item) => ({ value: item, label: item }))]} />
           <Select label="Kesulitan" value={bankFilter.kesulitan} onChange={(e) => setBankFilter({ ...bankFilter, kesulitan: e.target.value })} options={[{ value: "", label: "Semua tingkat" }, ...["mudah", "sedang", "sulit"].map((item) => ({ value: item, label: item }))]} />
           <Select label="Status" value={bankFilter.status} onChange={(e) => setBankFilter({ ...bankFilter, status: e.target.value })} options={[{ value: "", label: "Semua status" }, { value: "draft", label: "Draft" }, { value: "pending_review", label: "Menunggu review" }, { value: "approved", label: "Disetujui" }, { value: "rejected", label: "Perlu revisi" }]} />
-          <Button variant="outline" onClick={() => setBankFilter({ q: "", kelas: "", bab: "", subbab: "", kesulitan: "", status: "" })}>Reset filter</Button>
+          <ResetFilterButton className="self-end" active={Object.values(bankFilter).some(Boolean) || Object.values(metaFilter).some(Boolean)} onReset={() => { setBankFilter({ q: "", kelas: "", bab: "", subbab: "", kesulitan: "", status: "" }); setMetaFilter(emptyMetaFilter); }} />
         </div>
       </Card>
 
@@ -243,7 +255,7 @@ export default function SoalPage() {
         {level === "tipe" ? (
           <>
             <div className="mb-5"><h2 className="text-lg font-bold text-heading-dark">Pilih Tipe Soal</h2><p className="mt-1 text-sm text-text-muted">Pilih kategori untuk melihat kelas dan daftar soal.</p></div>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
               {tipeList.map((tipe) => { const Icon = tipe.icon; return <button key={tipe.value} type="button" onClick={() => selectTipe(tipe.value)} className="group flex min-h-40 flex-col justify-between rounded-card border border-card-border bg-card-bg p-5 text-left shadow-card transition hover:-translate-y-0.5 hover:border-brand-primary hover:shadow-card-hover"><div className="flex items-start justify-between gap-3"><span className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-primary/10 text-brand-primary"><Icon className="h-5 w-5" aria-hidden="true" /></span><span className="rounded-full bg-neutral px-3 py-1 text-xs font-bold text-body-dark">{tipeCounts[tipe.value] || 0} soal</span></div><div className="mt-5"><h3 className="text-base font-bold text-heading-dark group-hover:text-brand-primary">{tipe.label}</h3><p className="mt-1 text-sm text-text-muted">{tipe.subtitle}</p><span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-brand-primary">Buka kategori <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" /></span></div></button>; })}
             </div>
           </>

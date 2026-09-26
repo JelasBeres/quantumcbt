@@ -14,6 +14,7 @@ function salamWaktu() {
 import { api, getErrorMessage } from "@/lib/api";
 import { getUser } from "@/lib/auth";
 import Skeleton from "@/components/Skeleton";
+import { formatWaktuJadwal } from "@/lib/waktu-jadwal";
 
 type SiswaDashboard = {
   siswa: {
@@ -64,6 +65,7 @@ type Jadwal = {
   jumlah_soal?: number;
   pelajaran?: string | null;
   tipe?: "ujian" | "latihan";
+  izinkan_pilih_mapel?: boolean;
 };
 
 function formatDurasi(menit: number): string {
@@ -242,11 +244,11 @@ export default function SiswaHomePage() {
                         <span><FileText size={15} aria-hidden="true" />{item.jumlah_soal ?? "-"} soal</span>
                         <span><Clock3 size={15} aria-hidden="true" />{formatDurasi(item.durasi_menit ?? 0)}</span>
                       </div>
-                      <p className="student-muted mb-4">Mulai {formatTanggal(item.mulai)}</p>
+                      <p className="student-muted mb-4">Mulai {formatWaktuJadwal(item.mulai)}<br />Ditutup <strong>{formatWaktuJadwal(item.selesai)}</strong></p>
                       {selesai ? (
                         <Link className="student-primary-link" href={`/siswa/hasil/${riwayatSelesaiByJadwal.get(item.jadwal_ujian_id)}`}>Lihat Hasil <ArrowRight size={15} aria-hidden="true" /></Link>
                       ) : item.status === "berlangsung" ? (
-                        <Link className="student-primary-link" href={`/siswa/paket/${item.jadwal_ujian_id}`}>Mulai Try Out <ArrowRight size={15} aria-hidden="true" /></Link>
+                        <Link className="student-primary-link" href={`/siswa/paket/${item.jadwal_ujian_id}${item.izinkan_pilih_mapel === false ? "?mulai=1" : ""}`}>Mulai Try Out <ArrowRight size={15} aria-hidden="true" /></Link>
                       ) : <p className="student-notice text-center">Dibuka sesuai jadwal</p>}
                     </div>
                   </article>

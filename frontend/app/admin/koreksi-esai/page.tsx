@@ -9,6 +9,7 @@ import Card from "@/components/Card";
 import MathContent from "@/components/MathContent";
 import DropdownSelect from "@/components/DropdownSelect";
 import { PaketUjian } from "@/lib/types";
+import ResetFilterButton from "@/components/ResetFilterButton";
 
 type JawabanEsai = {
   jawaban_id: number;
@@ -127,6 +128,7 @@ export default function KoreksiEsaiPage() {
             <Filter className="h-4 w-4 text-brand-primary" aria-hidden="true" />
             Hanya belum dinilai
           </label>
+          <ResetFilterButton active={Boolean(selectedPaket || cari) || !onlyPending} onReset={() => { setSelectedPaket(""); setOnlyPending(true); setCari(""); }} />
         </div>
       </div>
 

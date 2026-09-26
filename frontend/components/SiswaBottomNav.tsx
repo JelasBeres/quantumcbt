@@ -2,13 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, ClipboardList, BookOpen, Activity, History, User } from "lucide-react";
+import { LayoutDashboard, ClipboardList, BookOpen, History, User } from "lucide-react";
 
 const ITEMS = [
   { href: "/siswa/dashboard", label: "Beranda", icon: LayoutDashboard, match: ["/siswa/dashboard"] },
   { href: "/siswa/tryout", label: "Try Out", icon: ClipboardList, match: ["/siswa/tryout", "/siswa/paket"] },
   { href: "/siswa/latihan", label: "Latihan", icon: BookOpen, match: ["/siswa/latihan"] },
-  { href: "/siswa/ujian-aktif", label: "Ujian", icon: Activity, match: ["/siswa/ujian-aktif", "/siswa/ujian"] },
   { href: "/siswa/riwayat", label: "Riwayat", icon: History, match: ["/siswa/riwayat", "/siswa/hasil"] },
   { href: "/siswa/profil", label: "Profil", icon: User, match: ["/siswa/profil"] }
 ];

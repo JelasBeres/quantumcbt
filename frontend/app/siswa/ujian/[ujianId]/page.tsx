@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import {
   AlertTriangle,
@@ -577,7 +578,7 @@ export default function ExamRoomPage() {
       <header className="sticky top-0 z-30 border-b border-card-border bg-brand-primary">
         <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
           {/* Kiri: keluar */}
-          <div className="flex w-1/3 items-center">
+          <div className="flex shrink-0 items-center sm:w-1/3">
             <button
               type="button"
               onClick={() => router.push("/siswa/dashboard")}
@@ -588,11 +589,16 @@ export default function ExamRoomPage() {
             </button>
           </div>
 
-          {/* Tengah dikosongkan agar header ujian lebih fokus */}
-          <div className="flex-1" aria-hidden="true" />
+          {/* Tengah: logo Quantum (ikon saja) + motto */}
+          <div className="flex min-w-0 flex-1 items-center justify-center gap-2">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white p-1 shadow-sm">
+              <Image src="/quantum-research-logo.png" alt="Quantum Research" width={28} height={28} className="h-7 w-7 object-contain" priority />
+            </span>
+            <span className="truncate text-xs font-semibold italic tracking-wide text-heading-light sm:text-sm">Tekun, Logis, Kreatif</span>
+          </div>
 
           {/* Kanan: timer */}
-          <div className="flex w-1/3 items-center justify-end gap-2">
+          <div className="flex shrink-0 items-center justify-end gap-2 sm:w-1/3">
             <div
               className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 tabular-nums transition-colors duration-300 sm:gap-2 sm:px-4 sm:py-2 ${
                 state?.mode_latihan !== "drill" && remaining <= 300

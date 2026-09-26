@@ -8,6 +8,7 @@ import Card from "@/components/Card";
 import Select from "@/components/Select";
 import Table from "@/components/Table";
 import { PaketUjian } from "@/lib/types";
+import ResetFilterButton from "@/components/ResetFilterButton";
 
 type HasilSiswa = {
   hasil_ujian_id: number;
@@ -267,6 +268,7 @@ export default function RekapNilaiPage() {
               className="w-full rounded-input border border-card-border bg-card-bg py-2 pl-9 pr-3 text-sm text-body-dark outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/25"
             />
           </div>
+          <ResetFilterButton active={Boolean(selectedPaket || q)} onReset={() => { setSelectedPaket(""); setQ(""); }} />
         </div>
 
         {error && <div className="mb-4 rounded-input border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}

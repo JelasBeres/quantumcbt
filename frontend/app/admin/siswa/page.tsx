@@ -9,6 +9,7 @@ import Select from "@/components/Select";
 import Table from "@/components/Table";
 import { Siswa, Program } from "@/lib/types";
 import { useAppDialog } from "@/components/Dialog";
+import ImportSiswaCsv from "@/components/ImportSiswaCsv";
 
 type Kelas = {
   id: number;
@@ -21,6 +22,7 @@ export default function SiswaPage() {
   const [kelas, setKelas] = useState<Kelas[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [error, setError] = useState("");
   const { showConfirm, dialog } = useAppDialog();
@@ -192,12 +194,26 @@ export default function SiswaPage() {
           <h1 className="text-3xl font-bold text-heading-dark">Siswa</h1>
           <p className="mt-1 text-sm text-text-muted">Kelola data siswa</p>
         </div>
-        {!showForm && (
-          <Button onClick={() => setShowForm(true)}>
-            Tambah Siswa
-          </Button>
+        {!showForm && !showImport && (
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => setShowImport(true)}>
+              Import CSV
+            </Button>
+            <Button onClick={() => setShowForm(true)}>
+              Tambah Siswa
+            </Button>
+          </div>
         )}
       </div>
+
+      {showImport && (
+        <ImportSiswaCsv
+          programNames={programs.map((p) => p.nama)}
+          kelasNames={kelas.map((k) => k.nama)}
+          onClose={() => setShowImport(false)}
+          onImported={loadData}
+        />
+      )}
 
       {showForm && (
         <Card

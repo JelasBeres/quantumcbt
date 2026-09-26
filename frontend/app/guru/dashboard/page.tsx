@@ -45,10 +45,10 @@ export default function GuruDashboardPage() {
       {error && <div className="rounded-input border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Draft soal" value={counts.draft} icon={<FileQuestion className="h-4 w-4" />} />
-        <StatCard label="Menunggu review" value={counts.pending_review} icon={<Clock3 className="h-4 w-4" />} />
-        <StatCard label="Perlu revisi" value={counts.rejected} icon={<RefreshCcw className="h-4 w-4" />} />
-        <StatCard label="Soal disetujui" value={counts.approved} icon={<CheckCircle2 className="h-4 w-4" />} />
+        <StatCard label="Draft soal" value={counts.draft} href="/guru/soal?status=draft" icon={<FileQuestion className="h-4 w-4" />} />
+        <StatCard label="Menunggu review" value={counts.pending_review} href="/guru/soal?status=pending_review" icon={<Clock3 className="h-4 w-4" />} />
+        <StatCard label="Perlu revisi" value={counts.rejected} href="/guru/soal?status=rejected" icon={<RefreshCcw className="h-4 w-4" />} />
+        <StatCard label="Soal disetujui" value={counts.approved} href="/guru/soal?status=approved" icon={<CheckCircle2 className="h-4 w-4" />} />
       </section>
 
       <section className="grid gap-4 md:grid-cols-2">

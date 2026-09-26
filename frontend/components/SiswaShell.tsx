@@ -27,10 +27,10 @@ export default function SiswaShell({ children }: { children: ReactNode }) {
   const aktif = (route: string) => pathname === `/siswa/${route}` || pathname.startsWith(`/siswa/${route}/`);
   return <div className={`student-shell${hideBottomNav ? " student-no-bottom-nav" : ""}`}><PemberitahuanProvider>
     <header className="student-header"><div className="student-header-inner">
-      <Link href="/siswa/dashboard" className="student-brand"><Image src="/quantum-research-logo.png" alt="" width={40} height={40} className="shrink-0 object-contain" priority /><span>QUANTUM<span className="student-brand-sub">RESEARCH · LEARNING SPACE</span></span></Link>
+      <Link href="/siswa/dashboard" className="student-brand"><Image src="/quantum-research-logo.png" alt="" width={40} height={40} className="shrink-0 object-contain" priority /><span>QUANTUM RESEARCH<span className="student-brand-sub">&ldquo;Tekun, logis, kreatif&rdquo;</span></span></Link>
       <nav className="student-desktop-nav" aria-label="Navigasi siswa">{NAV.map(([route, label]) => <Link key={route} href={`/siswa/${route}`} aria-current={aktif(route) ? "page" : undefined}>{label}{route === "pemberitahuan" && <JumlahBelumDibaca className="student-nav-count" />}</Link>)}</nav>
       <Link href="/siswa/pemberitahuan" className="student-bell" aria-label="Pemberitahuan" aria-current={aktif("pemberitahuan") ? "page" : undefined}><Bell size={19} /><JumlahBelumDibaca className="student-bell-count" /></Link>
-      <button className="student-logout" disabled={leaving} onClick={async () => { setLeaving(true); await logout(); router.replace("/login"); }}><LogOut size={15} /><span>{leaving ? "Keluar…" : "Keluar"}</span></button>
+      <button className="student-logout" aria-label="Keluar" disabled={leaving} onClick={async () => { setLeaving(true); await logout(); router.replace("/login"); }}><LogOut size={15} /><span>{leaving ? "Keluar…" : "Keluar"}</span></button>
     </div></header>
     {children}
     {!hideBottomNav && <SiswaBottomNav />}

@@ -6,6 +6,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { api, getErrorMessage } from "@/lib/api";
 import { ArrowLeft, CheckCircle2, Clock3, FileText, Play, BookOpen } from "lucide-react";
 import SetSoalPerMapel, { durasiSingkat } from "@/components/SetSoalPerMapel";
+import { formatWaktuJadwal } from "@/lib/waktu-jadwal";
 
 // Detail 1 jadwal tryout: kiri daftar mapel, kanan kartu set soal (bagian) mapel tersebut.
 type Jadwal = {
@@ -37,6 +38,9 @@ export default function DetailPaketPage() {
   const searchParams = useSearchParams();
   const jadwalId = Number(params.jadwalId);
   const kategori = searchParams.get("kategori");
+  // ?mulai=1 hanya dikirim tombol "Mulai Ujian"/"Mulai Try Out". Dari tempat lain
+  // (mis. popup pemberitahuan) halaman ini cuma menampilkan paket, belum mulai ujian.
+  const autoMulai = searchParams.get("mulai") === "1";
   const backHref = kategori ? `/siswa/tryout/${encodeURIComponent(kategori)}` : "/siswa/tryout";
 
   const [loading, setLoading] = useState(true);
@@ -104,10 +108,10 @@ export default function DetailPaketPage() {
   };
 
   // Paket dengan izinkan_pilih_mapel=false tidak menampilkan breakdown mapel:
-  // begitu status attempt diketahui, langsung teruskan ke ujian/hasil tanpa
-  // butuh klik tambahan di halaman ini (tombol "Mulai Ujian" di list terasa instan).
+  // kalau dibuka lewat tombol "Mulai Ujian" (?mulai=1), langsung teruskan ke
+  // ujian/hasil tanpa butuh klik tambahan di halaman ini.
   useEffect(() => {
-    if (loading || !jadwal || autoTriggeredRef.current) return;
+    if (!autoMulai || loading || !jadwal || autoTriggeredRef.current) return;
     if (jadwal.izinkan_pilih_mapel === false) {
       if (selesaiUjianId !== null) {
         autoTriggeredRef.current = true;
@@ -187,6 +191,7 @@ export default function DetailPaketPage() {
   }
 
   if (
+    autoMulai &&
     jadwal &&
     jadwal.izinkan_pilih_mapel === false &&
     (selesaiUjianId !== null || activeUjianId !== null || jadwal.status === "berlangsung")
@@ -210,14 +215,17 @@ export default function DetailPaketPage() {
         <>
           <header className="student-split-head">
             <h1>{jadwal.nama_paket}</h1>
-            {jadwal.status === "mendatang" && (
-              <p className="student-muted mt-1">Dibuka {new Date(jadwal.mulai).toLocaleString("id-ID")}</p>
+            {jadwal.status !== "berakhir" && (
+              <p className="student-muted mt-1">
+                {jadwal.status === "mendatang" && <>Dibuka {formatWaktuJadwal(jadwal.mulai)} · </>}
+                Ditutup <strong>{formatWaktuJadwal(jadwal.selesai)}</strong>
+              </p>
             )}
           </header>
 
           <section className="student-split-main" aria-live="polite">
             {jadwal.izinkan_pilih_mapel === false ? (
-              <ul className="student-set-list">
+              <ul className="student-set-list student-set-list-single">
                 <li className="student-set">
                   <div className="student-meta">
                     <span><FileText size={14} aria-hidden="true" />{jadwal.jumlah_soal ?? 0} soal</span>

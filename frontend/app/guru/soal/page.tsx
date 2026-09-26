@@ -15,6 +15,8 @@ import Input from "@/components/Input";
 import { api, getErrorMessage } from "@/lib/api";
 import { Soal, Pelajaran, Kelas, Subbab, Topik } from "@/lib/types";
 import { labelTipeSoal } from "@/lib/tipe-soal";
+import { useIngatPosisi } from "@/lib/posisi-bank-soal";
+import ResetFilterButton from "@/components/ResetFilterButton";
 
 type WorkflowStatus = "draft" | "pending_review" | "rejected" | "approved";
 type Level = "tipe" | "kelas" | "pelajaran" | "bab" | "subbab" | "soal";
@@ -113,6 +115,25 @@ export default function GuruSoalPage() {
   };
 
   useEffect(() => { void load(); }, []);
+
+  // Kembali dari form soal: pulihkan tab status dan posisi drill-down terakhir.
+  useIngatPosisi("posisi-bank-soal-guru", { active, level, activeTipe, selectedKelas, selectedPelajaran, selectedBab, selectedSubbab }, (p) => {
+    if (p.active) setActive(p.active);
+    if (p.level) setLevel(p.level);
+    if (p.activeTipe !== undefined) setActiveTipe(p.activeTipe);
+    if (p.selectedKelas !== undefined) setSelectedKelas(p.selectedKelas);
+    if (p.selectedPelajaran !== undefined) setSelectedPelajaran(p.selectedPelajaran);
+    if (p.selectedBab !== undefined) setSelectedBab(p.selectedBab);
+    if (p.selectedSubbab !== undefined) setSelectedSubbab(p.selectedSubbab);
+  });
+
+  // Dari kartu dashboard: /guru/soal?status=pending_review langsung buka tab status itu
+  // dari awal (mengalahkan posisi tersimpan).
+  useEffect(() => {
+    const status = new URLSearchParams(window.location.search).get("status");
+    if (STATUS.some((s) => s.value === status)) { setActive(status as WorkflowStatus); resetHierarchy(); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const resetHierarchy = () => {
     setLevel("tipe");
@@ -248,7 +269,7 @@ export default function GuruSoalPage() {
         </div>
         <div className="mt-3 flex items-center justify-between gap-3 text-sm text-text-muted">
           <span>{visible.length} soal sesuai filter dan status</span>
-          <Button variant="outline" size="sm" onClick={() => updateFilters({ kelas: "", pelajaran: "", bab: "", subbab: "" })}>Reset filter</Button>
+          <ResetFilterButton active={Boolean(query || difficulty) || Object.values(filters).some(Boolean) || Object.values(metaFilter).some(Boolean)} onReset={() => { setQuery(""); setDifficulty(""); setMetaFilter(emptyMetaFilter); updateFilters({ kelas: "", pelajaran: "", bab: "", subbab: "" }); }} />
         </div>
       </Card>
 
@@ -267,7 +288,7 @@ export default function GuruSoalPage() {
           {level === "tipe" ? (
             <>
               <div className="mb-5"><h2 className="text-lg font-bold text-heading-dark">Pilih Tipe Soal</h2><p className="mt-1 text-sm text-text-muted">Pilih kategori untuk melihat kelas dan daftar soal.</p></div>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
                 {tipeGroups.map((group) => <button key={group.key} type="button" onClick={() => { setActiveTipe(group.value as string | null); setLevel("kelas"); setSelectedKelas(null); setSelectedPelajaran(null); setSelectedBab(null); setSelectedSubbab(null); }} className="group flex flex-col justify-between rounded-card border border-card-border bg-card-bg p-4 text-left shadow-sm transition hover:border-brand-primary hover:shadow-md"><div className="flex items-start justify-between gap-2"><span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-primary/10 text-brand-primary"><BookOpen className="h-4 w-4" aria-hidden="true" /></span><span className="rounded-full bg-neutral px-2.5 py-0.5 text-xs font-semibold text-text-muted">{group.items.length} soal</span></div><div className="mt-3"><h3 className="text-sm font-bold text-heading-dark group-hover:text-brand-primary">{group.label}</h3><p className="mt-1 flex items-center gap-1 text-xs text-text-muted">Klik untuk buka <ChevronRight className="h-3 w-3" aria-hidden="true" /></p></div></button>)}
               </div>
             </>

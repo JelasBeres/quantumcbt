@@ -1,6 +1,6 @@
-from typing import Dict, List
+from typing import Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
@@ -18,6 +18,7 @@ from app.models.program import Program
 from app.models.siswa import Siswa
 from app.models.ujian_siswa import UjianSiswa
 from app.models.user import User
+from app.services import import_siswa
 from app.schemas.siswa import (
     BagianTersediaOut,
     SiswaCreate,
@@ -58,10 +59,14 @@ def get_current_siswa_profile(db: Session, current_user) -> Siswa:
     return siswa
 
 
-def jadwal_matches_siswa(jadwal: JadwalUjian, siswa: Siswa) -> bool:
-    if jadwal.program_id is not None and jadwal.program_id != siswa.program_id:
+def jadwal_matches_siswa(jadwal: JadwalUjian, siswa: Siswa, paket: Optional[PaketUjian] = None) -> bool:
+    """Try out hanya untuk program/kelas siswa. Jadwal tanpa program/kelas
+    mengikuti program/kelas paketnya (sama seperti tampilan admin)."""
+    program_id = jadwal.program_id if jadwal.program_id is not None else (paket.program_id if paket else None)
+    kelas_id = jadwal.kelas_id if jadwal.kelas_id is not None else (paket.kelas_id if paket else None)
+    if program_id is not None and program_id != siswa.program_id:
         return False
-    if jadwal.kelas_id is not None and jadwal.kelas_id != siswa.kelas_id:
+    if kelas_id is not None and kelas_id != siswa.kelas_id:
         return False
     return True
 
@@ -119,6 +124,45 @@ def create_siswa_dengan_akun(
     return siswa
 
 
+def _baca_upload(file: UploadFile) -> bytes:
+    if file.filename and not file.filename.lower().endswith(".csv"):
+        raise HTTPException(status_code=400, detail="File harus berformat .csv")
+    return file.file.read(import_siswa.MAKS_UKURAN + 1)
+
+
+@router.post("/import/preview")
+def preview_import_siswa(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user=Depends(require_roles(["admin"])),
+):
+    """Cek file CSV tanpa menyimpan apa pun: tiap baris diberi status siap/dilewati/error."""
+    try:
+        hasil = import_siswa.periksa(db, _baca_upload(file))
+    except import_siswa.ImportError_ as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return {
+        "siap": sum(1 for row in hasil if row["status"] == "siap"),
+        "dilewati": sum(1 for row in hasil if row["status"] == "dilewati"),
+        "error": sum(1 for row in hasil if row["status"] == "error"),
+        "baris": import_siswa.publik(hasil),
+    }
+
+
+@router.post("/import")
+def import_siswa_csv(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user=Depends(require_roles(["admin"])),
+):
+    """Simpan baris berstatus 'siap' setelah admin konfirmasi. Dicek ulang di sini,
+    jadi data yang keburu terdaftar sejak preview tetap dilewati."""
+    try:
+        return import_siswa.simpan(db, _baca_upload(file))
+    except import_siswa.ImportError_ as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
 @router.get("/", response_model=List[SiswaOut])
 def list_siswa(db: Session = Depends(get_db), current_user=Depends(require_roles(["admin", "guru"]))):
     return db.query(Siswa).all()
@@ -162,10 +206,11 @@ def get_siswa_dashboard(db: Session = Depends(get_db), current_user=Depends(get_
         .filter(JadwalUjian.is_deleted == False, JadwalUjian.is_published == True)
         .all()
     )
+    paket_map = {paket.id: paket for paket in db.query(PaketUjian).all()}
     jadwal_mendatang = [
         jadwal
         for jadwal in jadwal_list
-        if jadwal_matches_siswa(jadwal, siswa) and ensure_utc(jadwal.selesai) >= now
+        if jadwal_matches_siswa(jadwal, siswa, paket_map.get(jadwal.paket_ujian_id)) and ensure_utc(jadwal.selesai) >= now
     ]
     ujian_list = db.query(UjianSiswa).filter(UjianSiswa.siswa_id == siswa.id).all()
     hasil_list = (
@@ -209,9 +254,9 @@ def get_siswa_jadwal_ujian(db: Session = Depends(get_db), current_user=Depends(g
         .all()
     )
     for jadwal in jadwal_list:
-        if not jadwal_matches_siswa(jadwal, siswa):
-            continue
         paket = paket_map.get(jadwal.paket_ujian_id)
+        if not jadwal_matches_siswa(jadwal, siswa, paket):
+            continue
         if not paket or paket.tipe != "ujian" or paket.is_archived:
             continue
         if ensure_utc(jadwal.mulai) > now:
@@ -236,6 +281,7 @@ def get_siswa_jadwal_ujian(db: Session = Depends(get_db), current_user=Depends(g
                 kategori=paket.kategori_ref.kode if paket.kategori_ref else paket.kategori,
                 kategori_nama=paket.kategori_ref.nama if paket.kategori_ref else None,
                 deskripsi_paket=paket.deskripsi,
+                izinkan_pilih_mapel=paket.izinkan_pilih_mapel if paket.izinkan_pilih_mapel is not None else True,
             )
         )
     return rows
@@ -272,9 +318,9 @@ def get_siswa_jadwal_tersedia(db: Session = Depends(get_db), current_user=Depend
         .all()
     )
     for jadwal in jadwal_list:
-        if not jadwal_matches_siswa(jadwal, siswa):
-            continue
         paket = paket_map.get(jadwal.paket_ujian_id)
+        if not jadwal_matches_siswa(jadwal, siswa, paket):
+            continue
         if not paket or paket.tipe != "ujian" or paket.is_archived:
             continue
         if ensure_utc(jadwal.mulai) > now:

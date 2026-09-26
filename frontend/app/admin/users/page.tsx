@@ -10,6 +10,7 @@ import Select from "@/components/Select";
 import Table from "@/components/Table";
 import { Kelas, Pelajaran, Program } from "@/lib/types";
 import { useAppDialog } from "@/components/Dialog";
+import ResetFilterButton from "@/components/ResetFilterButton";
 
 type User = {
   id: number;
@@ -467,6 +468,7 @@ export default function UsersPage() {
               </button>
             ))}
           </div>
+          <div className="flex w-full items-center gap-2 lg:w-auto">
           <div className="relative w-full lg:w-72">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" aria-hidden="true" />
             <input
@@ -476,6 +478,8 @@ export default function UsersPage() {
               placeholder="Cari username / tipe user..."
               className="w-full rounded-input border border-card-border bg-card-bg py-2.5 pl-9 pr-3 text-sm text-body-dark placeholder:text-text-muted outline-none transition focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/25"
             />
+          </div>
+          <ResetFilterButton active={Boolean(searchQuery) || roleFilter !== "semua"} onReset={() => { setSearchQuery(""); setRoleFilter("semua"); }} />
           </div>
         </div>
         <p className="mb-3 text-xs text-text-muted">Menampilkan {filteredUsers.length} dari {users.length} user</p>

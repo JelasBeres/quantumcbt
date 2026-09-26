@@ -6,6 +6,7 @@ import Button from "@/components/Button";
 import SoalFormModal from "@/components/SoalFormModal";
 import { api, getErrorMessage } from "@/lib/api";
 import { Kelas, Pelajaran, Topik } from "@/lib/types";
+import { kembaliAtau } from "@/lib/posisi-bank-soal";
 
 type GuruScope = { pelajaran_id: number; kelas_id?: number | null };
 
@@ -59,15 +60,15 @@ export default function GuruTambahSoalPage() {
           <h1 className="text-3xl font-bold text-heading-dark">{editSoalId ? "Edit Soal" : "Buat Soal Baru"}</h1>
           <p className="mt-1 text-sm text-text-muted">Tulis soal, pilihan, dan kunci jawaban dalam satu formulir.</p>
         </div>
-        <Button variant="outline" onClick={() => router.push("/guru/soal")}>Bank Soal</Button>
+        <button type="button" onClick={() => router.push("/guru/soal")} className="inline-flex items-center justify-center rounded-btn bg-brand-primary px-4 py-2 text-sm font-semibold text-heading-light transition hover:bg-brand-primary-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2">Bank Soal</button>
       </header>
       {error && <div className="rounded-input border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
       <SoalFormModal
         open
         presentation="page"
         editSoalId={editSoalId ? Number(editSoalId) : null}
-        onClose={() => router.push("/guru/soal")}
-        onCreated={() => router.push("/guru/soal")}
+        onClose={() => kembaliAtau(router, "/guru/soal")}
+        onCreated={() => kembaliAtau(router, "/guru/soal")}
         pelajaranList={pelajaranList}
         kelasList={kelasList}
         topikList={topikList}

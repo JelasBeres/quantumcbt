@@ -277,7 +277,21 @@ export default function SoalFormModal({
 
         <fieldset disabled={saving || loadingDetail || !detailReady} className="space-y-4 p-4 sm:p-6">
           {loadingDetail && <p role="status">Memuat detail soal...</p>}
-          <div className="grid gap-4 sm:grid-cols-3">
+          {/* Lima pilihan klasifikasi soal dalam satu baris (layar lebar). */}
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <Select
+              label="Tipe Soal"
+              required
+              value={formData.tipe}
+              onChange={(e) => handleTipeChange(e.target.value)}
+              options={[
+                { value: "pilihan_ganda", label: "Pilihan Ganda" },
+                { value: "pilihan_lebih_dari_satu", label: "Pilihan Lebih dari Satu" },
+                { value: "benar_salah", label: "Benar / Salah" },
+                { value: "esai", label: "Esai" },
+                { value: "isian", label: "Isian" }
+              ]}
+            />
             <Select
               label="Pelajaran"
               required
@@ -306,8 +320,6 @@ export default function SoalFormModal({
                 ...topikUntukPelajaran.map((t) => ({ value: t.id, label: t.nama }))
               ]}
             />
-          </div>
-
           <Select
             label="Sub Bab (opsional)"
             disabled={!formData.topik_id}
@@ -323,19 +335,7 @@ export default function SoalFormModal({
               ...subbabUntukTopik.map((item) => ({ value: item.id, label: item.nama }))
             ]}
           />
-          <Select
-            label="Tipe Soal"
-            required
-            value={formData.tipe}
-            onChange={(e) => handleTipeChange(e.target.value)}
-            options={[
-              { value: "pilihan_ganda", label: "Pilihan Ganda" },
-              { value: "pilihan_lebih_dari_satu", label: "Pilihan Lebih dari Satu" },
-              { value: "benar_salah", label: "Benar / Salah" },
-              { value: "esai", label: "Esai" },
-              { value: "isian", label: "Isian" }
-            ]}
-          />
+          </div>
 
             <RichEditor
               label="Teks Soal"
