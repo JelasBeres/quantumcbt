@@ -11,6 +11,7 @@ import {
   Clock3,
   Flag,
   LayoutGrid,
+  Lock,
   LogOut,
   Send,
 } from "lucide-react";
@@ -111,6 +112,7 @@ export default function ExamRoomPage() {
   const submittingRef = useRef(false);
   const advancingRef = useRef(false);
   const soalNavRef = useRef<HTMLDivElement>(null);
+  const mapelNavRef = useRef<HTMLDivElement>(null);
   const questionRequestRef = useRef(0);
   const [transitioning, setTransitioning] = useState(false);
   const { showConfirm, dialog } = useAppDialog();
@@ -285,6 +287,18 @@ export default function ExamRoomPage() {
       });
     }
   }, [nomor, state]);
+
+  useEffect(() => {
+    // Baris mapel: geser mapel aktif ke tengah (penting di HP bila mapel banyak).
+    const container = mapelNavRef.current;
+    const activeChip = container?.querySelector<HTMLElement>('[aria-current="step"]');
+    if (container && activeChip) {
+      container.scrollTo({
+        left: activeChip.offsetLeft - container.clientWidth / 2 + activeChip.clientWidth / 2,
+        behavior: "smooth",
+      });
+    }
+  }, [state?.bagian_aktif]);
 
   useEffect(() => {
     if (!state || state.mode_latihan === "drill") return;
@@ -534,6 +548,14 @@ export default function ExamRoomPage() {
   const visibleQuestionIds = bagianUrutan.length > 1
     ? new Set(bagianAktif?.soal_ids ?? sectionIds)
     : null;
+  // Navigasi dua tingkat: baris mapel (tingkat 1) di atas strip nomor soal
+  // (tingkat 2). Mapel hanya penanda posisi, tidak bisa diklik, karena
+  // perpindahan bagian tetap satu arah lewat tombol Lanjut Bagian.
+  const showMapelNav = bagianUrutan.length > 1;
+  const isAnsweredId = (soalId: number) => {
+    const v = state?.jawaban_tersimpan[String(soalId)];
+    return v != null && v !== "" && (!Array.isArray(v) || v.length > 0);
+  };
   const isLastQuestionInSection = sectionIds.length > 0 && sectionIds[sectionIds.length - 1] === (state?.soal_urutan[nomor - 1] ?? -1);
   const canAdvanceSection = isLastQuestionInSection && !isLastQuestion && state?.bagian_terakhir === false;
   const progress = totalSoal > 0 ? (answered / totalSoal) * 100 : 0;
@@ -631,6 +653,49 @@ export default function ExamRoomPage() {
 
       {/* ============ QUESTION NAVIGATION STRIP ============ */}
       <div className="sticky top-[4.25rem] z-20 border-b border-card-border bg-card-bg">
+        {showMapelNav && (
+          <div className="border-b border-card-border bg-neutral/60">
+            <div
+              ref={mapelNavRef}
+              aria-label="Urutan mapel"
+              className="mx-auto flex w-full max-w-7xl items-center gap-1.5 overflow-x-auto px-4 py-2 [scrollbar-width:none] sm:px-6 [&::-webkit-scrollbar]:hidden"
+            >
+              {bagianUrutan.map((b, i) => {
+                const aktifIdx = state?.bagian_aktif ?? 0;
+                const status = i < aktifIdx ? "selesai" : i === aktifIdx ? "aktif" : "terkunci";
+                const terjawab = b.soal_ids.filter(isAnsweredId).length;
+                return (
+                  <div
+                    key={b.bagian_id ?? i}
+                    aria-current={status === "aktif" ? "step" : undefined}
+                    title={status === "selesai" ? `${b.nama} (selesai)` : status === "terkunci" ? `${b.nama} (belum dibuka)` : b.nama}
+                    className={`inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition-colors duration-200 ${
+                      status === "aktif"
+                        ? "border-brand-primary bg-brand-primary text-heading-light shadow-card"
+                        : status === "selesai"
+                          ? "border-green-200 bg-green-50 text-green-700"
+                          : "border-card-border bg-card-bg text-text-muted"
+                    }`}
+                  >
+                    {status === "selesai" ? (
+                      <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+                    ) : status === "terkunci" ? (
+                      <Lock className="h-3.5 w-3.5" aria-hidden="true" />
+                    ) : (
+                      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-white/20 text-[10px]">{i + 1}</span>
+                    )}
+                    <span className="whitespace-nowrap">{b.nama}</span>
+                    {status !== "terkunci" && (
+                      <span className={`tabular-nums ${status === "aktif" ? "text-heading-light/80" : "opacity-70"}`}>
+                        {terjawab}/{b.soal_ids.length}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
         <div className="mx-auto flex w-full max-w-7xl items-center gap-3 px-4 py-3 sm:px-6">
           <LayoutGrid className="hidden h-4 w-4 shrink-0 text-text-muted sm:block" aria-hidden="true" />
           <div
@@ -705,7 +770,7 @@ export default function ExamRoomPage() {
           {/* ===== KANAN: JAWABAN =====
               Desktop: kolom jawaban menempel (sticky) di bawah header + strip nomor,
               jadi saat soal panjang di-scroll hanya kolom soal yang bergerak. */}
-          <section className="min-w-0 rounded-card border border-card-border bg-card-bg p-4 shadow-card sm:p-5 lg:sticky lg:top-[10.5rem] lg:max-h-[calc(100dvh-10.5rem-6rem)] lg:overflow-y-auto">
+          <section className={`min-w-0 rounded-card border border-card-border bg-card-bg p-4 shadow-card sm:p-5 lg:sticky lg:overflow-y-auto ${showMapelNav ? "lg:top-[13.5rem] lg:max-h-[calc(100dvh-13.5rem-6rem)]" : "lg:top-[10.5rem] lg:max-h-[calc(100dvh-10.5rem-6rem)]"}`}>
             {loading || !question ? (
               <div className="space-y-3 py-10">
                 {[0, 1, 2, 3].map((i) => (
