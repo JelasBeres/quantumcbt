@@ -193,6 +193,7 @@ def _paket_out(paket: PaketUjian, db: Session, readiness: tuple[int, int, int, b
         "metode_penilaian": paket.metode_penilaian or "biasa",
         "skala_kohort": paket.skala_kohort or "utbk",
         "izinkan_pilih_mapel": paket.izinkan_pilih_mapel if paket.izinkan_pilih_mapel is not None else True,
+        "kkm": paket.kkm if paket.kkm is not None else 75,
         "created_by": paket.created_by,
         "is_archived": paket.is_archived,
         "archived_at": paket.archived_at,
@@ -314,6 +315,7 @@ def create_paket_ujian(payload: PaketUjianCreate, db: Session = Depends(get_db),
         metode_penilaian=payload.metode_penilaian,
         skala_kohort=payload.skala_kohort or _derive_skala_kohort(category),
         izinkan_pilih_mapel=payload.izinkan_pilih_mapel,
+        kkm=payload.kkm,
         created_by=current_user.id,
     )
     db.add(paket)
@@ -441,6 +443,7 @@ def clone_paket_ujian(
         metode_penilaian=source.metode_penilaian or "biasa",
         skala_kohort=source.skala_kohort or "utbk",
         izinkan_pilih_mapel=source.izinkan_pilih_mapel if source.izinkan_pilih_mapel is not None else True,
+        kkm=source.kkm if source.kkm is not None else 75,
         created_by=current_user.id,
     )
     db.add(clone)
@@ -513,6 +516,8 @@ def update_paket_ujian(paket_id: int, payload: PaketUjianUpdate, db: Session = D
         paket.skala_kohort = _derive_skala_kohort(category)
     if payload.izinkan_pilih_mapel is not None:
         paket.izinkan_pilih_mapel = payload.izinkan_pilih_mapel
+    if payload.kkm is not None:
+        paket.kkm = payload.kkm
     if category is not None:
         paket.kategori_id = category.id
         paket.kategori = category.kode

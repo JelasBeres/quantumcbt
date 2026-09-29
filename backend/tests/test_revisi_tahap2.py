@@ -81,3 +81,49 @@ def test_ekspor_set_soal_berisi_soal_kunci_pembahasan():
     data = res.json()
     assert data["soal"] and data["soal"][0]["nomor"] == 1
     assert {"teks_soal", "opsi", "pernyataan", "kunci_jawaban", "pembahasan"} <= set(data["soal"][0])
+    assert {"kategori_nama", "kelas_nama", "pelajaran_nama", "bagian_nama"} <= set(data)
+
+
+def test_kkm_paket_disimpan_dan_dipakai_rekap_nilai():
+    from app.models.program import Program
+
+    headers = _admin_headers("admin-kkm-paket")
+    with SessionLocal() as db:
+        program = Program(nama="Program KKM", is_active=True)
+        db.add(program)
+        db.commit()
+        program_id = program.id
+
+    dibuat = client.post("/paket-ujian/", headers=headers, json={"nama": "Paket KKM", "program_id": program_id, "kategori": "utbk", "kkm": 60})
+    assert dibuat.status_code == 200, dibuat.text
+    paket = dibuat.json()
+    assert paket["kkm"] == 60
+
+    payload = {"nama": paket["nama"], "program_id": program_id, "kkm": 82.5}
+    diubah = client.put(f"/paket-ujian/{paket['id']}", headers=headers, json=payload)
+    assert diubah.status_code == 200, diubah.text
+    assert diubah.json()["kkm"] == 82.5
+
+    # Tanpa kkm di payload: nilai lama tetap; di luar 0-100 ditolak.
+    tetap = client.put(f"/paket-ujian/{paket['id']}", headers=headers, json={"nama": paket["nama"], "program_id": program_id})
+    assert tetap.json()["kkm"] == 82.5
+    assert client.put(f"/paket-ujian/{paket['id']}", headers=headers, json={**payload, "kkm": 101}).status_code == 422
+
+    default = client.post("/paket-ujian/", headers=headers, json={"nama": "Paket KKM Default", "program_id": program_id, "kategori": "utbk"})
+    assert default.json()["kkm"] == 75
+
+
+def test_rekap_nilai_membawa_kkm_paket():
+    from app.models.paket_ujian import PaketUjian
+
+    headers, paket, _ = setup_exam(tipe="ujian")
+    jadwal_id = active_schedule_id(paket)
+    ujian = client.post("/ujian-siswa/mulai", headers=headers, json={"jadwal_ujian_id": jadwal_id}).json()
+    assert client.patch(f"/ujian-siswa/{ujian['ujian_siswa_id']}/submit", headers=headers).status_code == 200
+    with SessionLocal() as db:
+        paket_id = db.get(UjianSiswa, ujian["ujian_siswa_id"]).paket_ujian_id
+        db.get(PaketUjian, paket_id).kkm = 55
+        db.commit()
+    admin = _admin_headers("admin-kkm-rekap")
+    rows = client.get("/dashboard/hasil-siswa", headers=admin, params={"paket_ujian_id": paket_id}).json()
+    assert rows and all(row["kkm"] == 55 for row in rows)

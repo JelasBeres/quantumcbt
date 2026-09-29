@@ -84,6 +84,7 @@ class DashboardHasilSiswaOut(BaseModel):
     skala: Optional[str] = None
     skor_mentah: Optional[int] = None
     metadata: Optional[Dict[str, Any]] = None
+    kkm: float = 75
     calculated_at: Optional[datetime] = None
 
 

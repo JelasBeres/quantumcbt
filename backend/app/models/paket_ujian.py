@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, CheckConstraint, Column, DateTime, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import Boolean, CheckConstraint, Column, DateTime, Float, ForeignKey, Integer, JSON, String, Text
 from sqlalchemy.orm import relationship
 from app.models.base import Base
 
@@ -26,6 +26,8 @@ class PaketUjian(Base):
     metode_penilaian = Column(String(20), nullable=False, default="biasa", server_default="biasa")
     skala_kohort = Column(String(20), nullable=False, default="utbk", server_default="utbk")
     izinkan_pilih_mapel = Column(Boolean, nullable=False, default=True, server_default="true")
+    # Nilai minimal lulus (0-100); hanya dipakai untuk metode penilaian biasa.
+    kkm = Column(Float, nullable=False, default=75, server_default="75")
     kategori_ref = relationship("KategoriPaket", back_populates="paket")
     created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     is_archived = Column(Boolean, nullable=False, default=False, server_default="false", index=True)

@@ -10,6 +10,7 @@ from app.db.database import get_db
 from app.models.bagian_paket import BagianPaket
 from app.models.guru import Guru
 from app.models.guru_scope import GuruScope
+from app.models.kelas import Kelas
 from app.models.paket_mapel import PaketMapel
 from app.models.paket_soal import PaketSoal
 from app.models.paket_ujian import PaketUjian
@@ -298,10 +299,14 @@ def export_bagian(bagian_id: int, paket_id: int, db: Session = Depends(get_db), 
         for row in db.query(PernyataanBenarSalah).filter(PernyataanBenarSalah.soal_id.in_(soal_ids)).order_by(PernyataanBenarSalah.urutan, PernyataanBenarSalah.id).all():
             pernyataan_map.setdefault(row.soal_id, []).append({"teks": row.teks_pernyataan, "is_benar": bool(row.is_benar)})
     pelajaran = db.query(Pelajaran).filter(Pelajaran.id == bagian.pelajaran_id).first() if bagian.pelajaran_id else None
+    kelas = db.query(Kelas).filter(Kelas.id == paket.kelas_id).first() if paket.kelas_id else None
     return {
         "paket_nama": paket.nama,
         "bagian_nama": bagian.nama,
         "pelajaran_nama": pelajaran.nama if pelajaran else None,
+        # Untuk kop halaman cetak: "<kategori> — <mapel>" dan "Kelas ...".
+        "kategori_nama": paket.kategori_ref.nama if paket.kategori_ref else None,
+        "kelas_nama": kelas.nama if kelas else None,
         "durasi_menit": bagian.durasi_menit,
         "soal": [
             {

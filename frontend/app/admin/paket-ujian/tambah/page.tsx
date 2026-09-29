@@ -23,6 +23,7 @@ type FormData = {
   is_random_soal: boolean;
   is_random_opsi: boolean;
   izinkan_pilih_mapel: boolean;
+  kkm: string;
 };
 
 export default function TambahPaketUjianPage() {
@@ -43,6 +44,7 @@ export default function TambahPaketUjianPage() {
     is_random_soal: true,
     is_random_opsi: true,
     izinkan_pilih_mapel: true,
+    kkm: "75",
   });
   const [kategoriList, setKategoriList] = useState<KategoriPaket[]>([]);
   const [kelasList, setKelasList] = useState<Kelas[]>([]);
@@ -80,6 +82,7 @@ export default function TambahPaketUjianPage() {
             is_random_soal: item.is_random_soal,
             is_random_opsi: item.is_random_opsi,
             izinkan_pilih_mapel: item.izinkan_pilih_mapel !== false,
+            kkm: String(item.kkm ?? 75),
           });
           setLegacyPelajaranId(item.pelajaran_id ?? null);
           setJumlahSoal(item.jumlah_soal);
@@ -114,6 +117,8 @@ export default function TambahPaketUjianPage() {
     setSaveError("");
     if (!formData.kategori_id) return setSaveError("Kategori wajib dipilih.");
     if (!formData.program_id) return setSaveError("Program wajib diisi. Setiap ujian harus memiliki program.");
+    const kkm = Number(formData.kkm);
+    if (formData.kkm.trim() === "" || !Number.isFinite(kkm) || kkm < 0 || kkm > 100) return setSaveError("KKM harus angka 0 sampai 100.");
     setSaving(true);
     try {
       const payload = {
@@ -126,6 +131,7 @@ export default function TambahPaketUjianPage() {
         is_random_soal: formData.is_random_soal,
         is_random_opsi: formData.is_random_opsi,
         izinkan_pilih_mapel: formData.tipe === "ujian" ? formData.izinkan_pilih_mapel : true,
+        kkm,
         jumlah_soal: jumlahSoal,
         pelajaran_id: editId ? legacyPelajaranId : null,
         kelas_id: formData.kelas_id ? Number(formData.kelas_id) : null,
@@ -140,6 +146,20 @@ export default function TambahPaketUjianPage() {
       setSaving(false);
     }
   };
+
+  // KKM hanya untuk Nilai Biasa (0-100); Benchmark Kohort memakai skala sendiri.
+  const kkmInput = (
+    <Input
+      label="KKM (nilai minimal lulus)"
+      type="number"
+      min={0}
+      max={100}
+      step="any"
+      required
+      value={formData.kkm}
+      onChange={(event) => setFormData({ ...formData, kkm: event.target.value })}
+    />
+  );
 
   if (loading) return <div className="flex min-h-[40vh] items-center justify-center text-text-muted">Memuat data...</div>;
 
@@ -176,6 +196,7 @@ export default function TambahPaketUjianPage() {
                   onChange={(event) => setFormData({ ...formData, metode_penilaian: event.target.value as "biasa" | "kohort" })}
                   options={[{ value: "biasa", label: "Nilai Biasa" }, { value: "kohort", label: "Benchmark Kohort" }]}
                 />
+                {formData.metode_penilaian === "biasa" && kkmInput}
                 {formData.metode_penilaian === "kohort" && (
                   <Select
                     label="Skala Benchmark"
@@ -188,6 +209,7 @@ export default function TambahPaketUjianPage() {
               {formData.metode_penilaian === "kohort" && <p className="mt-3 text-xs text-text-muted">Benchmark Kohort membandingkan jawaban dengan peserta terbaru dalam program yang sama. Nilai sementara hingga minimal 5 peserta dan selama koreksi esai belum selesai (esai belum dinilai dihitung 0); belum tersedia jika seluruh soal dijawab benar.</p>}
             </div>
           )}
+          {formData.tipe === "latihan" && <div className="grid gap-4 sm:grid-cols-2">{kkmInput}</div>}
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={formData.is_random_soal} onChange={(event) => setFormData({ ...formData, is_random_soal: event.target.checked })} /> Acak urutan soal</label>
             <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={formData.is_random_opsi} onChange={(event) => setFormData({ ...formData, is_random_opsi: event.target.checked })} /> Acak pilihan jawaban</label>

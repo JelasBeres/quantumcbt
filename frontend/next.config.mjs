@@ -8,8 +8,8 @@ const base = backendUrl.replace(/\/+$/, "");
 const collections = [
   "grup-tryout", "guru-scope", "hasil-ujian", "jadwal-ujian", "jawaban-siswa",
   "kelas", "kategori-paket", "laporan-soal", "log-kecurangan", "login-activity", "opsi-jawaban",
-  "paket-ujian", "pelajaran", "pengaturan", "program", "siswa", "soal", "subbab", "topik",
-  "ujian-siswa", "users", "paket-ujian/:paketId/bagian"
+  "paket-ujian", "pelajaran", "pemberitahuan", "pengaturan", "program", "siswa", "soal", "subbab", "topik",
+  "ujian-siswa", "users", "paket-ujian/:paketId/bagian", "paket-ujian/:paketId/mapel"
 ];
 
 const nextConfig = {

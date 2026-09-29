@@ -306,6 +306,7 @@ def get_dashboard_hasil_siswa(
                 skala=(hasil.skor_per_pelajaran_json or {}).get("_meta", {}).get("skala"),
                 skor_mentah=(hasil.skor_per_pelajaran_json or {}).get("_meta", {}).get("skor_mentah"),
                 metadata=(hasil.skor_per_pelajaran_json or {}).get("_meta"),
+                kkm=paket.kkm if paket.kkm is not None else 75,
                 calculated_at=hasil.calculated_at,
             )
         )
@@ -321,7 +322,14 @@ def get_hasil_analytics(
     rata_rata_nilai = db.query(func.avg(HasilUjian.skor)).scalar()
     nilai_tertinggi = db.query(func.max(HasilUjian.skor)).scalar()
     nilai_terendah = db.query(func.min(HasilUjian.skor)).scalar()
-    jumlah_lulus_75 = db.query(HasilUjian).filter(HasilUjian.skor >= 75).count()
+    # Lulus = skor >= KKM paket masing-masing; paket kohort (skala 0-1000) tidak dihitung.
+    jumlah_lulus_75 = (
+        db.query(HasilUjian)
+        .join(UjianSiswa, HasilUjian.ujian_siswa_id == UjianSiswa.id)
+        .join(PaketUjian, UjianSiswa.paket_ujian_id == PaketUjian.id)
+        .filter(PaketUjian.metode_penilaian != "kohort", HasilUjian.skor >= func.coalesce(PaketUjian.kkm, 75))
+        .count()
+    )
     return HasilAnalyticsOut(
         jumlah_hasil=jumlah_hasil,
         rata_rata_nilai=float(rata_rata_nilai) if rata_rata_nilai is not None else None,

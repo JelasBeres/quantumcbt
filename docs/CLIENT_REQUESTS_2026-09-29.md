@@ -28,3 +28,5 @@
 
 - **Isi Soal → Pilih Manual** mengikuti sketsa client: satu baris filter (Bab, Sub Bab, Tingkat Kesulitan, Pembuat Soal, Tgl dibuat, Sampai Tgl, Reset), lalu chip tipe soal diawali **Semua** (default). Kolom cari yang dobel dijadikan satu, di kanan baris chip.
 - **Isi Soal → Auto-Generate** mengikuti sketsa client: Kelas Paket, Mata Pelajaran, Bab, Sub Bab, lalu Tipe Soal dan Tingkat Kesulitan. Tipe Soal kini punya opsi **Campuran** (acak dari semua tipe; `POST /soal/generate-kandidat` menerima `tipe = "campuran"`).
+- **KKM per paket** (kolom `paket_ujian.kkm`, default 75, migrasi `c8q9r0s1t2u3`). Diisi di form Buat/Edit Paket, di sebelah Metode Penilaian (hanya Nilai Biasa). Rekap Nilai, status Lulus/Belum lulus, ekspor Excel, dan statistik lulus dashboard memakai KKM paket masing-masing.
+- **Unduh soal mengikuti template client** (`/cetak/set-soal`): tombol "Unduh Soal" di kartu set soal membuka halaman dengan tab **Naskah soal** / **Kunci & pembahasan** dan tombol **Unduh PDF**. Setiap lembar A4 berkop logo Quantum Research + nama set, "<kategori> — <mapel>", kelas, watermark logo, dan "Halaman x dari y"; soal tidak terpotong antarhalaman.

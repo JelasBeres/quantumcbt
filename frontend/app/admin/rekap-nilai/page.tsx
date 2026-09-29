@@ -12,6 +12,8 @@ import ResetFilterButton from "@/components/ResetFilterButton";
 import { useAppDialog } from "@/components/Dialog";
 import { getUser } from "@/lib/auth";
 
+const kkmOf = (row: { kkm?: number | null }) => row.kkm ?? 75;
+
 type HasilSiswa = {
   hasil_ujian_id: number;
   ujian_siswa_id: number;
@@ -26,6 +28,7 @@ type HasilSiswa = {
   kohort_status?: "sementara" | "final" | "kosong" | null;
   skala?: "utbk" | "tka" | null;
   skor_mentah?: number | null;
+  kkm?: number | null;
   calculated_at?: string | null;
 };
 
@@ -87,8 +90,8 @@ export default function RekapNilaiPage() {
       rata,
       tertinggi: Math.max(...skor),
       terendah: Math.min(...skor),
-      // Status lulus (≥75) hanya berlaku untuk penilaian biasa (skala 0–100).
-      lulus: rows.filter((r) => r.skor != null && r.metode_penilaian !== "kohort" && r.skor >= 75).length
+      // Status lulus (≥ KKM paket) hanya berlaku untuk penilaian biasa (skala 0–100).
+      lulus: rows.filter((r) => r.skor != null && r.metode_penilaian !== "kohort" && r.skor >= kkmOf(r)).length
     };
   }, [rows]);
 
@@ -155,7 +158,7 @@ export default function RekapNilaiPage() {
     visibleRows.forEach((r, idx) => {
       const row = ws.getRow(idx + 4);
       const nilai = r.skor != null ? Math.round(r.skor * 10) / 10 : null;
-      const lulus = nilai != null && nilai >= 75;
+      const lulus = nilai != null && nilai >= kkmOf(r);
       const status = nilai == null ? "Belum tersedia" : r.metode_penilaian === "kohort" ? (r.kohort_status === "final" ? "Final" : "Sementara") : lulus ? "Lulus" : "Belum lulus";
 
       const values = [idx + 1, r.nama_siswa, r.no_induk || "-", r.nama_paket, nilai ?? "-", status];
@@ -196,7 +199,7 @@ export default function RekapNilaiPage() {
     {
       header: "Nilai",
       accessor: (row: HasilSiswa) => (
-        <span className={`font-bold ${row.skor == null ? "text-text-muted" : row.metode_penilaian === "kohort" ? "text-heading-dark" : row.skor >= 75 ? "text-green-600" : "text-red-600"}`}>
+        <span className={`font-bold ${row.skor == null ? "text-text-muted" : row.metode_penilaian === "kohort" ? "text-heading-dark" : row.skor >= kkmOf(row) ? "text-green-600" : "text-red-600"}`}>
           {row.skor != null ? row.skor.toFixed(row.metode_penilaian === "kohort" ? 0 : 1) : "Belum tersedia"}
         </span>
       )
@@ -206,7 +209,7 @@ export default function RekapNilaiPage() {
       accessor: (row: HasilSiswa) => {
         if (row.skor == null) return <span className="text-text-muted">Belum tersedia</span>;
         if (row.metode_penilaian === "kohort") return <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${row.kohort_status === "final" ? "bg-green-50 text-green-700" : "bg-amber-50 text-amber-700"}`}>{row.kohort_status === "final" ? "Final" : "Sementara"} · {(row.skala ?? "utbk").toUpperCase()} · Mentah {row.skor_mentah ?? "-"}</span>;
-        return row.skor >= 75 ? (
+        return row.skor >= kkmOf(row) ? (
           <span className="rounded-full border border-green-200 bg-green-50 px-2.5 py-0.5 text-xs font-semibold text-green-700">Lulus</span>
         ) : (
           <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-800">Belum lulus</span>
@@ -255,10 +258,11 @@ export default function RekapNilaiPage() {
     }
   }
 
+  const selectedKkm = selectedPaket ? (paketList.find((p) => p.id === Number(selectedPaket))?.kkm ?? 75) : null;
   const summary = [
     { label: "Peserta dinilai", value: String(stats.jumlah), icon: Users },
     { label: "Rata-rata", value: stats.rata != null ? stats.rata.toFixed(1) : "-", icon: Award },
-    { label: "Lulus (≥75)", value: String(stats.lulus), icon: TrendingUp },
+    { label: selectedKkm != null ? `Lulus (≥ KKM ${selectedKkm})` : "Lulus (≥ KKM)", value: String(stats.lulus), icon: TrendingUp },
     { label: "Nilai terendah", value: stats.terendah != null ? stats.terendah.toFixed(1) : "-", icon: TrendingDown }
   ];
 
