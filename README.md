@@ -1,162 +1,90 @@
-# 🎯 Sistem CBT Quantum Research
+# Quantum Research CBT
 
-**Proyek:** Aplikasi Computer Based Test untuk Bimbel Quantum Research  
-**Stack:** FastAPI + PostgreSQL + React/Next.js  
-**Status:** Fitur utama tersedia; QA lokal sedang diverifikasi. Lihat [Progress Tracker](./docs/PROGRESS_TRACKER.md) dan [laporan QA](./docs/QA_REPORT.md).
+Aplikasi Computer Based Test untuk Bimbel Quantum Research: bank soal, paket Try Out
+dan Latihan, jadwal, ruang ujian siswa, penilaian (Nilai Biasa dengan KKM atau
+Benchmark Kohort UTBK/TKA), rekap nilai, dan unduh soal ke PDF.
 
----
+Online (uji client): https://quantum-test.jbackup.my.id
 
-## 📋 Ringkasan Proyek
+## Stack
 
-Sistem CBT online untuk menunjang kegiatan bimbel offline Quantum Research. Fokus utama:
-- ✅ Backend stabil dan aman
-- ✅ Frontend sederhana tapi user-friendly
-- ✅ Support ujian dengan randomisasi soal/jawaban
-- ✅ Autosave & resume ujian (tahan refresh/putus internet)
-- ✅ Timer terhitung dari server (tidak bisa dimanipulasi client)
+| Bagian | Teknologi |
+|---|---|
+| Backend | FastAPI 0.115, SQLAlchemy 2, Alembic, Pydantic 2 |
+| Database | PostgreSQL (VPS), SQLite `backend/dev-local.db` (lokal) |
+| Frontend | Next.js 14 (App Router), React 18, Tailwind 3, KaTeX |
+| Server | Nginx → `server.js` :3200 → Next :3201, FastAPI (gunicorn) :8000 |
 
-**Program yang didukung:**
-- Kelas 12: TKA, SNBT, Speedtest, Ujian Mandiri
-- SMP: TKA, Speedtest
+Role: **admin**, **guru** (terbatas pada mapel/program/kelas yang diampu), **siswa**.
 
----
-
-## 📂 Struktur Folder
+## Struktur
 
 ```
-CBT/
-├── backend/                 # FastAPI backend
-│   ├── app/
-│   │   ├── models/         # SQLAlchemy models
-│   │   ├── schemas/        # Pydantic schemas
-│   │   ├── routers/        # API endpoints
-│   │   ├── services/       # Business logic
-│   │   └── core/           # Auth, config, etc
-│   └── requirements.txt
-├── frontend/                # Next.js frontend (App Router)
-│   ├── app/                # Pages (admin/, siswa/, login)
-│   ├── components/         # Design system + RichEditor
-│   ├── lib/                # api.ts, auth.ts, types
-│   └── package.json
-├── docs/
-│   ├── ROADMAP.md          # Roadmap lengkap (fase 0-10)
-│   ├── ARCHITECTURE.md     # Arsitektur sistem
-│   ├── DATABASE.md         # Spesifikasi database
-│   └── PROGRESS_TRACKER.md # Status terkini
-├── docs/PROGRESS_TRACKER.md           # Snapshot status untuk AI berikutnya (BACA!)
-└── README.md               # File ini
+backend/
+  app/models, schemas, routers, services   # scoring ada di services/scoring.py
+  alembic/versions                         # migrasi database
+  scripts/seed_local_demo.py               # data dummy lokal (lihat docs/DUMMY_DATA.md)
+  tests/                                   # pytest, memakai SQLite terpisah
+frontend/
+  app/admin, app/guru, app/siswa           # halaman per role
+  app/cetak/set-soal                       # halaman unduh soal (PDF)
+  components/, lib/
+deploy/                                    # skrip rilis ke VPS (lihat deploy/README.md)
+docs/                                      # catatan revisi client & progres
 ```
 
----
+## Menjalankan di lokal (Windows, Git Bash)
 
-## 🚀 Mulai dari Mana?
+Backend:
 
-### ✅ **Langkah 1: Baca Roadmap & Dokumentasi**
-- Lihat [ROADMAP.md](./docs/ROADMAP.md) untuk overview lengkap
-- Lihat [ARCHITECTURE.md](./docs/ARCHITECTURE.md) untuk desain sistem
+```bash
+cd backend
+python -m venv venv
+venv/Scripts/python.exe -m pip install -r requirements.txt
+cp .env.example .env        # isi DATABASE_URL=sqlite:///./dev-local.db dan SECRET_KEY
+venv/Scripts/python.exe -m alembic upgrade head
+venv/Scripts/python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+```
 
-### ✅ **Langkah 2: Siapkan Environment (Fase 0)**
-1. **Setup Python Backend**
-   ```bash
-   cd backend
-   python -m venv venv
-   venv\Scripts\activate
-   pip install -r requirements.txt
-   ```
+Frontend:
 
-2. **Setup Database PostgreSQL**
-   - Install PostgreSQL lokal
-   - Buat database: `cbt_quantum_research`
+```bash
+cd frontend
+npm install
+cp .env.example .env.local  # NEXT_PUBLIC_API_URL=/api, BACKEND_URL=http://127.0.0.1:8000
+npm run dev                 # http://localhost:3000
+```
 
-3. **Setup Frontend Node.js** (nanti, setelah API basic ready)
-   ```bash
-   cd frontend
-   npm install
-   ```
+Browser selalu memanggil `/api/...`; Next meneruskannya ke backend lewat rewrite di
+`frontend/next.config.mjs`. Setiap router FastAPI baru yang punya route `"/"` harus
+ditambahkan ke daftar `collections` di file itu. Kalau tidak, di mode dev
+permintaannya dialihkan ke `127.0.0.1:8000` dan gagal 401.
 
-### ✅ **Langkah 3: Fase 1 - Backend Setup**
-Lihat [PHASE_0_CHECKLIST.md](./docs/PHASE_0_CHECKLIST.md) untuk checklist lengkap Fase 0.
+Sebelum migrasi atau eksperimen data, cadangkan database lokal:
+`cp backend/dev-local.db backend/dev-local.before-<keterangan>-<tanggal>.db`.
 
----
+## Tes
 
-## 📊 Estimasi Timeline
+```bash
+cd backend && venv/Scripts/python.exe -m pytest -q     # ±4 menit
+cd frontend && npx tsc --noEmit && npm run build
+```
 
-| Fase | Deskripsi | Estimasi awal | Status audit 16 September 2026 |
-|------|-----------|---------------|-------------------------------|
-| 0 | Persiapan & Setup | 1 minggu | Lokal berjalan; finalisasi branding belum dikonfirmasi |
-| 1 | Backend & Database | 1-2 minggu | Model/API tersedia; migrasi PostgreSQL perlu diverifikasi |
-| 2 | Authentication | 1 minggu | Implementasi tersedia; bug waktu dan logout diperbaiki |
-| 3 | CRUD Master Data | 1-2 minggu | Implementasi dan tes API tersedia |
-| 4 | Jadwal Ujian | 3-5 hari | Implementasi dan tes workflow tersedia |
-| 5 | Mesin Ujian | 2-3 minggu | Tes API tersedia; pengujian gangguan browser masih terbuka |
-| 6 | Scoring & Hasil | 1 minggu | Implementasi dan tes API tersedia |
-| 7 | Dashboard & Monitoring | 1-2 minggu | Implementasi dan tes API tersedia |
-| 8 | Frontend Lengkap | 3-4 minggu | TypeScript/build lolos; QA responsif dan paste rumus tersisa |
-| 9 | Testing & QA | 2 minggu | Sedang dikerjakan; lihat hasil aktual di Progress Tracker |
-| 10 | Deployment | 3-5 hari | Belum diverifikasi; server, HTTPS, backup, dan UAT tersisa |
+`npm run test:proxy` adalah cek integrasi terhadap server yang sedang berjalan dan
+butuh `PROXY_TEST_USERNAME` / `PROXY_TEST_PASSWORD`.
 
-**Total: ~16-20 minggu (4-5 bulan) untuk solo dev, atau 3-3.5 bulan jika parallel.**
+## Deploy
 
----
+Lihat [deploy/README.md](deploy/README.md). Ringkasnya: backup database VPS, lalu
+`bash deploy/deploy.sh` dari root repo. Rilis menjalankan `alembic upgrade head`,
+build frontend, dan restart service.
 
-## 🎯 Prioritas Pengerjaan
+## Dokumen
 
-Urutan yang paling kritis agar cepat punya MVP yang bisa ditest:
-
-1. ⭐ **Setup backend + DB** → API bisa berjalan
-2. ⭐ **Auth (login/register)** → User bisa login
-3. ⭐ **CRUD soal & paket ujian** → Guru bisa input soal
-4. ⭐⭐ **Mesin ujian (random, timer, autosave, resume)** → **JANTUNG SISTEM**
-5. ⭐ **Scoring** → Nilai muncul otomatis
-
-Baru setelah 5 poin di atas stabil → lanjut dashboard, frontend cantik, fitur tambahan.
-
----
-
-## 📚 Dokumentasi Utama
-
-- [📖 ROADMAP.md](./docs/ROADMAP.md) — Roadmap fase 0-10 lengkap
-- [🏗️ ARCHITECTURE.md](./docs/ARCHITECTURE.md) — Desain sistem & flow
-- [🗄️ DATABASE.md](./docs/DATABASE.md) — Spesifikasi tabel & relasi
-- [✅ PHASE_0_CHECKLIST.md](./docs/PHASE_0_CHECKLIST.md) — Checklist Fase 0
-
----
-
-## 💡 Tech Stack
-
-**Backend:**
-- FastAPI (framework)
-- PostgreSQL (database)
-- SQLAlchemy (ORM)
-- Alembic (migration)
-- Pydantic (validation)
-- PyJWT (authentication)
-
-**Frontend:**
-- React / Next.js
-- Tailwind CSS (styling)
-- Axios (HTTP client)
-- KaTeX / MathJax (render rumus)
-- TipTap / Quill (rich text editor)
-
----
-
-## 📝 Catatan Penting
-
-1. **Fase 5 (Mesin Ujian) adalah yang paling kritis** — jangan hurry-hurry di sini.
-2. **Random soal & jawaban harus disimpan ke DB** — supaya konsisten saat refresh.
-3. **Timer dari backend** — client hanya menampilkan, tidak menghitung.
-4. **Autosave every 5-10 detik** — user bisa merasa aman.
-5. **Testing ekstensif** — terutama skenario refresh & disconnect.
-
----
-
-## 🤝 Kontribusi
-
-Proyek ini dikerjakan untuk Quantum Research. Silakan ikuti struktur dan dokumentasi yang sudah disiapkan.
-
----
-
-**Last Updated:** 2026-09-16  
-**Project Lead:** Rayhan Tama  
-**Status:** QA lokal berlangsung; status aktual tersedia di [Progress Tracker](./docs/PROGRESS_TRACKER.md).
+| File | Isi |
+|---|---|
+| [docs/PROGRESS_REVISI.md](docs/PROGRESS_REVISI.md) | Status revisi terbaru, format siap kirim ke client (WhatsApp) |
+| `docs/CLIENT_REQUESTS_<tanggal>.md` | Catatan permintaan client per tahap dan cara penyelesaiannya |
+| [docs/DUMMY_DATA.md](docs/DUMMY_DATA.md) | Isi dan cara memakai data dummy lokal |
+| [docs/PRD_SISWA_BACKEND_DATABASE.md](docs/PRD_SISWA_BACKEND_DATABASE.md) | Spesifikasi awal alur siswa (acuan historis; aturan terbaru ada di catatan revisi) |
+| [deploy/README.md](deploy/README.md) | Susunan server dan langkah deploy |

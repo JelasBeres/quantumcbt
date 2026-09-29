@@ -11,7 +11,7 @@ data. Akun, password, dan data yang sudah ada tidak ditimpa.
 - Matematika/Fisika, kelas 11/12, bab dan subbab, tiga tingkat kesulitan.
 - Pilihan ganda, pilihan lebih dari satu, benar/salah, isian, dan esai.
 - 8 akun tambahan `siswa.dummy01` sampai `siswa.dummy08` dengan profil sekolah.
-- 4 paket beserta bagian, relasi soal, grup, dan jadwal.
+- 4 paket beserta bagian, relasi soal, dan jadwal.
 - 9 riwayat ujian dengan jawaban dan nilai yang dihitung oleh fungsi scoring aplikasi.
 - 5 jawaban esai menunggu koreksi.
 

@@ -22,7 +22,27 @@ Susunan di VPS (Ubuntu): Nginx (HTTPS) → `server.js` :3200 → Next.js :3201 d
 
 ## Rilis berikutnya
 
-Commit perubahan, lalu jalankan `bash deploy/deploy.sh`.
+1. Jalankan tes (`pytest` backend, `npx tsc --noEmit` frontend) lalu commit. `deploy.sh`
+   mengirim isi working tree, jadi perubahan yang belum di-commit ikut terkirim.
+2. Backup database sebelum rilis (`deploy.sh` tidak membuat backup sendiri):
+   ```bash
+   ssh -i ~/.ssh/quantumcbt_vps_key root@202.155.13.133 'D=/opt/quantumcbt/backups/pre-deploy-$(date +%Y%m%d-%H%M%S); mkdir -p $D && sudo -u postgres pg_dump -Fc quantumcbt > $D/quantumcbt.dump'
+   ```
+3. `bash deploy/deploy.sh`, lalu tunggu `backend OK` dan `frontend OK` di akhir.
+   Migrasi Alembic ikut berjalan otomatis.
+
+Jika SSH terputus saat `next build`, tarball rilis masih ada di server. Lanjutkan di sana:
+
+```bash
+nohup bash /tmp/quantumcbt-release.sh /tmp/quantumcbt-release.tar.gz > /tmp/qcbt-release.log 2>&1 &
+tail -f /tmp/qcbt-release.log     # tunggu "backend OK / frontend OK"
+```
+
+Rollback database: `pg_restore --clean -d quantumcbt <folder backup>/quantumcbt.dump`
+(sebagai user `postgres`). Rollback kode: deploy ulang commit sebelumnya.
+
+Server ini juga menjalankan aplikasi lain (`jb-porto` di :3100). Jangan ubah service
+atau site Nginx di luar QuantumCBT.
 
 ## Perintah berguna di VPS
 
