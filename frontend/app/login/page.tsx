@@ -90,6 +90,10 @@ export default function LoginPage() {
                   id="username"
                   type="text"
                   required
+                  autoComplete="username"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
                   value={formData.username}
                   onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                   placeholder="Masukkan username"

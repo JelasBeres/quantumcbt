@@ -6,7 +6,9 @@ from sqlalchemy.orm import Session
 from app.core.security import guru_can_access_question_report, guru_scope_question_report_filter, get_current_active_user, require_roles
 from app.db.database import get_db
 from app.models.laporan_soal import LaporanSoal
+from app.models.siswa import Siswa
 from app.models.soal import Soal
+from app.models.ujian_siswa import UjianSiswa
 from app.models.user import User
 from app.schemas.laporan_soal import LaporanSoalCreate, LaporanSoalOut, LaporanSoalStatusUpdate
 
@@ -23,6 +25,19 @@ def buat_laporan(
     soal = db.query(Soal).filter(Soal.id == payload.soal_id).first()
     if not soal:
         raise HTTPException(status_code=404, detail="Soal not found")
+    # Siswa hanya boleh melaporkan soal dari ujian yang sudah dikumpulkannya; tanpa
+    # batasan ini, ID soal bisa ditebak untuk membaca soal try out yang belum dikerjakan.
+    if current_user.role == "siswa":
+        siswa = db.query(Siswa).filter(Siswa.user_id == current_user.id).first()
+        urutan_list = (
+            db.query(UjianSiswa.soal_urutan)
+            .filter(UjianSiswa.siswa_id == siswa.id, UjianSiswa.is_submitted == True)
+            .all()
+        ) if siswa else []
+        if not any(soal.id in (urutan or []) for (urutan,) in urutan_list):
+            raise HTTPException(status_code=404, detail="Soal not found")
+    elif current_user.role == "guru" and not guru_can_access_question_report(db, current_user, soal.pelajaran_id, soal.kelas_id):
+        raise HTTPException(status_code=403, detail="Soal berada di luar penugasan guru")
     laporan = LaporanSoal(
         soal_id=payload.soal_id,
         user_id=current_user.id,
@@ -39,7 +54,7 @@ def buat_laporan(
         alasan=laporan.alasan,
         status=laporan.status,
         created_at=laporan.created_at,
-        teks_soal=soal.teks_soal,
+        teks_soal=None if current_user.role == "siswa" else soal.teks_soal,
         nama_pelapor=current_user.username,
     )
 

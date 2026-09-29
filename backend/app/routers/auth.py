@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.schemas.auth import Login, Register, Token, RefreshToken, ChangePassword, ResetPassword, Logout
@@ -83,7 +84,7 @@ def _check_login_limit(db: Session, ip: str, username: str) -> LoginAttempt:
 def register(payload: Register, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
     if current_user.role != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admin can create new accounts")
-    existing = db.query(User).filter(User.username == payload.username).first()
+    existing = db.query(User).filter(func.lower(User.username) == payload.username.strip().lower()).first()
     if existing:
         raise HTTPException(status_code=400, detail="Username already registered")
     user = User(username=payload.username, password_hash=get_password_hash(payload.password), role=payload.role)
@@ -99,6 +100,12 @@ def login(payload: Login, request: Request, db: Session = Depends(get_db)):
     normalized_username = payload.username.strip()
     attempt = _check_login_limit(db, ip, normalized_username.lower())
     user = db.query(User).filter(User.username == normalized_username).first()
+    if user is None:
+        # Keyboard HP sering mengkapitalkan huruf pertama ("budi" -> "Budi"). Cocokkan
+        # tanpa membedakan huruf besar/kecil, tapi hanya bila tepat satu akun yang cocok.
+        kandidat = db.query(User).filter(func.lower(User.username) == normalized_username.lower()).limit(2).all()
+        if len(kandidat) == 1:
+            user = kandidat[0]
     successful = bool(user and user.is_active and verify_password(payload.password, user.password_hash))
 
     db.add(LoginActivity(

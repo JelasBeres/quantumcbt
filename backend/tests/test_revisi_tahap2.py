@@ -139,3 +139,39 @@ def test_hanya_siswa_pemilik_yang_bisa_menyimpan_jawaban():
     assert client.post(f"/ujian-siswa/{ujian_id}/jawab", headers=admin, json={"soal_id": soal_id, "jawaban_teks": "x"}).status_code == 403
     assert client.patch(f"/ujian-siswa/{ujian_id}/ragu", headers=admin, json={"soal_id": soal_id, "is_ragu": True}).status_code == 403
     assert client.patch(f"/ujian-siswa/{ujian_id}/ragu", headers=headers, json={"soal_id": soal_id, "is_ragu": True}).status_code == 200
+
+
+def test_login_username_tidak_membedakan_huruf_besar_kecil():
+    with SessionLocal() as db:
+        db.add(User(username="budi.kapital", password_hash=get_password_hash("Siswa12345"), role="siswa"))
+        db.commit()
+    # Keyboard HP mengkapitalkan huruf pertama; tetap bisa login.
+    assert client.post("/auth/login", json={"username": "Budi.Kapital", "password": "Siswa12345"}).status_code == 200
+    assert client.post("/auth/login", json={"username": "Budi.Kapital", "password": "salah"}).status_code == 401
+    # Username yang hanya beda huruf besar/kecil ditolak saat membuat akun baru.
+    admin = _admin_headers("admin-cek-username")
+    dobel = client.post("/auth/register", headers=admin, json={"username": "BUDI.KAPITAL", "password": "Siswa12345", "role": "siswa"})
+    assert dobel.status_code == 400
+
+
+def test_siswa_hanya_bisa_melaporkan_soal_dari_ujian_yang_sudah_dikumpulkan():
+    headers, paket, soal_ids = setup_exam(tipe="ujian")
+    with SessionLocal() as db:
+        lain = Soal(teks_soal="Soal try out lain yang belum dikerjakan", tipe="esai", status="approved")
+        db.add(lain)
+        db.commit()
+        soal_lain = lain.id
+    # Soal di luar ujian siswa: ditolak dan teksnya tidak bocor.
+    ditolak = client.post("/laporan-soal/", headers=headers, json={"soal_id": soal_lain, "alasan": "x"})
+    assert ditolak.status_code == 404
+    assert "belum dikerjakan" not in ditolak.text
+
+    jadwal_id = active_schedule_id(paket)
+    ujian_id = client.post("/ujian-siswa/mulai", headers=headers, json={"jadwal_ujian_id": jadwal_id}).json()["ujian_siswa_id"]
+    soal_ujian = client.get(f"/ujian-siswa/{ujian_id}/state", headers=headers).json()["soal_urutan"][0]
+    # Belum dikumpulkan: belum boleh melapor.
+    assert client.post("/laporan-soal/", headers=headers, json={"soal_id": soal_ujian, "alasan": "x"}).status_code == 404
+    assert client.patch(f"/ujian-siswa/{ujian_id}/submit", headers=headers).status_code == 200
+    ok = client.post("/laporan-soal/", headers=headers, json={"soal_id": soal_ujian, "alasan": "Kunci salah"})
+    assert ok.status_code == 200, ok.text
+    assert ok.json()["teks_soal"] is None

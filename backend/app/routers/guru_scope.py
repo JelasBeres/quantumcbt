@@ -1,6 +1,7 @@
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.security import get_password_hash, require_roles
@@ -111,7 +112,7 @@ def list_guru_profiles(db: Session = Depends(get_db), current_user=Depends(requi
 @router.post("/profiles", response_model=GuruProfileOut)
 def create_guru_profile(payload: GuruCreate, db: Session = Depends(get_db), current_user=Depends(require_roles(["admin"]))):
     username = payload.username.strip()
-    if db.query(User).filter(User.username == username).first():
+    if db.query(User).filter(func.lower(User.username) == username.lower()).first():
         raise HTTPException(status_code=409, detail="Username sudah digunakan")
     _ensure_unique_profile(db, payload)
     try:

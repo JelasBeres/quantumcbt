@@ -97,7 +97,7 @@ def create_siswa_dengan_akun(
     current_user=Depends(require_roles(["admin"])),
 ):
     """Buat akun user (role siswa) dan profil siswa sekaligus dalam satu transaksi."""
-    existing = db.query(User).filter(User.username == payload.username).first()
+    existing = db.query(User).filter(func.lower(User.username) == payload.username.strip().lower()).first()
     if existing:
         raise HTTPException(status_code=400, detail="Username sudah terdaftar")
 
