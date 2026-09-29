@@ -29,7 +29,7 @@ class SoalCreate(BaseModel):
     tipe: Optional[str] = "pilihan_ganda"
     gambar_url: Optional[str] = None
     tingkat_kesulitan: Literal["mudah", "sedang", "sulit"] = "sedang"
-    poin: float = Field(default=1.0, gt=0)
+    poin: float = Field(default=2.0, gt=0)
     kunci_jawaban: Optional[str] = None
     label_benar: Optional[str] = "Benar"
     label_salah: Optional[str] = "Salah"

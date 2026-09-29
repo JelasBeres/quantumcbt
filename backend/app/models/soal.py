@@ -17,7 +17,7 @@ class Soal(Base):
     tipe = Column(String(50), default="pilihan_ganda")
     gambar_url = Column(String(500), nullable=True)
     tingkat_kesulitan = Column(String(20), nullable=False, server_default="sedang", default="sedang")
-    poin = Column(Float, nullable=False, default=1.0, server_default="1")
+    poin = Column(Float, nullable=False, default=2.0, server_default="1")
     kunci_jawaban = Column(Text, nullable=True)
     label_benar = Column(String(100), nullable=True, default="Benar", server_default="Benar")
     label_salah = Column(String(100), nullable=True, default="Salah", server_default="Salah")
