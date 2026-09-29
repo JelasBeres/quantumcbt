@@ -14,6 +14,8 @@ from app.models.paket_mapel import PaketMapel
 from app.models.paket_soal import PaketSoal
 from app.models.paket_ujian import PaketUjian
 from app.models.pelajaran import Pelajaran
+from app.models.opsi_jawaban import OpsiJawaban
+from app.models.pernyataan_benar_salah import PernyataanBenarSalah
 from app.models.soal import Soal
 from app.models.user import User
 from app.schemas.bagian_paket import (
@@ -270,6 +272,53 @@ def get_bagian(bagian_id: int, paket_id: int, db: Session = Depends(get_db), cur
     if current_user.role == "guru" and not guru_can_access_section(db, current_user, bagian, paket):
         raise HTTPException(status_code=403, detail="Bagian berada di luar mapel yang diampu")
     return _bagian_detail(bagian, db, paket)
+
+
+@router.get("/{bagian_id}/ekspor")
+def export_bagian(bagian_id: int, paket_id: int, db: Session = Depends(get_db), current_user=Depends(require_roles(["admin", "guru"]))):
+    """Data cetak/ekspor PDF satu set soal: soal, opsi, kunci, dan pembahasan.
+    Guru boleh mengekspor set mapel yang diampunya walau soalnya dibuat guru lain."""
+    paket = _get_paket(paket_id, db, current_user)
+    bagian = _get_bagian(bagian_id, paket_id, db)
+    if current_user.role == "guru" and not guru_can_access_section(db, current_user, bagian, paket):
+        raise HTTPException(status_code=403, detail="Bagian berada di luar mapel yang diampu")
+    soal_ids = [
+        row.soal_id
+        for row in db.query(PaketSoal)
+        .filter(PaketSoal.bagian_paket_id == bagian.id)
+        .order_by(PaketSoal.urutan, PaketSoal.id)
+        .all()
+    ]
+    soal_map = {soal.id: soal for soal in db.query(Soal).filter(Soal.id.in_(soal_ids)).all()} if soal_ids else {}
+    opsi_map: dict = {}
+    pernyataan_map: dict = {}
+    if soal_ids:
+        for opsi in db.query(OpsiJawaban).filter(OpsiJawaban.soal_id.in_(soal_ids)).order_by(OpsiJawaban.urutan, OpsiJawaban.id).all():
+            opsi_map.setdefault(opsi.soal_id, []).append({"teks": opsi.teks_opsi, "is_benar": bool(opsi.is_benar)})
+        for row in db.query(PernyataanBenarSalah).filter(PernyataanBenarSalah.soal_id.in_(soal_ids)).order_by(PernyataanBenarSalah.urutan, PernyataanBenarSalah.id).all():
+            pernyataan_map.setdefault(row.soal_id, []).append({"teks": row.teks_pernyataan, "is_benar": bool(row.is_benar)})
+    pelajaran = db.query(Pelajaran).filter(Pelajaran.id == bagian.pelajaran_id).first() if bagian.pelajaran_id else None
+    return {
+        "paket_nama": paket.nama,
+        "bagian_nama": bagian.nama,
+        "pelajaran_nama": pelajaran.nama if pelajaran else None,
+        "durasi_menit": bagian.durasi_menit,
+        "soal": [
+            {
+                "nomor": nomor,
+                "soal_id": soal.id,
+                "tipe": soal.tipe,
+                "teks_soal": soal.teks_soal,
+                "opsi": opsi_map.get(soal.id, []),
+                "pernyataan": pernyataan_map.get(soal.id, []),
+                "label_benar": soal.label_benar,
+                "label_salah": soal.label_salah,
+                "kunci_jawaban": soal.kunci_jawaban,
+                "pembahasan": soal.pembahasan,
+            }
+            for nomor, soal in enumerate((soal_map[sid] for sid in soal_ids if sid in soal_map), start=1)
+        ],
+    }
 
 
 @router.put("/{bagian_id}", response_model=BagianPaketDetailOut)

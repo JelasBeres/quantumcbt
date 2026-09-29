@@ -47,6 +47,43 @@ export default function RichEditor({ value, onChange, placeholder, minHeight = "
     }
   }, [onChange]);
 
+  // Lebar kolom tabel bisa digeser: tarik garis kanan sel. Lebar disimpan
+  // sebagai style width (px) di setiap sel kolom tersebut.
+  const RESIZE_ZONE = 6;
+  const cellAtEdge = (target: EventTarget | null, clientX: number) => {
+    const cell = (target as HTMLElement | null)?.closest?.("td, th") as HTMLTableCellElement | null;
+    if (!cell || !editorRef.current?.contains(cell)) return null;
+    const rect = cell.getBoundingClientRect();
+    return rect.right - clientX <= RESIZE_ZONE && rect.right - clientX >= -2 ? cell : null;
+  };
+  const handleResizeHover = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (event.buttons) return;
+    const editor = editorRef.current;
+    if (editor) editor.style.cursor = cellAtEdge(event.target, event.clientX) ? "col-resize" : "";
+  };
+  const handleResizeStart = (event: React.MouseEvent<HTMLDivElement>) => {
+    const cell = cellAtEdge(event.target, event.clientX);
+    const table = cell?.closest("table");
+    if (!cell || !table) return;
+    event.preventDefault();
+    const col = cell.cellIndex;
+    const startX = event.clientX;
+    const startWidth = cell.getBoundingClientRect().width;
+    const cells = Array.from(table.rows).map((row) => row.cells[col]).filter(Boolean) as HTMLTableCellElement[];
+    const onMove = (e: MouseEvent) => {
+      const width = Math.max(40, Math.round(startWidth + e.clientX - startX));
+      cells.forEach((c) => { c.style.width = `${width}px`; c.style.minWidth = `${width}px`; });
+    };
+    const onUp = () => {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      if (editorRef.current) editorRef.current.style.cursor = "";
+      emit();
+    };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  };
+
   useEffect(() => {
     const editor = editorRef.current;
     if (!editor) return;
@@ -405,6 +442,9 @@ export default function RichEditor({ value, onChange, placeholder, minHeight = "
           <ToolbarButton onClick={() => exec("justifyRight")} title="Rata kanan">
             |≡
           </ToolbarButton>
+          <ToolbarButton onClick={() => exec("justifyFull")} title="Rata kanan-kiri (justify)">
+            |≡≡|
+          </ToolbarButton>
           <span className="mx-1 w-px bg-card-border" />
           <ToolbarButton onClick={() => exec("removeFormat")} title="Hapus format">
             Tx
@@ -493,6 +533,7 @@ export default function RichEditor({ value, onChange, placeholder, minHeight = "
                 {text}
               </button>
             ))}
+            <span className="ml-auto text-[11px] text-text-muted">Tarik garis kanan sel untuk mengubah lebar kolom</span>
           </div>
         )}
         <div
@@ -504,6 +545,8 @@ export default function RichEditor({ value, onChange, placeholder, minHeight = "
           }}
           onPaste={handlePaste}
           onKeyDown={handleKeyDown}
+          onMouseMove={handleResizeHover}
+          onMouseDown={handleResizeStart}
           style={{ minHeight }}
           className="rich-content w-full bg-card-bg px-4 py-3 text-sm text-body-dark outline-none focus:ring-2 focus:ring-inset focus:ring-brand-primary"
           data-placeholder={placeholder}

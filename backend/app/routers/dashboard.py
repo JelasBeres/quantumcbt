@@ -12,8 +12,11 @@ from app.models.hasil_ujian import HasilUjian
 from app.models.jadwal_ujian import JadwalUjian
 from app.models.jawaban_siswa import JawabanSiswa
 from app.models.kategori_paket import KategoriPaket
+from app.models.bagian_paket import BagianPaket
 from app.models.log_kecurangan import LogKecurangan
 from app.models.paket_ujian import PaketUjian
+from app.models.pelajaran import Pelajaran
+from app.models.soal import Soal
 from app.models.siswa import Siswa
 from app.models.ujian_siswa import UjianSiswa
 from app.schemas.dashboard import (
@@ -23,6 +26,8 @@ from app.schemas.dashboard import (
     DashboardStatistikOut,
     HasilAnalyticsOut,
     MonitoringUjianOut,
+    PerluTindakanItem,
+    PerluTindakanOut,
 )
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -54,6 +59,82 @@ def get_dashboard_admin(
         total_jadwal=db.query(JadwalUjian).filter(JadwalUjian.is_deleted == False).count(),
         total_ujian_aktif=total_ujian_aktif,
         total_ujian_selesai=total_ujian_selesai,
+    )
+
+
+@router.get("/perlu-tindakan", response_model=PerluTindakanOut)
+def get_perlu_tindakan(
+    db: Session = Depends(get_db),
+    current_user=Depends(require_roles(["admin"])),
+):
+    """Pengajuan yang menunggu keputusan admin: soal, set soal paket, jadwal.
+    Setiap item membawa tautan langsung ke halaman untuk memprosesnya."""
+    items: List[PerluTindakanItem] = []
+    pelajaran_map = dict(db.query(Pelajaran.id, Pelajaran.nama).all())
+
+    soal_rows = (
+        db.query(Soal.pelajaran_id, func.count(Soal.id), func.min(Soal.submitted_for_review_at))
+        .filter(Soal.status == "pending_review")
+        .group_by(Soal.pelajaran_id)
+        .all()
+    )
+    soal_pending = 0
+    for pelajaran_id, jumlah, diajukan_at in sorted(soal_rows, key=lambda row: -row[1]):
+        soal_pending += jumlah
+        mapel = pelajaran_map.get(pelajaran_id, "Tanpa mapel")
+        items.append(PerluTindakanItem(
+            jenis="soal",
+            id=pelajaran_id or 0,
+            judul=f"{jumlah} soal {mapel} menunggu review",
+            keterangan="Pengajuan soal dari guru",
+            diajukan_at=diajukan_at,
+            href="/admin/review-soal",
+        ))
+
+    bagian_rows = (
+        db.query(BagianPaket, PaketUjian)
+        .join(PaketUjian, PaketUjian.id == BagianPaket.paket_ujian_id)
+        .filter(BagianPaket.status == "pending_review", PaketUjian.is_archived == False)
+        .order_by(BagianPaket.submitted_for_review_at.asc(), BagianPaket.id.asc())
+        .all()
+    )
+    for bagian, paket in bagian_rows:
+        if paket.tipe == "latihan" and bagian.pelajaran_id:
+            href = f"/admin/paket-ujian/set-soal?id={paket.id}&pelajaran_id={bagian.pelajaran_id}"
+        else:
+            kategori = paket.kategori_id if paket.kategori_id is not None else "belum"
+            href = f"/admin/paket-ujian?tipe={paket.tipe}&kategori_id={kategori}&paket_id={paket.id}"
+        items.append(PerluTindakanItem(
+            jenis="set_soal",
+            id=bagian.id,
+            judul=f"Set soal {bagian.nama} menunggu persetujuan",
+            keterangan=f"Paket {paket.nama}",
+            diajukan_at=bagian.submitted_for_review_at,
+            href=href,
+        ))
+
+    jadwal_rows = (
+        db.query(JadwalUjian, PaketUjian)
+        .join(PaketUjian, PaketUjian.id == JadwalUjian.paket_ujian_id)
+        .filter(JadwalUjian.status == "pending_review", JadwalUjian.is_deleted.isnot(True))
+        .order_by(JadwalUjian.submitted_for_review_at.asc(), JadwalUjian.id.asc())
+        .all()
+    )
+    for jadwal, paket in jadwal_rows:
+        items.append(PerluTindakanItem(
+            jenis="jadwal",
+            id=jadwal.id,
+            judul=f"Jadwal {paket.nama} menunggu persetujuan",
+            keterangan="Pengajuan jadwal try out",
+            diajukan_at=jadwal.submitted_for_review_at,
+            href="/admin/review-jadwal",
+        ))
+
+    return PerluTindakanOut(
+        soal_pending=soal_pending,
+        set_soal_pending=len(bagian_rows),
+        jadwal_pending=len(jadwal_rows),
+        items=items,
     )
 
 

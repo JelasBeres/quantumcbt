@@ -12,6 +12,7 @@ type DialogOptions = {
   confirmLabel?: string;
   cancelLabel?: string;
   confirmVariant?: DialogVariant;
+  content?: ReactNode;
 };
 
 type PromptOptions = DialogOptions & {
@@ -75,7 +76,7 @@ export default function Dialog({
           <h2 id="app-dialog-title" className="text-lg font-bold text-heading-dark">{title}</h2>
           {description && <p className="mt-1 text-sm leading-6 text-text-muted">{description}</p>}
         </div>
-        {children && <div className="px-5 py-4">{children}</div>}
+        {children && <div className="max-h-[60vh] overflow-y-auto px-5 py-4">{children}</div>}
         <div className="flex justify-end gap-2 border-t border-card-border px-5 py-4">
           {showCancel && <Button type="button" variant="outline" onClick={onCancel}>{cancelLabel}</Button>}
           <Button type="button" variant={confirmVariant} onClick={onConfirm}>{confirmLabel}</Button>
@@ -136,17 +137,22 @@ export function useAppDialog() {
       onConfirm={confirm}
       onCancel={cancel}
     >
-      {request.mode === "prompt" && (
-        <Textarea
-          autoFocus
-          required={request.required !== false}
-          label={request.inputLabel}
-          placeholder={request.placeholder}
-          value={request.value}
-          error={request.error}
-          onChange={(event) => setRequest((current) => current ? { ...current, value: event.target.value, error: "" } : current)}
-        />
-      )}
+      {request.content || request.mode === "prompt" ? (
+        <>
+          {request.content}
+          {request.mode === "prompt" && (
+            <Textarea
+              autoFocus
+              required={request.required !== false}
+              label={request.inputLabel}
+              placeholder={request.placeholder}
+              value={request.value}
+              error={request.error}
+              onChange={(event) => setRequest((current) => current ? { ...current, value: event.target.value, error: "" } : current)}
+            />
+          )}
+        </>
+      ) : null}
     </Dialog>
   ) : null;
 

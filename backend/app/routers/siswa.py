@@ -428,7 +428,8 @@ def get_siswa_riwayat_latihan(db: Session = Depends(get_db), current_user=Depend
     siswa = get_current_siswa_profile(db, current_user)
     # Latihan = tanpa jadwal: semua sesi paket latihan, plus latihan per-mapel
     # dari paket tryout (latihan_bagian_id terisi). Tryout berjadwal ada di
-    # /riwayat-ujian.
+    # /riwayat-ujian. Sesi mode drilling tidak masuk riwayat (revisi client
+    # tahap 2): pembahasannya sudah tampil per soal saat dikerjakan.
     ujian_list = (
         db.query(UjianSiswa)
         .join(PaketUjian, PaketUjian.id == UjianSiswa.paket_ujian_id)
@@ -436,6 +437,7 @@ def get_siswa_riwayat_latihan(db: Session = Depends(get_db), current_user=Depend
             UjianSiswa.siswa_id == siswa.id,
             UjianSiswa.is_submitted == True,
             UjianSiswa.jadwal_ujian_id.is_(None),
+            or_(UjianSiswa.mode_latihan.is_(None), UjianSiswa.mode_latihan != "drill"),
             or_(PaketUjian.tipe == "latihan", UjianSiswa.latihan_bagian_id.isnot(None)),
         )
         .order_by(UjianSiswa.finished_at.desc(), UjianSiswa.id.desc())

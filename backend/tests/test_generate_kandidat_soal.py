@@ -95,3 +95,29 @@ def test_generate_kandidat_rejects_topik_from_other_subject():
     )
     assert response.status_code == 400
     db.close()
+
+
+def test_generate_kandidat_tipe_campuran_mengambil_semua_tipe():
+    db = SessionLocal()
+    pelajaran = Pelajaran(nama="Pelajaran Generate Campuran")
+    db.add(pelajaran)
+    db.flush()
+    tipe_list = ["pilihan_ganda", "benar_salah", "isian"]
+    db.add_all([
+        Soal(pelajaran_id=pelajaran.id, teks_soal=f"Soal {tipe}", tingkat_kesulitan="sedang", tipe=tipe, status="approved")
+        for tipe in tipe_list
+    ])
+    db.add(Soal(pelajaran_id=pelajaran.id, teks_soal="Soal sulit", tingkat_kesulitan="sulit", tipe="esai", status="approved"))
+    db.commit()
+
+    response = client.post(
+        "/soal/generate-kandidat",
+        json={"pelajaran_id": pelajaran.id, "tipe": "campuran", "kesulitan": "sedang", "jumlah": 10},
+        headers=auth_headers(),
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["available"] == 3
+    assert body["shortage"] == 7
+    assert sorted(item["tipe"] for item in body["items"]) == sorted(tipe_list)
+    db.close()

@@ -54,7 +54,7 @@ const ADMIN_NAV: AdminGroup[] = [
     title: "Penilaian & Pelaporan",
     items: [
       { href: "/admin/rekap-nilai", label: "Rekapitulasi Nilai", icon: Award, match: ["/admin/rekap-nilai"] },
-      { href: "/admin/laporan-soal", label: "Analisis Soal", icon: BarChart3, match: ["/admin/laporan-soal"] }
+      { href: "/admin/laporan-soal", label: "Laporan Soal", icon: BarChart3, match: ["/admin/laporan-soal"] }
     ]
   },
   {

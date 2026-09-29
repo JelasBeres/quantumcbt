@@ -560,3 +560,33 @@ def compute_and_store_hasil(db: Session, ujian: UjianSiswa) -> HasilUjian:
     ):
         return _compute_cohort(db, ujian, package)
     return _compute_ordinary(db, ujian)
+
+
+def recompute_cohort_package(db: Session, package: PaketUjian) -> None:
+    """Hitung ulang nilai kohort semua kelompok program pada paket, mis. setelah
+    admin mereset (menghapus) pengerjaan seorang siswa sehingga bobot soal berubah."""
+    if package.tipe != "ujian" or package.metode_penilaian != "kohort":
+        return
+    attempts = (
+        db.query(UjianSiswa)
+        .filter(
+            UjianSiswa.paket_ujian_id == package.id,
+            UjianSiswa.is_submitted == True,
+            UjianSiswa.latihan_bagian_id.is_(None),
+        )
+        .all()
+    )
+    if not attempts:
+        return
+    schedule_ids = {attempt.jadwal_ujian_id for attempt in attempts if attempt.jadwal_ujian_id is not None}
+    student_ids = {attempt.siswa_id for attempt in attempts}
+    schedules = {
+        schedule.id: schedule
+        for schedule in db.query(JadwalUjian).filter(JadwalUjian.id.in_(schedule_ids)).all()
+    } if schedule_ids else {}
+    students = {student.id: student for student in db.query(Siswa).filter(Siswa.id.in_(student_ids)).all()}
+    wakil: Dict[str, UjianSiswa] = {}
+    for attempt in attempts:
+        wakil.setdefault(effective_program_key(attempt, schedules, students, package), attempt)
+    for attempt in wakil.values():
+        _compute_cohort(db, attempt, package)

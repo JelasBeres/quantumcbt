@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel
 
@@ -18,6 +18,22 @@ class DashboardAdminOut(BaseModel):
     total_jadwal: int
     total_ujian_aktif: int
     total_ujian_selesai: int
+
+
+class PerluTindakanItem(BaseModel):
+    jenis: str  # soal | set_soal | jadwal
+    id: int
+    judul: str
+    keterangan: Optional[str] = None
+    diajukan_at: Optional[datetime] = None
+    href: str
+
+
+class PerluTindakanOut(BaseModel):
+    soal_pending: int
+    set_soal_pending: int
+    jadwal_pending: int
+    items: List[PerluTindakanItem]
 
 
 class MonitoringUjianOut(BaseModel):

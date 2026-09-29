@@ -11,7 +11,7 @@ import { api, getErrorMessage } from "@/lib/api";
 import { labelBagianStatus, toneBagianStatus } from "@/lib/bagian-status";
 import { BagianPaket, PaketUjian, Pelajaran, Soal, Topik } from "@/lib/types";
 import { labelTipeSoal } from "@/lib/tipe-soal";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, FileDown } from "lucide-react";
 
 const LAPORAN_SOAL_PRESET = [
   "Soal tidak sesuai mapel",
@@ -51,6 +51,16 @@ export default function BagianSetCards({
   const [reviewNote, setReviewNote] = useState("");
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const [reviewError, setReviewError] = useState("");
+  // Ekspor PDF: pilih isi (soal / kunci / pembahasan) lalu buka halaman cetak.
+  const [eksporTarget, setEksporTarget] = useState<BagianPaket | null>(null);
+  const [eksporIsi, setEksporIsi] = useState({ soal: true, kunci: true, pembahasan: true });
+
+  const bukaEkspor = () => {
+    if (!eksporTarget) return;
+    const isi = (Object.keys(eksporIsi) as (keyof typeof eksporIsi)[]).filter((key) => eksporIsi[key]).join(",");
+    window.open(`/cetak/set-soal?paket=${paket.id}&bagian=${eksporTarget.id}&isi=${isi}`, "_blank", "noopener");
+    setEksporTarget(null);
+  };
 
   const getNama = <T extends { id: number; nama: string }>(
     list: T[],
@@ -250,6 +260,14 @@ export default function BagianSetCards({
                     Atur Durasi
                   </Button>
                 )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={!bagian.jumlah_soal}
+                  onClick={() => { setEksporIsi({ soal: true, kunci: true, pembahasan: true }); setEksporTarget(bagian); }}
+                >
+                  <FileDown className="h-4 w-4" aria-hidden="true" /> Ekspor PDF
+                </Button>
                 {isGuru && (bagian.status === "draft" || bagian.status === "revision_required") && (
                   <Button
                     size="sm"
@@ -377,6 +395,42 @@ export default function BagianSetCards({
                 </Button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+      {eksporTarget && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-heading-dark/50 p-4" role="dialog" aria-modal="true" aria-labelledby="ekspor-title">
+          <div className="w-full max-w-sm rounded-modal border border-card-border bg-card-bg shadow-modal">
+            <div className="border-b border-card-border px-5 py-4">
+              <h2 id="ekspor-title" className="text-lg font-bold text-heading-dark">Ekspor PDF — {eksporTarget.nama}</h2>
+              <p className="mt-1 text-sm text-text-muted">Pilih isi dokumen yang ingin diekspor.</p>
+            </div>
+            <div className="space-y-2 px-5 py-4">
+              {([
+                ["soal", "Soal", "Teks soal beserta pilihan jawaban"],
+                ["kunci", "Kunci Jawaban", "Jawaban benar tiap soal"],
+                ["pembahasan", "Pembahasan", "Penjelasan tiap soal"],
+              ] as const).map(([key, label, desc]) => (
+                <label key={key} className="flex cursor-pointer items-start gap-3 rounded-input border border-card-border px-3 py-2.5 hover:border-brand-primary">
+                  <input
+                    type="checkbox"
+                    className="mt-1"
+                    checked={eksporIsi[key]}
+                    onChange={(e) => setEksporIsi((prev) => ({ ...prev, [key]: e.target.checked }))}
+                  />
+                  <span>
+                    <span className="block text-sm font-semibold text-heading-dark">{label}</span>
+                    <span className="block text-xs text-text-muted">{desc}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+            <div className="flex justify-end gap-2 border-t border-card-border px-5 py-4">
+              <Button variant="outline" onClick={() => setEksporTarget(null)}>Batal</Button>
+              <Button disabled={!eksporIsi.soal && !eksporIsi.kunci && !eksporIsi.pembahasan} onClick={bukaEkspor}>
+                <FileDown className="h-4 w-4" aria-hidden="true" /> Ekspor
+              </Button>
+            </div>
           </div>
         </div>
       )}

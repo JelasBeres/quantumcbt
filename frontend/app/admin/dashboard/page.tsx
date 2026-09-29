@@ -32,6 +32,13 @@ interface Statistik {
   ujian_berjalan: number;
 }
 
+interface PerluTindakan {
+  soal_pending: number;
+  set_soal_pending: number;
+  jadwal_pending: number;
+  items: { jenis: "soal" | "set_soal" | "jadwal"; id: number; judul: string; keterangan?: string | null; href: string }[];
+}
+
 interface Analytics {
   jumlah_hasil: number;
   rata_rata_nilai?: number | null;
@@ -43,18 +50,20 @@ export default function AdminDashboardPage() {
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [esaiPending, setEsaiPending] = useState(0);
   const [pelanggaran, setPelanggaran] = useState(0);
+  const [pengajuan, setPengajuan] = useState<PerluTindakan | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let aktif = true;
     async function load() {
       try {
-        const [dashboard, stats, hasil, pending, logs] = await Promise.allSettled([
+        const [dashboard, stats, hasil, pending, logs, tindakan] = await Promise.allSettled([
           api.get("/dashboard/admin").then((r) => r.data),
           api.get("/dashboard/statistik").then((r) => r.data),
           api.get("/dashboard/hasil-analytics").then((r) => r.data),
           api.get("/jawaban-siswa/esai/koreksi", { params: { hanya_belum_dinilai: true } }).then((r) => r.data.length),
-          api.get("/dashboard/log-kecurangan").then((r) => r.data.length)
+          api.get("/dashboard/log-kecurangan").then((r) => r.data.length),
+          api.get<PerluTindakan>("/dashboard/perlu-tindakan").then((r) => r.data)
         ]);
         if (!aktif) return;
         if (dashboard.status === "fulfilled") setData(dashboard.value);
@@ -62,6 +71,7 @@ export default function AdminDashboardPage() {
         if (hasil.status === "fulfilled") setAnalytics(hasil.value);
         if (pending.status === "fulfilled") setEsaiPending(pending.value);
         if (logs.status === "fulfilled") setPelanggaran(logs.value);
+        if (tindakan.status === "fulfilled") setPengajuan(tindakan.value);
       } finally {
         if (aktif) setLoading(false);
       }
@@ -89,7 +99,16 @@ export default function AdminDashboardPage() {
   }
 
   const berjalan = statistik?.ujian_berjalan ?? data?.total_ujian_aktif ?? 0;
+  const LABEL_PENGAJUAN = { soal: "Review soal", set_soal: "Periksa set soal", jadwal: "Review jadwal" } as const;
   const perhatian = [
+    // Pengajuan dari guru (soal, set soal paket, jadwal) paling atas; klik langsung ke halaman terkait.
+    ...(pengajuan?.items ?? []).map((item) => ({
+      title: item.judul,
+      description: item.keterangan ?? "",
+      href: item.href,
+      label: LABEL_PENGAJUAN[item.jenis],
+      jenis: item.jenis
+    })),
     esaiPending > 0 && {
       title: `${esaiPending} jawaban esai belum dikoreksi`,
       description: "Beri nilai agar hasil akhir siswa segera tersedia.",
@@ -108,7 +127,8 @@ export default function AdminDashboardPage() {
       href: "/admin/paket-ujian",
       label: "Buat paket"
     }
-  ].filter(Boolean) as { title: string; description: string; href: string; label: string }[];
+  ].filter(Boolean) as { title: string; description: string; href: string; label: string; jenis?: string }[];
+  const totalPengajuan = (pengajuan?.soal_pending ?? 0) + (pengajuan?.set_soal_pending ?? 0) + (pengajuan?.jadwal_pending ?? 0);
 
   const summaries = [
     { label: "Ujian berjalan", value: berjalan, href: "/admin/monitoring-ujian", icon: Activity },
@@ -190,7 +210,7 @@ export default function AdminDashboardPage() {
       </section>
 
       <section className="grid gap-5 lg:grid-cols-[1.35fr_0.65fr]">
-        <Card title="Perlu Perhatian">
+        <Card title={totalPengajuan > 0 ? `Tindakan yang Perlu Diperhatikan (${totalPengajuan} pengajuan)` : "Tindakan yang Perlu Diperhatikan"}>
           {perhatian.length === 0 ? (
             <EmptyState
               icon={<AlertTriangle className="h-6 w-6" aria-hidden="true" />}
@@ -200,13 +220,18 @@ export default function AdminDashboardPage() {
           ) : (
             <div className="divide-y divide-card-border">
               {perhatian.map((item) => (
-                <div key={item.title} className="flex flex-wrap items-center justify-between gap-3 py-4 first:pt-0 last:pb-0">
-                  <div>
-                    <p className="font-semibold text-heading-dark">{item.title}</p>
-                    <p className="text-sm text-text-muted">{item.description}</p>
+                <Link key={`${item.href}-${item.title}`} href={item.href} className="group -mx-2 flex flex-wrap items-center justify-between gap-3 rounded-lg px-2 py-4 transition first:pt-2 last:pb-2 hover:bg-brand-primary/5">
+                  <div className="flex min-w-0 items-start gap-3">
+                    {item.jenis && <span className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-amber-500" aria-hidden="true" />}
+                    <div className="min-w-0">
+                      <p className="font-semibold text-heading-dark">{item.title}</p>
+                      {item.description && <p className="text-sm text-text-muted">{item.description}</p>}
+                    </div>
                   </div>
-                  <Link href={item.href} className="text-sm font-semibold text-brand-primary hover:underline">{item.label}</Link>
-                </div>
+                  <span className="inline-flex items-center gap-1 text-sm font-semibold text-brand-primary group-hover:underline">
+                    {item.label} <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" aria-hidden="true" />
+                  </span>
+                </Link>
               ))}
             </div>
           )}

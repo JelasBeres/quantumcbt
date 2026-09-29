@@ -402,10 +402,11 @@ def generate_kandidat_soal(
 
     query = db.query(Soal).filter(
         Soal.pelajaran_id == payload.pelajaran_id,
-        Soal.tipe == payload.tipe,
         Soal.tingkat_kesulitan == payload.kesulitan,
         Soal.status == "approved",
     )
+    if payload.tipe != "campuran":
+        query = query.filter(Soal.tipe == payload.tipe)
     if payload.kelas_id is not None:
         query = query.filter(Soal.kelas_id == payload.kelas_id)
     if payload.topik_id is not None:

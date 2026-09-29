@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Award, Download, Search, TrendingDown, TrendingUp, Users } from "lucide-react";
+import { Award, Download, RotateCcw, Search, TrendingDown, TrendingUp, Users } from "lucide-react";
 import { api } from "@/lib/api";
 import Button from "@/components/Button";
 import Card from "@/components/Card";
@@ -9,6 +9,8 @@ import Select from "@/components/Select";
 import Table from "@/components/Table";
 import { PaketUjian } from "@/lib/types";
 import ResetFilterButton from "@/components/ResetFilterButton";
+import { useAppDialog } from "@/components/Dialog";
+import { getUser } from "@/lib/auth";
 
 type HasilSiswa = {
   hasil_ujian_id: number;
@@ -34,6 +36,10 @@ export default function RekapNilaiPage() {
   const [rows, setRows] = useState<(HasilSiswa & { id: number })[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
+  const [resettingId, setResettingId] = useState<number | null>(null);
+  const isAdmin = getUser()?.role === "admin";
+  const { showConfirm, dialog } = useAppDialog();
 
   useEffect(() => {
     api.get("/paket-ujian/")
@@ -81,7 +87,8 @@ export default function RekapNilaiPage() {
       rata,
       tertinggi: Math.max(...skor),
       terendah: Math.min(...skor),
-      lulus: skor.filter((s) => s >= 75).length
+      // Status lulus (≥75) hanya berlaku untuk penilaian biasa (skala 0–100).
+      lulus: rows.filter((r) => r.skor != null && r.metode_penilaian !== "kohort" && r.skor >= 75).length
     };
   }, [rows]);
 
@@ -189,7 +196,7 @@ export default function RekapNilaiPage() {
     {
       header: "Nilai",
       accessor: (row: HasilSiswa) => (
-        <span className={`font-bold ${row.skor == null ? "text-text-muted" : row.skor >= 75 ? "text-green-600" : "text-red-600"}`}>
+        <span className={`font-bold ${row.skor == null ? "text-text-muted" : row.metode_penilaian === "kohort" ? "text-heading-dark" : row.skor >= 75 ? "text-green-600" : "text-red-600"}`}>
           {row.skor != null ? row.skor.toFixed(row.metode_penilaian === "kohort" ? 0 : 1) : "Belum tersedia"}
         </span>
       )
@@ -209,8 +216,44 @@ export default function RekapNilaiPage() {
     {
       header: "Waktu",
       accessor: (row: HasilSiswa) => (row.calculated_at ? new Date(row.calculated_at).toLocaleString("id-ID") : "-")
-    }
+    },
+    ...(isAdmin ? [{
+      header: "Aksi",
+      accessor: (row: HasilSiswa) => (
+        <button
+          type="button"
+          onClick={() => resetPengerjaan(row)}
+          disabled={resettingId === row.ujian_siswa_id}
+          className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-red-200 px-2.5 py-1 text-xs font-semibold text-red-700 transition hover:bg-red-50 disabled:opacity-50"
+        >
+          <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
+          {resettingId === row.ujian_siswa_id ? "Mereset..." : "Reset"}
+        </button>
+      )
+    }] : [])
   ];
+
+  async function resetPengerjaan(row: HasilSiswa) {
+    const ok = await showConfirm({
+      title: "Reset Pengerjaan",
+      description: `Pengerjaan ${row.nama_siswa} pada "${row.nama_paket}" akan dihapus (jawaban dan nilai), sehingga siswa bisa mengerjakan ulang selama jadwalnya masih berlangsung. Tindakan ini tidak bisa dibatalkan.`,
+      confirmLabel: "Reset",
+      confirmVariant: "danger"
+    });
+    if (!ok) return;
+    setResettingId(row.ujian_siswa_id);
+    setError("");
+    setInfo("");
+    try {
+      const { data } = await api.delete(`/ujian-siswa/${row.ujian_siswa_id}/reset`);
+      setInfo(data?.message || "Pengerjaan direset.");
+      await load(selectedPaket);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || "Reset pengerjaan gagal.");
+    } finally {
+      setResettingId(null);
+    }
+  }
 
   const summary = [
     { label: "Peserta dinilai", value: String(stats.jumlah), icon: Users },
@@ -272,6 +315,7 @@ export default function RekapNilaiPage() {
         </div>
 
         {error && <div className="mb-4 rounded-input border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
+        {info && <div className="mb-4 rounded-input border border-green-200 bg-green-50 p-4 text-sm text-green-700">{info}</div>}
 
         {loading ? (
           <p className="py-8 text-center text-text-muted">Memuat...</p>
@@ -279,6 +323,7 @@ export default function RekapNilaiPage() {
           <Table data={visibleRows} columns={columns} emptyMessage="Belum ada hasil ujian" />
         )}
       </Card>
+      {dialog}
     </div>
   );
 }

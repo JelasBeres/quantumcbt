@@ -29,6 +29,7 @@ class UjianSiswaOut(BaseModel):
     soal_urutan: Optional[List[int]] = None
     opsi_urutan: Optional[Dict[str, List[int]]] = None
     bagian_urutan: Optional[List[BagianUjianOut]] = None
+    mode_latihan: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

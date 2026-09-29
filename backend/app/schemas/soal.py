@@ -114,7 +114,8 @@ class SoalGenerateRequest(BaseModel):
     @field_validator("tipe")
     @classmethod
     def validate_generate_tipe(cls, value: str) -> str:
-        if value not in ALLOWED_TIPE_SOAL:
+        # "campuran" = acak dari semua tipe soal.
+        if value != "campuran" and value not in ALLOWED_TIPE_SOAL:
             allowed = ", ".join(sorted(ALLOWED_TIPE_SOAL))
             raise ValueError(f"tipe soal harus salah satu dari: {allowed}")
         return value

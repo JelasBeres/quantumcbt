@@ -17,6 +17,7 @@ from app.models.paket_soal import PaketSoal
 from app.models.paket_ujian import PaketUjian
 from app.models.ujian_siswa import UjianSiswa
 from app.models.jawaban_siswa import JawabanSiswa
+from app.models.hasil_ujian import HasilUjian
 from app.models.log_kecurangan import LogKecurangan
 from app.models.soal import Soal
 from app.models.opsi_jawaban import OpsiJawaban
@@ -40,7 +41,7 @@ from app.schemas.ujian_siswa import (
     LatihanStartRequest,
     UjianSiswaStateOut,
 )
-from app.services.scoring import compute_and_store_hasil, evaluate_question, load_kunci
+from app.services.scoring import compute_and_store_hasil, evaluate_question, load_kunci, recompute_cohort_package
 
 router = APIRouter(prefix="/ujian-siswa", tags=["ujian_siswa"])
 
@@ -1016,6 +1017,36 @@ def submit_ujian_siswa(ujian_id: int, db: Session = Depends(get_db), current_use
         raise HTTPException(status_code=500, detail="Gagal menghitung hasil ujian, coba lagi")
     db.refresh(ujian)
     return ujian
+
+
+@router.delete("/{ujian_id}/reset")
+def reset_ujian_siswa(ujian_id: int, db: Session = Depends(get_db), current_user=Depends(require_roles(["admin"]))):
+    """Reset pengerjaan (antisipasi human error): attempt beserta jawaban, hasil,
+    dan log kecurangannya dihapus sehingga siswa bisa mengerjakan ulang selama
+    jadwalnya masih berlangsung. Nilai kohort peserta lain dihitung ulang."""
+    ujian = db.query(UjianSiswa).filter(UjianSiswa.id == ujian_id).with_for_update().first()
+    if not ujian:
+        raise HTTPException(status_code=404, detail="Ujian Siswa not found")
+    paket = db.query(PaketUjian).filter(PaketUjian.id == ujian.paket_ujian_id).first()
+    jadwal = db.query(JadwalUjian).filter(JadwalUjian.id == ujian.jadwal_ujian_id).first() if ujian.jadwal_ujian_id else None
+    db.query(JawabanSiswa).filter(JawabanSiswa.ujian_siswa_id == ujian.id).delete(synchronize_session=False)
+    db.query(LogKecurangan).filter(LogKecurangan.ujian_siswa_id == ujian.id).delete(synchronize_session=False)
+    db.query(HasilUjian).filter(HasilUjian.ujian_siswa_id == ujian.id).delete(synchronize_session=False)
+    db.delete(ujian)
+    db.flush()
+    if paket is not None:
+        recompute_cohort_package(db, paket)
+    db.commit()
+    jadwal_berakhir = bool(jadwal and jadwal.selesai and ensure_utc(jadwal.selesai) < utc_now())
+    return {
+        "status": "reset",
+        "jadwal_berakhir": jadwal_berakhir,
+        "message": (
+            "Pengerjaan direset. Jadwal try out sudah berakhir, perpanjang jadwal agar siswa bisa mengerjakan ulang."
+            if jadwal_berakhir
+            else "Pengerjaan direset. Siswa dapat mengerjakan ulang."
+        ),
+    }
 
 
 @router.get("/{ujian_id}", response_model=UjianSiswaOut)

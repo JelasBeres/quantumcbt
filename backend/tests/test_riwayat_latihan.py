@@ -15,21 +15,26 @@ from test_client_september17 import setup_exam
 client = TestClient(app)
 
 
-def test_riwayat_latihan_berisi_sesi_latihan_selesai_saja():
+def test_riwayat_latihan_berisi_sesi_latihan_selesai_tanpa_drilling():
     headers, paket, _ = setup_exam(tipe="latihan", sections=True)
     with SessionLocal() as db:
         bagian_id, pelajaran_id = db.query(BagianPaket.id, BagianPaket.pelajaran_id).filter(BagianPaket.paket_ujian_id == paket).order_by(BagianPaket.urutan).first()
 
-    ujian = client.post("/ujian-siswa/mulai-latihan", headers=headers, json={"paket_ujian_id": paket, "mode": "drill", "bagian_id": bagian_id}).json()["ujian_siswa_id"]
+    ujian = client.post("/ujian-siswa/mulai-latihan", headers=headers, json={"paket_ujian_id": paket, "mode": "latihan", "bagian_id": bagian_id}).json()["ujian_siswa_id"]
     # Sesi yang belum dikumpulkan belum masuk riwayat.
     assert client.get("/siswa/riwayat-latihan", headers=headers).json() == []
     assert client.patch(f"/ujian-siswa/{ujian}/submit", headers=headers).status_code == 200
+
+    # Sesi drilling yang diselesaikan tidak masuk riwayat.
+    drill = client.post("/ujian-siswa/mulai-latihan", headers=headers, json={"paket_ujian_id": paket, "mode": "drill", "bagian_id": bagian_id}).json()["ujian_siswa_id"]
+    selesai = client.patch(f"/ujian-siswa/{drill}/submit", headers=headers)
+    assert selesai.status_code == 200 and selesai.json()["mode_latihan"] == "drill"
 
     rows = client.get("/siswa/riwayat-latihan", headers=headers).json()
     assert len(rows) == 1
     row = rows[0]
     assert row["ujian_siswa_id"] == ujian and row["sumber"] == "latihan"
-    assert row["mode_latihan"] == "drill" and row["bagian_id"] == bagian_id and row["bagian_nama"] == "Subject 0"
+    assert row["mode_latihan"] == "latihan" and row["bagian_id"] == bagian_id and row["bagian_nama"] == "Subject 0"
     # pelajaran_id dipakai frontend untuk mengelompokkan riwayat per mapel.
     assert row["pelajaran_id"] == pelajaran_id
     assert row["finished_at"] is not None

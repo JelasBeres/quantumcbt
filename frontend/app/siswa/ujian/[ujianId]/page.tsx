@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -115,14 +115,35 @@ export default function ExamRoomPage() {
   const mapelNavRef = useRef<HTMLDivElement>(null);
   const questionRequestRef = useRef(0);
   const [transitioning, setTransitioning] = useState(false);
+  // Soal yang sudah pernah dibuka: nomor yang dibuka lalu ditinggal kosong
+  // diberi warna "belum diisi", beda dari soal yang belum dikerjakan sama sekali.
+  const [dibuka, setDibuka] = useState<Set<number>>(() => new Set());
   const { showConfirm, dialog } = useAppDialog();
+  const isDrill = state?.mode_latihan === "drill";
 
-  const submitExam = useCallback(async (automatic = false) => {
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(`cbt_dibuka_${ujianId}`);
+      if (raw) setDibuka(new Set(JSON.parse(raw) as number[]));
+    } catch {}
+  }, [ujianId]);
+
+  const tandaiDibuka = useCallback((soalId: number) => {
+    setDibuka((prev) => {
+      if (prev.has(soalId)) return prev;
+      const next = new Set(prev).add(soalId);
+      try { window.localStorage.setItem(`cbt_dibuka_${ujianId}`, JSON.stringify(Array.from(next))); } catch {}
+      return next;
+    });
+  }, [ujianId]);
+
+  const submitExam = useCallback(async (automatic = false, confirmOptions?: { description: string; content?: ReactNode; drill?: boolean }) => {
     if (!automatic) {
       const confirmed = await showConfirm({
-        title: "Kumpulkan Ujian",
-        description: "Yakin ingin mengumpulkan ujian? Jawaban tidak dapat diubah lagi.",
-        confirmLabel: "Kumpulkan",
+        title: confirmOptions?.drill ? "Selesai Latihan" : "Kumpulkan Ujian",
+        description: confirmOptions?.description ?? "Yakin ingin mengumpulkan ujian? Jawaban tidak dapat diubah lagi.",
+        content: confirmOptions?.content,
+        confirmLabel: confirmOptions?.drill ? "Selesai" : "Kumpulkan",
         confirmVariant: "danger"
       });
       if (!confirmed) return;
@@ -155,8 +176,9 @@ export default function ExamRoomPage() {
           pendingEssayRef.current = null;
         }
       }
-      await api.patch(`/ujian-siswa/${ujianId}/submit`);
-      router.replace(`/siswa/hasil/${ujianId}`);
+      const { data: selesai } = await api.patch(`/ujian-siswa/${ujianId}/submit`);
+      // Drilling tidak masuk riwayat & tidak punya halaman hasil: kembali ke daftar latihan.
+      router.replace(selesai?.mode_latihan === "drill" ? "/siswa/latihan" : `/siswa/hasil/${ujianId}`);
     } catch (err: any) {
       setError(err.response?.data?.detail || "Ujian gagal dikumpulkan.");
       setSubmitting(false);
@@ -190,6 +212,7 @@ export default function ExamRoomPage() {
       }
       setSaved(response.data.jawaban_user != null || !!response.data.jawaban_teks);
       setNomor(target);
+      tandaiDibuka(response.data.soal_id);
     } catch (err: any) {
       if (requestId !== questionRequestRef.current) return;
       const message = err.response?.data?.detail || "Soal gagal dimuat.";
@@ -200,7 +223,7 @@ export default function ExamRoomPage() {
       setLoading(false);
       window.setTimeout(() => setTransitioning(false), 320);
     }
-  }, [submitExam, ujianId]);
+  }, [submitExam, tandaiDibuka, ujianId]);
 
   // Lanjut ke bagian/mapel berikutnya (dipanggil manual atau otomatis saat waktu bagian habis).
   // Tidak bisa kembali ke bagian sebelumnya setelah pindah.
@@ -254,7 +277,7 @@ export default function ExamRoomPage() {
       .then((response) => {
         const examState: ExamState = response.data;
         if (examState.status === "selesai") {
-          router.replace(`/siswa/hasil/${ujianId}`);
+          router.replace(examState.mode_latihan === "drill" ? "/siswa/latihan" : `/siswa/hasil/${ujianId}`);
           return;
         }
         setState(examState);
@@ -560,30 +583,67 @@ export default function ExamRoomPage() {
   const canAdvanceSection = isLastQuestionInSection && !isLastQuestion && state?.bagian_terakhir === false;
   const progress = totalSoal > 0 ? (answered / totalSoal) * 100 : 0;
 
+  // Warna nomor soal dibuat kontras satu sama lain:
+  // oranye besar = sedang dikerjakan, biru tua = terjawab, kuning = ragu-ragu,
+  // merah garis = sudah dibuka tapi belum diisi, putih = belum dikerjakan.
+  // Drilling: soal yang sudah dikonfirmasi hijau (benar) / merah (salah).
   const soalStateCls = (soalId: number, index: number) => {
-    const savedAnswer = state?.jawaban_tersimpan[String(soalId)];
-    const isAnswered = savedAnswer != null && savedAnswer !== "" && (!Array.isArray(savedAnswer) || savedAnswer.length > 0);
+    const isAnswered = isAnsweredId(soalId);
     const isRagu = state?.ragu_ragu?.[String(soalId)];
     const isCurrent = nomor === index + 1;
-    // Drilling: soal yang sudah dikonfirmasi hijau (benar) / merah (salah),
-    // tetap berwarna walau sedang dibuka (ditandai cincin).
     const hasilDrill = state?.hasil_drill?.[String(soalId)];
-    if (hasilDrill === true || hasilDrill === false) {
-      const warna = hasilDrill
-        ? "border-green-600 bg-green-600 text-white hover:bg-green-700"
-        : "border-red-600 bg-red-600 text-white hover:bg-red-700";
-      return isCurrent ? `-translate-y-1 scale-110 ring-2 ring-brand-primary ring-offset-2 shadow-card-hover ${warna}` : warna;
-    }
-    // Skema warna status (konsisten dengan halaman hasil):
-    // biru = terjawab, kuning = ragu, abu-abu = belum dijawab.
-    let cls = "border-card-border bg-card-bg text-text-muted hover:border-brand-primary/60 hover:bg-brand-primary/5";
-    if (isCurrent) {
-      cls = "-translate-y-1 scale-110 border-brand-primary bg-brand-primary text-heading-light shadow-card-hover";
-    } else if (isAnswered) {
-      cls = "border-blue-600 bg-blue-600 text-white hover:bg-blue-800";
-    }
-    if (isRagu && !isCurrent) cls = "border-amber-500 bg-amber-500 text-white hover:bg-amber-700";
-    return cls;
+    let warna: string;
+    if (hasilDrill === true) warna = "border-green-600 bg-green-600 text-white hover:bg-green-700";
+    else if (hasilDrill === false) warna = "border-red-600 bg-red-600 text-white hover:bg-red-700";
+    else if (isRagu) warna = "border-amber-400 bg-amber-400 text-heading-dark hover:bg-amber-500";
+    else if (isAnswered) warna = "border-brand-primary bg-brand-primary text-white hover:bg-brand-primary-dark";
+    else if (dibuka.has(soalId) && !isCurrent) warna = "border-2 border-red-500 bg-red-50 text-red-600 hover:bg-red-100";
+    else warna = "border-gray-300 bg-white text-body-dark hover:border-brand-primary hover:bg-brand-primary/5";
+    if (!isCurrent) return `h-9 w-9 text-sm lg:h-8 lg:w-8 lg:text-xs ${warna}`;
+    // Sedang dikerjakan: lebih besar dan oranye; bila sudah punya status
+    // (terjawab/ragu/benar/salah) warnanya tetap, ditandai cincin oranye.
+    const punyaStatus = hasilDrill === true || hasilDrill === false || isRagu || isAnswered;
+    return `h-11 w-11 text-base lg:h-10 lg:w-10 lg:text-sm font-bold shadow-card-hover ring-[3px] ring-orange-400 ring-offset-2 ${
+      punyaStatus ? warna : "border-orange-500 bg-orange-500 text-white"
+    }`;
+  };
+
+  // Ringkasan sebelum lanjut bagian / kumpulkan: nomor soal yang masih kosong
+  // dan yang ditandai ragu-ragu pada bagian yang sedang dikerjakan.
+  const ringkasanBagian = () => {
+    const nomorDari = (id: number) => nomorSoal(id, (state?.soal_urutan.indexOf(id) ?? 0) + 1);
+    const kosong = sectionIds.filter((id) => !isAnsweredId(id)).map(nomorDari);
+    const ragu = sectionIds.filter((id) => state?.ragu_ragu?.[String(id)]).map(nomorDari);
+    const namaBagian = bagianUrutan.length > 1 ? bagianAktif?.nama : null;
+    const content = kosong.length === 0 && ragu.length === 0 ? (
+      <div className="flex items-center gap-2 rounded-input border border-green-200 bg-green-50 px-3 py-2.5 text-sm font-semibold text-green-700">
+        <CheckCircle2 className="h-4 w-4 shrink-0" /> Semua soal{namaBagian ? ` ${namaBagian}` : ""} sudah dijawab.
+      </div>
+    ) : (
+      <div className="space-y-2.5">
+        {kosong.length > 0 && (
+          <div className="rounded-input border border-red-200 bg-red-50 px-3 py-2.5">
+            <p className="flex items-center gap-2 text-sm font-bold text-red-700">
+              <AlertTriangle className="h-4 w-4 shrink-0" /> {kosong.length} soal belum dijawab{namaBagian ? ` di ${namaBagian}` : ""}
+            </p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {kosong.map((n) => <span key={n} className="flex h-7 min-w-7 items-center justify-center rounded-full border-2 border-red-500 bg-white px-1.5 text-xs font-bold text-red-600">{n}</span>)}
+            </div>
+          </div>
+        )}
+        {ragu.length > 0 && (
+          <div className="rounded-input border border-amber-200 bg-amber-50 px-3 py-2.5">
+            <p className="flex items-center gap-2 text-sm font-bold text-amber-800">
+              <Flag className="h-4 w-4 shrink-0" /> {ragu.length} soal ditandai ragu-ragu
+            </p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {ragu.map((n) => <span key={n} className="flex h-7 min-w-7 items-center justify-center rounded-full bg-amber-400 px-1.5 text-xs font-bold text-heading-dark">{n}</span>)}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+    return { adaKosong: kosong.length > 0, content };
   };
 
   // Hasil konfirmasi drilling untuk soal yang sedang dibuka (jawaban terkunci & berwarna).
@@ -696,7 +756,7 @@ export default function ExamRoomPage() {
             </div>
           </div>
         )}
-        <div className="mx-auto flex w-full max-w-7xl items-center gap-3 px-4 py-3 sm:px-6">
+        <div className="mx-auto flex w-full max-w-7xl items-center gap-3 px-4 py-2 sm:px-6 lg:py-1">
           <LayoutGrid className="hidden h-4 w-4 shrink-0 text-text-muted sm:block" aria-hidden="true" />
           <div
             ref={soalNavRef}
@@ -711,7 +771,7 @@ export default function ExamRoomPage() {
                   disabled={loading || !sectionIds.includes(soalId)}
                   aria-label={`Soal nomor ${nomorSoal(soalId, index + 1)}`}
                   aria-current={nomor === index + 1 ? "true" : undefined}
-                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border text-sm font-semibold transition-all duration-200 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 disabled:opacity-60 ${soalStateCls(soalId, index)}`}
+                  className={`flex shrink-0 items-center justify-center rounded-full border font-semibold transition-all duration-200 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 disabled:opacity-60 ${soalStateCls(soalId, index)}`}
                 >
                   {nomorSoal(soalId, index + 1)}
                 </button>
@@ -719,9 +779,11 @@ export default function ExamRoomPage() {
             })}
           </div>
           <div className="ml-auto hidden shrink-0 items-center gap-3 text-xs text-text-muted md:flex">
-            <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-blue-600" /> Terjawab {answered}</span>
-            <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-brand-primary" /> Sedang</span>
-            <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-amber-500" /> Ragu-ragu</span>
+            <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-orange-500" /> Sedang</span>
+            <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-brand-primary" /> Terjawab {answered}</span>
+            <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-amber-400" /> Ragu-ragu</span>
+            <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full border-2 border-red-500 bg-red-50" /> Belum diisi</span>
+            <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full border border-gray-300 bg-white" /> Belum dikerjakan</span>
             {state?.mode_latihan === "drill" && <>
               <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-green-600" /> Benar</span>
               <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-red-600" /> Salah</span>
@@ -748,7 +810,7 @@ export default function ExamRoomPage() {
                 {bagianAktif ? <span className="ml-2 rounded-md bg-brand-primary/10 px-2 py-0.5 text-xs font-semibold text-brand-primary">{bagianAktif.nama}</span> : null}
               </h2>
               {question?.is_ragu && (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500 px-3 py-1 text-xs font-semibold text-white">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-400 px-3 py-1 text-xs font-semibold text-heading-dark">
                   <Flag className="h-3.5 w-3.5" /> Ragu-ragu
                 </span>
               )}
@@ -770,7 +832,7 @@ export default function ExamRoomPage() {
           {/* ===== KANAN: JAWABAN =====
               Desktop: kolom jawaban menempel (sticky) di bawah header + strip nomor,
               jadi saat soal panjang di-scroll hanya kolom soal yang bergerak. */}
-          <section className={`min-w-0 rounded-card border border-card-border bg-card-bg p-4 shadow-card sm:p-5 lg:sticky lg:overflow-y-auto ${showMapelNav ? "lg:top-[13.5rem] lg:max-h-[calc(100dvh-13.5rem-6rem)]" : "lg:top-[10.5rem] lg:max-h-[calc(100dvh-10.5rem-6rem)]"}`}>
+          <section className={`min-w-0 rounded-card border border-card-border bg-card-bg p-4 shadow-card sm:p-5 lg:sticky lg:overflow-y-auto ${showMapelNav ? "lg:top-[12rem] lg:max-h-[calc(100dvh-12rem-6rem)]" : "lg:top-[9rem] lg:max-h-[calc(100dvh-9rem-6rem)]"}`}>
             {loading || !question ? (
               <div className="space-y-3 py-10">
                 {[0, 1, 2, 3].map((i) => (
@@ -952,10 +1014,15 @@ export default function ExamRoomPage() {
               <Button
                 disabled={loading || submitting}
                 onClick={async () => {
+                  const { adaKosong, content } = ringkasanBagian();
                   const confirmed = await showConfirm({
                     title: "Lanjut ke Bagian Berikutnya",
-                    description: "Setelah lanjut, kamu tidak bisa kembali ke mapel ini lagi. Yakin ingin lanjut?",
-                    confirmLabel: "Lanjut",
+                    description: adaKosong
+                      ? "Masih ada soal yang belum dijawab. Setelah lanjut, kamu tidak bisa kembali ke mapel ini lagi."
+                      : "Setelah lanjut, kamu tidak bisa kembali ke mapel ini lagi. Yakin ingin lanjut?",
+                    content,
+                    confirmLabel: adaKosong ? "Tetap Lanjut" : "Lanjut",
+                    cancelLabel: adaKosong ? "Kembali Mengerjakan" : undefined,
                   });
                   if (confirmed && state) await advanceSection(state.bagian_aktif);
                 }}
@@ -979,11 +1046,28 @@ export default function ExamRoomPage() {
               <Button
                 variant="danger"
                 disabled={submitting}
-                onClick={async () => { await flushPendingEssay(); submitExam(false); }}
+                onClick={async () => {
+                  await flushPendingEssay();
+                  const { adaKosong, content } = ringkasanBagian();
+                  submitExam(false, isDrill
+                    ? {
+                        drill: true,
+                        description: adaKosong
+                          ? "Masih ada soal yang belum dijawab. Latihan drilling tidak disimpan ke riwayat. Yakin ingin selesai?"
+                          : "Latihan drilling tidak disimpan ke riwayat. Yakin ingin selesai?",
+                        content,
+                      }
+                    : {
+                        description: adaKosong
+                          ? "Masih ada soal yang belum dijawab. Setelah dikumpulkan, jawaban tidak dapat diubah lagi."
+                          : "Yakin ingin mengumpulkan ujian? Jawaban tidak dapat diubah lagi.",
+                        content,
+                      });
+                }}
                 className="w-full transition-all duration-200 active:scale-95"
               >
-                <Send className="h-4 w-4" />
-                {submitting ? "Mengumpulkan..." : "Kumpulkan"}
+                {isDrill ? <CheckCircle2 className="h-4 w-4" /> : <Send className="h-4 w-4" />}
+                {submitting ? (isDrill ? "Menyimpan..." : "Mengumpulkan...") : isDrill ? "Selesai" : "Kumpulkan"}
               </Button>
             )}
           </div>
