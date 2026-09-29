@@ -4,7 +4,7 @@ import random
 from typing import Dict, List, Optional, Union
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -633,7 +633,7 @@ def save_ujian_jawaban(
     ujian_id: int,
     payload: JawabanSaveRequest,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_active_user),
+    current_user=Depends(require_roles(["siswa"])),
 ):
     ujian = db.query(UjianSiswa).filter(UjianSiswa.id == ujian_id).with_for_update().first()
     if not ujian:
@@ -795,7 +795,7 @@ def set_ragu_jawaban(
     ujian_id: int,
     payload: JawabanRaguUpdate,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_active_user),
+    current_user=Depends(require_roles(["siswa"])),
 ):
     """Tandai / hapus tanda ragu-ragu pada jawaban soal (wajib ada soal_id di payload)."""
     if payload.soal_id is None:
@@ -877,9 +877,16 @@ def get_ujian_state(
         soal.id: soal.tipe
         for soal in db.query(Soal).filter(Soal.id.in_(ujian.soal_urutan)).all()
     }
-    compound_ids = {
-        row.soal_id for row in db.query(PernyataanBenarSalah.soal_id).filter(PernyataanBenarSalah.soal_id.in_(ujian.soal_urutan)).distinct().all()
+    # Jumlah pernyataan per soal Benar/Salah majemuk: soal baru dianggap terjawab
+    # bila semua pernyataannya diisi (penilaian juga mewajibkan semuanya).
+    jumlah_pernyataan = {
+        soal_id: jumlah
+        for soal_id, jumlah in db.query(PernyataanBenarSalah.soal_id, func.count(PernyataanBenarSalah.id))
+        .filter(PernyataanBenarSalah.soal_id.in_(ujian.soal_urutan))
+        .group_by(PernyataanBenarSalah.soal_id)
+        .all()
     }
+    compound_ids = set(jumlah_pernyataan)
     jawaban_list = db.query(JawabanSiswa).filter(JawabanSiswa.ujian_siswa_id == ujian.id).all()
     jawaban_tersimpan: Dict[str, Union[int, str, None]] = {}
     ragu_ragu: Dict[str, bool] = {}
@@ -941,6 +948,7 @@ def get_ujian_state(
         soal_urutan=ujian.soal_urutan,
         opsi_urutan=ujian.opsi_urutan or {},
         jawaban_tersimpan=jawaban_tersimpan,
+        jumlah_pernyataan={str(soal_id): jumlah for soal_id, jumlah in jumlah_pernyataan.items()},
         ragu_ragu=ragu_ragu,
         bagian_urutan=bagian_urutan_out,
         waktu_mulai=ensure_utc(ujian.started_at),

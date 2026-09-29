@@ -48,7 +48,7 @@ def test_replace_validation_custom_labels_and_no_key_leak():
 
 
 def test_compound_answer_validation_scoring_and_result_detail():
-    headers, user_id = auth()
+    headers, user_id = auth("siswa")
     with SessionLocal() as db:
         paket = PaketUjian(nama="Compound", durasi_menit=30, jumlah_soal=1)
         soal = Soal(teks_soal="Tabel", tipe="benar_salah", status="approved", label_benar="Benar", label_salah="Salah")
@@ -72,6 +72,11 @@ def test_compound_answer_validation_scoring_and_result_detail():
     assert duplicate.status_code == 400
     partial = client.post(f"/ujian-siswa/{ujian_id}/jawab", headers=headers, json={"soal_id": soal_id, "jawaban_pernyataan": [{"pernyataan_id": first_id, "jawaban": True}]})
     assert partial.status_code == 200
+    # State membawa jumlah pernyataan agar frontend tidak menandai jawaban sebagian sebagai terjawab.
+    state = client.get(f"/ujian-siswa/{ujian_id}/state", headers=headers)
+    assert state.status_code == 200, state.text
+    assert state.json()["jumlah_pernyataan"] == {str(soal_id): 2}
+    assert len(state.json()["jawaban_tersimpan"][str(soal_id)]) == 1
     with SessionLocal() as db:
         ujian = db.query(UjianSiswa).filter(UjianSiswa.id == ujian_id).first()
         assert calculate_ujian_score(db, ujian)[0] == 0

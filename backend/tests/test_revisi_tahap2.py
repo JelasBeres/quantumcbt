@@ -127,3 +127,15 @@ def test_rekap_nilai_membawa_kkm_paket():
     admin = _admin_headers("admin-kkm-rekap")
     rows = client.get("/dashboard/hasil-siswa", headers=admin, params={"paket_ujian_id": paket_id}).json()
     assert rows and all(row["kkm"] == 55 for row in rows)
+
+
+def test_hanya_siswa_pemilik_yang_bisa_menyimpan_jawaban():
+    headers, paket, soal_ids = setup_exam(tipe="ujian")
+    jadwal_id = active_schedule_id(paket)
+    ujian_id = client.post("/ujian-siswa/mulai", headers=headers, json={"jadwal_ujian_id": jadwal_id}).json()["ujian_siswa_id"]
+    admin = _admin_headers("admin-tidak-boleh-menjawab")
+    soal_id = client.get(f"/ujian-siswa/{ujian_id}/state", headers=headers).json()["soal_aktif_ids"][0]
+    # Admin/guru tidak boleh mengubah jawaban atau tanda ragu siswa.
+    assert client.post(f"/ujian-siswa/{ujian_id}/jawab", headers=admin, json={"soal_id": soal_id, "jawaban_teks": "x"}).status_code == 403
+    assert client.patch(f"/ujian-siswa/{ujian_id}/ragu", headers=admin, json={"soal_id": soal_id, "is_ragu": True}).status_code == 403
+    assert client.patch(f"/ujian-siswa/{ujian_id}/ragu", headers=headers, json={"soal_id": soal_id, "is_ragu": True}).status_code == 200

@@ -122,6 +122,8 @@ class UjianSiswaStateOut(BaseModel):
     soal_urutan: List[int]
     opsi_urutan: Dict[str, List[int]]
     jawaban_tersimpan: Dict[str, Union[int, str, list, None]]
+    # soal_id -> jumlah pernyataan (hanya soal Benar/Salah majemuk).
+    jumlah_pernyataan: Dict[str, int] = Field(default_factory=dict)
     ragu_ragu: Dict[str, bool] = Field(default_factory=dict)
     bagian_urutan: Optional[List[BagianUjianOut]] = None
     waktu_mulai: Optional[datetime]

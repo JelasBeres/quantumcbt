@@ -33,6 +33,8 @@ type ExamState = {
   status: "sedang" | "selesai" | "timeout";
   soal_urutan: number[];
   jawaban_tersimpan: Record<string, SavedAnswer>;
+  // Soal Benar/Salah majemuk: jumlah pernyataan yang harus diisi semua.
+  jumlah_pernyataan?: Record<string, number>;
   ragu_ragu?: Record<string, boolean>;
   bagian_urutan?: BagianUjian[];
   jumlah_soal: number;
@@ -43,6 +45,18 @@ type ExamState = {
   // Mode drilling: soal_id -> benar/salah untuk soal yang sudah dikonfirmasi.
   hasil_drill?: Record<string, boolean | null>;
 };
+
+// Soal dianggap terjawab bila ada isinya; Benar/Salah majemuk baru terjawab bila
+// semua pernyataannya sudah diisi (sesuai aturan penilaian).
+function jawabanLengkap(state: Pick<ExamState, "jawaban_tersimpan" | "jumlah_pernyataan">, soalId: number) {
+  const v = state.jawaban_tersimpan[String(soalId)];
+  if (v == null || v === "") return false;
+  if (Array.isArray(v)) {
+    const wajib = state.jumlah_pernyataan?.[String(soalId)];
+    return wajib ? v.length >= wajib : v.length > 0;
+  }
+  return true;
+}
 
 // Hasil konfirmasi satu soal pada mode drilling (ditampilkan sebagai warna, bukan pop-up).
 type DrillFeedback = {
@@ -254,8 +268,7 @@ export default function ExamRoomPage() {
       setRemaining(data.sisa_waktu_detik);
       const firstUnanswered = data.soal_urutan.findIndex((id) => {
         if (!data.soal_aktif_ids.includes(id)) return false;
-        const v = data.jawaban_tersimpan[String(id)];
-        return v == null || (Array.isArray(v) && v.length === 0);
+        return !jawabanLengkap(data, id);
       });
       await loadQuestion(firstUnanswered >= 0 ? firstUnanswered + 1 : data.soal_urutan.indexOf(data.soal_aktif_ids[0]) + 1);
     } catch (err: any) {
@@ -287,8 +300,7 @@ export default function ExamRoomPage() {
         setRemaining(examState.sisa_waktu_detik);
           const firstUnanswered = examState.soal_urutan.findIndex((id) => {
             if (!examState.soal_aktif_ids.includes(id)) return false;
-          const v = examState.jawaban_tersimpan[String(id)];
-          return v == null || (Array.isArray(v) && v.length === 0);
+          return !jawabanLengkap(examState, id);
         });
           loadQuestion(firstUnanswered >= 0 ? firstUnanswered + 1 : examState.soal_urutan.indexOf(examState.soal_aktif_ids[0]) + 1);
       })
@@ -545,11 +557,7 @@ export default function ExamRoomPage() {
     };
   }, [ujianId]);
 
-  const answered = state ? Object.values(state.jawaban_tersimpan).filter((value) => {
-    if (value == null || value === "") return false;
-    if (Array.isArray(value) && value.length === 0) return false;
-    return true;
-  }).length : 0;
+  const answered = state ? state.soal_urutan.filter((id) => jawabanLengkap(state, id)).length : 0;
   const bagianAktif = state?.bagian_urutan?.find((b) => b.soal_ids.includes(question?.soal_id ?? -1));
   const minutes = Math.floor(remaining / 60).toString().padStart(2, "0");
   const seconds = (remaining % 60).toString().padStart(2, "0");
@@ -575,10 +583,7 @@ export default function ExamRoomPage() {
   // (tingkat 2). Mapel hanya penanda posisi, tidak bisa diklik, karena
   // perpindahan bagian tetap satu arah lewat tombol Lanjut Bagian.
   const showMapelNav = bagianUrutan.length > 1;
-  const isAnsweredId = (soalId: number) => {
-    const v = state?.jawaban_tersimpan[String(soalId)];
-    return v != null && v !== "" && (!Array.isArray(v) || v.length > 0);
-  };
+  const isAnsweredId = (soalId: number) => !!state && jawabanLengkap(state, soalId);
   const isLastQuestionInSection = sectionIds.length > 0 && sectionIds[sectionIds.length - 1] === (state?.soal_urutan[nomor - 1] ?? -1);
   const canAdvanceSection = isLastQuestionInSection && !isLastQuestion && state?.bagian_terakhir === false;
   const progress = totalSoal > 0 ? (answered / totalSoal) * 100 : 0;
