@@ -192,12 +192,10 @@ export default function PaketQuestionAssignment() {
 
   const listHref = useMemo(() => {
     if (!paket) return `${basePath}/paket-ujian`;
-    // Paket latihan: set soal dikelola per mapel, jadi kembali ke halaman set mapel itu.
-    if (paket.tipe === "latihan" && bagian?.pelajaran_id) return `${basePath}/paket-ujian/set-soal?id=${paket.id}&pelajaran_id=${bagian.pelajaran_id}`;
     const tipe = paket.tipe === "latihan" ? "latihan" : "ujian";
     const kategoriId = paket.kategori_id == null ? "belum" : String(paket.kategori_id);
-    return `${basePath}/paket-ujian?tipe=${tipe}&kategori_id=${encodeURIComponent(kategoriId)}`;
-  }, [basePath, paket, bagian?.pelajaran_id]);
+    return `${basePath}/paket-ujian?tipe=${tipe}&kategori_id=${encodeURIComponent(kategoriId)}&paket_id=${paket.id}`;
+  }, [basePath, paket]);
 
   const getNama = <T extends { id: number; nama: string }>(list: T[], id: number | null | undefined) => {
     if (!id) return "-";
