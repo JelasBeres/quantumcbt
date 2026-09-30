@@ -79,6 +79,8 @@ export type PaketUjian = {
   metode_penilaian?: "biasa" | "kohort";
   skala_kohort?: "utbk" | "tka";
   izinkan_pilih_mapel?: boolean;
+  min_mapel_pilihan?: number;
+  max_mapel_pilihan?: number;
   kkm?: number;
   jumlah_bagian?: number;
   jumlah_bagian_kosong?: number;
@@ -121,6 +123,7 @@ export type BagianPaket = {
   paket_ujian_id: number;
   nama: string;
   urutan: number;
+  wajib?: boolean;
   durasi_menit?: number | null;
   pelajaran_id?: number | null;
   is_random_soal?: boolean | null;

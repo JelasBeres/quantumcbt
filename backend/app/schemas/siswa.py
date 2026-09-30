@@ -103,10 +103,13 @@ class BagianTersediaOut(BaseModel):
     jumlah_soal: int = 0
     pelajaran_id: Optional[int] = None
     pelajaran_nama: Optional[str] = None
+    wajib: bool = True
 
 
 class SiswaJadwalTersediaOut(SiswaJadwalUjianOut):
     bagian: List[BagianTersediaOut] = Field(default_factory=list)
+    min_mapel_pilihan: int = 0
+    max_mapel_pilihan: int = 0
 
 
 class SiswaRiwayatUjianOut(BaseModel):

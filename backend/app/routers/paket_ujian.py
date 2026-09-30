@@ -193,6 +193,8 @@ def _paket_out(paket: PaketUjian, db: Session, readiness: tuple[int, int, int, b
         "metode_penilaian": paket.metode_penilaian or "biasa",
         "skala_kohort": paket.skala_kohort or "utbk",
         "izinkan_pilih_mapel": paket.izinkan_pilih_mapel if paket.izinkan_pilih_mapel is not None else True,
+        "min_mapel_pilihan": paket.min_mapel_pilihan or 0,
+        "max_mapel_pilihan": paket.max_mapel_pilihan or 0,
         "kkm": paket.kkm if paket.kkm is not None else 75,
         "created_by": paket.created_by,
         "is_archived": paket.is_archived,
@@ -315,6 +317,8 @@ def create_paket_ujian(payload: PaketUjianCreate, db: Session = Depends(get_db),
         metode_penilaian=payload.metode_penilaian,
         skala_kohort=payload.skala_kohort or _derive_skala_kohort(category),
         izinkan_pilih_mapel=payload.izinkan_pilih_mapel,
+        min_mapel_pilihan=payload.min_mapel_pilihan,
+        max_mapel_pilihan=payload.max_mapel_pilihan,
         kkm=payload.kkm,
         created_by=current_user.id,
     )
@@ -443,6 +447,8 @@ def clone_paket_ujian(
         metode_penilaian=source.metode_penilaian or "biasa",
         skala_kohort=source.skala_kohort or "utbk",
         izinkan_pilih_mapel=source.izinkan_pilih_mapel if source.izinkan_pilih_mapel is not None else True,
+        min_mapel_pilihan=source.min_mapel_pilihan or 0,
+        max_mapel_pilihan=source.max_mapel_pilihan or 0,
         kkm=source.kkm if source.kkm is not None else 75,
         created_by=current_user.id,
     )
@@ -462,6 +468,7 @@ def clone_paket_ujian(
             pelajaran_id=section.pelajaran_id,
             is_random_soal=section.is_random_soal,
             is_random_opsi=section.is_random_opsi,
+            wajib=section.wajib,
             deskripsi=section.deskripsi,
         )
         db.add(cloned_section)
@@ -516,6 +523,12 @@ def update_paket_ujian(paket_id: int, payload: PaketUjianUpdate, db: Session = D
         paket.skala_kohort = _derive_skala_kohort(category)
     if payload.izinkan_pilih_mapel is not None:
         paket.izinkan_pilih_mapel = payload.izinkan_pilih_mapel
+    if payload.min_mapel_pilihan is not None:
+        paket.min_mapel_pilihan = payload.min_mapel_pilihan
+    if payload.max_mapel_pilihan is not None:
+        paket.max_mapel_pilihan = payload.max_mapel_pilihan
+    if paket.min_mapel_pilihan > paket.max_mapel_pilihan:
+        raise HTTPException(status_code=400, detail="Minimal mapel pilihan tidak boleh melebihi maksimal")
     if payload.kkm is not None:
         paket.kkm = payload.kkm
     if category is not None:

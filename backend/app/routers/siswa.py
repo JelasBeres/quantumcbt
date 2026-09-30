@@ -360,6 +360,8 @@ def get_siswa_jadwal_tersedia(db: Session = Depends(get_db), current_user=Depend
                 kategori_nama=paket.kategori_ref.nama if paket.kategori_ref else None,
                 deskripsi_paket=paket.deskripsi,
                 izinkan_pilih_mapel=paket.izinkan_pilih_mapel if paket.izinkan_pilih_mapel is not None else True,
+                min_mapel_pilihan=paket.min_mapel_pilihan or 0,
+                max_mapel_pilihan=paket.max_mapel_pilihan or 0,
                 bagian=[
                     BagianTersediaOut(
                         bagian_id=b.id,
@@ -368,6 +370,7 @@ def get_siswa_jadwal_tersedia(db: Session = Depends(get_db), current_user=Depend
                         jumlah_soal=bagian_soal_count.get(b.id, 0),
                         pelajaran_id=b.pelajaran_id,
                         pelajaran_nama=pelajaran_map.get(b.pelajaran_id),
+                        wajib=b.wajib,
                     )
                     for b in bagian_list
                 ],

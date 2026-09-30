@@ -9,6 +9,7 @@ class BagianPaket(Base):
     paket_ujian_id = Column(Integer, ForeignKey("paket_ujian.id", ondelete="CASCADE"), nullable=False, index=True)
     nama = Column(String(200), nullable=False)
     urutan = Column(Integer, nullable=False, default=0)
+    wajib = Column(Boolean, nullable=False, default=True, server_default="true")
     durasi_menit = Column(Integer, nullable=True)
     pelajaran_id = Column(Integer, nullable=True, index=True)
     is_random_soal = Column(Boolean, nullable=True, default=True)

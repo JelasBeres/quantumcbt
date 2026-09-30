@@ -244,6 +244,28 @@ def start_ujian_siswa(
     if paket.is_archived or paket.tipe != "ujian":
         raise HTTPException(status_code=409, detail="Paket tidak tersedia sebagai Try Out. Gunakan menu Latihan untuk berlatih.")
 
+    selected_pelajaran_ids = payload.selected_pelajaran_ids
+    if paket.min_mapel_pilihan or paket.max_mapel_pilihan:
+        sections = db.query(BagianPaket).filter(BagianPaket.paket_ujian_id == paket.id).all()
+        required_ids = {b.pelajaran_id for b in sections if b.wajib and b.pelajaran_id is not None}
+        optional_ids = {b.pelajaran_id for b in sections if not b.wajib and b.pelajaran_id is not None} - required_ids
+        if len(required_ids) != 3:
+            raise HTTPException(status_code=409, detail="Konfigurasi TKA harus memiliki tepat 3 mapel wajib")
+        if paket.min_mapel_pilihan < 1 or paket.max_mapel_pilihan < paket.min_mapel_pilihan:
+            raise HTTPException(status_code=409, detail="Aturan mapel pilihan TKA belum dikonfigurasi dengan benar")
+        if len(optional_ids) < paket.min_mapel_pilihan:
+            raise HTTPException(status_code=409, detail="Jumlah mapel pilihan yang tersedia belum memenuhi batas minimal paket")
+        selected_ids = set(selected_pelajaran_ids or [])
+        if not selected_ids.issubset(required_ids | optional_ids):
+            raise HTTPException(status_code=400, detail="Ada mapel pilihan yang tidak tersedia pada paket ini")
+        chosen_optional = selected_ids.intersection(optional_ids)
+        if not required_ids.issubset(selected_ids):
+            raise HTTPException(status_code=400, detail="Semua mapel wajib harus dipilih")
+        if len(chosen_optional) < paket.min_mapel_pilihan or len(chosen_optional) > paket.max_mapel_pilihan:
+            raise HTTPException(status_code=400, detail=f"Pilih minimal {paket.min_mapel_pilihan} dan maksimal {paket.max_mapel_pilihan} mapel pilihan")
+        if not chosen_optional and paket.min_mapel_pilihan > 0:
+            raise HTTPException(status_code=400, detail="Pilih mapel pilihan terlebih dahulu")
+
     # Cegah mengerjakan ulang: siswa hanya boleh satu kali per jadwal ujian
     submitted_ujian = (
         db.query(UjianSiswa)
@@ -281,7 +303,7 @@ def start_ujian_siswa(
             sisa_waktu_detik=sisa_waktu_detik,
         )
 
-    return _initialize_attempt(db, siswa, paket, jadwal.id)
+    return _initialize_attempt(db, siswa, paket, jadwal.id, selected_pelajaran_ids=selected_pelajaran_ids)
 
 
 @router.post("/mulai-latihan", response_model=UjianSiswaStartOut)
@@ -342,7 +364,7 @@ def start_latihan(payload: LatihanStartRequest, db: Session = Depends(get_db), c
     return _initialize_attempt(db, siswa, paket, mode=mode, bagian_id=bagian_id)
 
 
-def _initialize_attempt(db: Session, siswa: Siswa, paket: PaketUjian, jadwal_id: int | None = None, mode: str = "latihan", bagian_id: int | None = None):
+def _initialize_attempt(db: Session, siswa: Siswa, paket: PaketUjian, jadwal_id: int | None = None, mode: str = "latihan", bagian_id: int | None = None, selected_pelajaran_ids: List[int] | None = None):
     # Serialize starting an attempt with automatic approved-revision replacement.
     paket = db.query(PaketUjian).filter(PaketUjian.id == paket.id).with_for_update().first()
     # soal diambil dari relasi PaketSoal (bank soal), bukan filter kolom soal.paket_ujian_id
@@ -352,6 +374,13 @@ def _initialize_attempt(db: Session, siswa: Siswa, paket: PaketUjian, jadwal_id:
         .order_by(PaketSoal.urutan, PaketSoal.id)
         .all()
     )
+    if selected_pelajaran_ids is not None and (paket.min_mapel_pilihan or paket.max_mapel_pilihan):
+        selected_sections = db.query(BagianPaket.id).filter(
+            BagianPaket.paket_ujian_id == paket.id,
+            BagianPaket.pelajaran_id.in_(selected_pelajaran_ids),
+        ).all()
+        selected_section_ids = {row[0] for row in selected_sections}
+        paket_soal_rows = [row for row in paket_soal_rows if row.bagian_paket_id in selected_section_ids]
     if bagian_id is not None:
         paket_soal_rows = [r for r in paket_soal_rows if r.bagian_paket_id == bagian_id]
     if not paket_soal_rows:
@@ -373,6 +402,9 @@ def _initialize_attempt(db: Session, siswa: Siswa, paket: PaketUjian, jadwal_id:
         .order_by(BagianPaket.urutan, BagianPaket.id)
         .all()
     )
+    if selected_pelajaran_ids is not None and (paket.min_mapel_pilihan or paket.max_mapel_pilihan):
+        selected_set = set(selected_pelajaran_ids)
+        bagian_rows = [row for row in bagian_rows if row.pelajaran_id in selected_set]
     if bagian_rows:
         paket_soal_by_bagian: Dict[int, List[int]] = {}
         for row in paket_soal_rows:
@@ -402,7 +434,9 @@ def _initialize_attempt(db: Session, siswa: Siswa, paket: PaketUjian, jadwal_id:
 
     # Potong jumlah soal secara proporsional per bagian agar soal_urutan dan
     # bagian_urutan tetap konsisten dengan jumlah_soal.
-    if paket.jumlah_soal and paket.jumlah_soal > 0 and paket.jumlah_soal < len(soal_ids):
+    # TKA uses all questions from the selected subjects so each subject score
+    # remains complete; package total is a legacy cap for non-TKA packages.
+    if not (selected_pelajaran_ids is not None and (paket.min_mapel_pilihan or paket.max_mapel_pilihan)) and paket.jumlah_soal and paket.jumlah_soal > 0 and paket.jumlah_soal < len(soal_ids):
         if bagian_urutan:
             sisa_kapasitas = paket.jumlah_soal
             bagian_baru: List[BagianUjianOut] = []

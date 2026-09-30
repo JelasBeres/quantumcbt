@@ -19,10 +19,12 @@ type Jadwal = {
   durasi_menit?: number;
   jumlah_soal?: number;
   tipe?: "ujian" | "latihan" | string;
-  bagian?: { bagian_id: number; nama: string; urutan: number; jumlah_soal?: number; pelajaran_id?: number | null; pelajaran_nama?: string | null }[];
+  bagian?: { bagian_id: number; nama: string; urutan: number; jumlah_soal?: number; pelajaran_id?: number | null; pelajaran_nama?: string | null; wajib?: boolean }[];
   pelajaran?: string | null;
   deskripsi_paket?: string | null;
   izinkan_pilih_mapel?: boolean;
+  min_mapel_pilihan?: number;
+  max_mapel_pilihan?: number;
 };
 
 type Riwayat = {
@@ -50,6 +52,7 @@ export default function DetailPaketPage() {
   const [activeUjianId, setActiveUjianId] = useState<number | null>(null);
   const [selesaiUjianId, setSelesaiUjianId] = useState<number | null>(null);
   const [startingBagianId, setStartingBagianId] = useState<number | null>(null);
+  const [selectedPelajaranIds, setSelectedPelajaranIds] = useState<number[]>([]);
   const autoTriggeredRef = useRef(false);
 
   useEffect(() => {
@@ -73,6 +76,8 @@ export default function DetailPaketPage() {
           return;
         }
         setJadwal(found);
+        const wajibIds = Array.from(new Set((found.bagian ?? []).filter((b) => b.wajib !== false && b.pelajaran_id != null).map((b) => b.pelajaran_id as number)));
+        setSelectedPelajaranIds(wajibIds);
 
         const riwayatList: Riwayat[] = riwayatRes.data ?? [];
         const sameJadwal = riwayatList.filter((r) => r.jadwal_ujian_id === jadwalId);
@@ -98,6 +103,7 @@ export default function DetailPaketPage() {
     try {
       const response = await api.post("/ujian-siswa/mulai", {
         jadwal_ujian_id: jadwal.jadwal_ujian_id,
+        ...(isTkaSelection ? { selected_pelajaran_ids: selectedPelajaranIds } : {}),
       });
       router.push(`/siswa/ujian/${response.data.ujian_siswa_id}`);
     } catch (err: any) {
@@ -106,6 +112,24 @@ export default function DetailPaketPage() {
       setStarting(false);
     }
   };
+
+  const isTkaSelection = Boolean((jadwal?.min_mapel_pilihan ?? 0) > 0 || (jadwal?.max_mapel_pilihan ?? 0) > 0);
+  const mapelPilihan = useMemo(() => {
+    const grouped = new Map<number, { id: number; nama: string; wajib: boolean; jumlahSoal: number }>();
+    for (const bagian of jadwal?.bagian ?? []) {
+      if (bagian.pelajaran_id == null) continue;
+      const current = grouped.get(bagian.pelajaran_id);
+      grouped.set(bagian.pelajaran_id, {
+        id: bagian.pelajaran_id,
+        nama: bagian.pelajaran_nama || bagian.nama,
+        wajib: current ? current.wajib || bagian.wajib !== false : bagian.wajib !== false,
+        jumlahSoal: (current?.jumlahSoal ?? 0) + (bagian.jumlah_soal ?? 0),
+      });
+    }
+    return Array.from(grouped.values());
+  }, [jadwal?.bagian]);
+  const chosenOptionalCount = mapelPilihan.filter((item) => !item.wajib && selectedPelajaranIds.includes(item.id)).length;
+  const selectionValid = !isTkaSelection || (chosenOptionalCount >= (jadwal?.min_mapel_pilihan ?? 0) && chosenOptionalCount <= (jadwal?.max_mapel_pilihan ?? 0));
 
   // Paket dengan izinkan_pilih_mapel=false tidak menampilkan breakdown mapel:
   // kalau dibuka lewat tombol "Mulai Ujian" (?mulai=1), langsung teruskan ke
@@ -171,7 +195,7 @@ export default function DetailPaketPage() {
     }
     if (canStart) {
       return (
-        <button className="student-btn" disabled={starting} onClick={startExam}>
+        <button className="student-btn" disabled={starting || !selectionValid} onClick={startExam}>
           <Play size={15} aria-hidden="true" /> {starting ? "Memuat..." : "Mulai"}
         </button>
       );
@@ -237,6 +261,22 @@ export default function DetailPaketPage() {
               </ul>
             ) : (
               <>
+            {isTkaSelection && (
+              <div className="mb-5 rounded-card border border-brand-primary/20 bg-brand-primary/5 p-4">
+                <h2 className="font-bold text-heading-dark">Pilih Mapel TKA</h2>
+                <p className="mt-1 text-sm text-text-muted">Tiga mapel wajib akan dikerjakan otomatis. Pilih minimal {jadwal.min_mapel_pilihan} dan maksimal {jadwal.max_mapel_pilihan} mapel pilihan.</p>
+                <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {mapelPilihan.map((mapel) => {
+                    const checked = selectedPelajaranIds.includes(mapel.id);
+                    return <label key={mapel.id} className={`flex cursor-pointer items-center gap-3 rounded-input border p-3 ${mapel.wajib ? "border-green-200 bg-green-50" : checked ? "border-brand-primary bg-white" : "border-card-border bg-white"}`}>
+                      <input type="checkbox" checked={checked} disabled={mapel.wajib} onChange={() => setSelectedPelajaranIds((current) => checked ? current.filter((id) => id !== mapel.id) : [...current, mapel.id])} />
+                      <span className="min-w-0 flex-1"><strong className="block text-sm text-heading-dark">{mapel.nama}</strong><small className="text-xs text-text-muted">{mapel.wajib ? "Wajib" : "Pilihan"} · {mapel.jumlahSoal} soal</small></span>
+                    </label>;
+                  })}
+                </div>
+                <p className={`mt-3 text-xs font-semibold ${selectionValid ? "text-green-700" : "text-amber-700"}`}>Pilihan mapel: {chosenOptionalCount} dari {jadwal.min_mapel_pilihan}-{jadwal.max_mapel_pilihan}</p>
+              </div>
+            )}
             {bagianList.length === 0 ? (
               <p className="student-notice">Belum ada set soal pada paket ini.</p>
             ) : (

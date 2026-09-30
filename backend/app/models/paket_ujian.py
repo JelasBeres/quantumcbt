@@ -26,6 +26,8 @@ class PaketUjian(Base):
     metode_penilaian = Column(String(20), nullable=False, default="biasa", server_default="biasa")
     skala_kohort = Column(String(20), nullable=False, default="utbk", server_default="utbk")
     izinkan_pilih_mapel = Column(Boolean, nullable=False, default=True, server_default="true")
+    min_mapel_pilihan = Column(Integer, nullable=False, default=0, server_default="0")
+    max_mapel_pilihan = Column(Integer, nullable=False, default=0, server_default="0")
     # Nilai minimal lulus (0-100); hanya dipakai untuk metode penilaian biasa.
     kkm = Column(Float, nullable=False, default=75, server_default="75")
     kategori_ref = relationship("KategoriPaket", back_populates="paket")

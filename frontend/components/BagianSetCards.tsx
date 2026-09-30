@@ -11,7 +11,7 @@ import { api, getErrorMessage } from "@/lib/api";
 import { labelBagianStatus, toneBagianStatus } from "@/lib/bagian-status";
 import { BagianPaket, PaketUjian, Pelajaran, Soal, Topik } from "@/lib/types";
 import { labelTipeSoal } from "@/lib/tipe-soal";
-import { CheckCircle2, FileDown } from "lucide-react";
+import { ArrowDown, ArrowUp, CheckCircle2, FileDown } from "lucide-react";
 
 const LAPORAN_SOAL_PRESET = [
   "Soal tidak sesuai mapel",
@@ -124,6 +124,22 @@ export default function BagianSetCards({
     router.push(`/${isGuru ? "guru" : "admin"}/paket-ujian/isi-soal?id=${paket.id}&bagian_id=${bagian.id}&tipe=${tipe}&kategori_id=${encodeURIComponent(kategoriId)}`);
   };
 
+  const moveBagian = async (bagian: BagianPaket, direction: -1 | 1) => {
+    const ordered = [...bagianList].sort((a, b) => a.urutan - b.urutan || a.id - b.id);
+    const index = ordered.findIndex((item) => item.id === bagian.id);
+    const target = ordered[index + direction];
+    if (!target) return;
+    try {
+      await Promise.all([
+        api.put(`/paket-ujian/${paket.id}/bagian/${bagian.id}`, { urutan: target.urutan, wajib: bagian.wajib }),
+        api.put(`/paket-ujian/${paket.id}/bagian/${target.id}`, { urutan: bagian.urutan, wajib: target.wajib }),
+      ]);
+      await onChanged();
+    } catch (error) {
+      await showAlert({ title: "Urutan gagal diubah", description: getErrorMessage(error, "Urutan mapel gagal diubah.") });
+    }
+  };
+
   const openBagianPicker = async (bagian: BagianPaket) => {
     if (isGuru) {
       openIsiSoal(bagian);
@@ -218,8 +234,17 @@ export default function BagianSetCards({
               className="rounded-card border border-card-border p-4"
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <h4 className="font-bold text-heading-dark">{bagian.nama}</h4>
-                <Badge tone={toneBagianStatus(bagian.status)}>{labelBagianStatus(bagian.status)}</Badge>
+                <div className="min-w-0">
+                  <h4 className="font-bold text-heading-dark">{bagian.nama}</h4>
+                  {paket.kategori?.toLowerCase().includes("tka") && <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${bagian.wajib === false ? "bg-amber-100 text-amber-800" : "bg-green-100 text-green-800"}`}>{bagian.wajib === false ? "Mapel pilihan" : "Mapel wajib"}</span>}
+                </div>
+                <div className="flex items-center gap-1">
+                  {!isGuru && <>
+                    <button type="button" className="rounded p-1 text-text-muted hover:bg-neutral disabled:opacity-30" disabled={bagianList.every((item) => item.id === bagian.id || item.urutan >= bagian.urutan)} onClick={() => void moveBagian(bagian, -1)} aria-label="Naikkan urutan"><ArrowUp className="h-4 w-4" /></button>
+                    <button type="button" className="rounded p-1 text-text-muted hover:bg-neutral disabled:opacity-30" disabled={bagianList.every((item) => item.id === bagian.id || item.urutan <= bagian.urutan)} onClick={() => void moveBagian(bagian, 1)} aria-label="Turunkan urutan"><ArrowDown className="h-4 w-4" /></button>
+                  </>}
+                  <Badge tone={toneBagianStatus(bagian.status)}>{labelBagianStatus(bagian.status)}</Badge>
+                </div>
               </div>
               <p className="mt-1 text-sm text-text-muted">
                 {getNama(pelajaranList, bagian.pelajaran_id)}

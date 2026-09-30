@@ -85,6 +85,7 @@ export default function PaketUjianPage() {
     nama: "",
     pelajaran_id: "",
     deskripsi: "",
+    wajib: true,
   });
   const [bagianSaving, setBagianSaving] = useState(false);
   // Paket latihan: Mapel -> Set soal -> Soal. Set dikelola di halaman set-soal.
@@ -248,6 +249,7 @@ export default function PaketUjianPage() {
       nama: bagian?.nama ?? "",
       pelajaran_id: bagian?.pelajaran_id ? String(bagian.pelajaran_id) : "",
       deskripsi: bagian?.deskripsi ?? "",
+      wajib: bagian?.wajib !== false,
     });
     setBagianFormOpen(true);
   };
@@ -273,6 +275,7 @@ export default function PaketUjianPage() {
         urutan: 0,
         pelajaran_id: Number(bagianForm.pelajaran_id),
         deskripsi: bagianForm.deskripsi || null,
+        wajib: bagianForm.wajib,
       };
       if (bagianEditingId)
         await api.put(
@@ -837,6 +840,14 @@ export default function PaketUjianPage() {
                   setBagianForm({ ...bagianForm, deskripsi: e.target.value })
                 }
               />
+              {activePaket.kategori?.toLowerCase().includes("tka") && (
+                <Select
+                  label="Jenis Mapel TKA"
+                  value={bagianForm.wajib ? "wajib" : "pilihan"}
+                  onChange={(e) => setBagianForm({ ...bagianForm, wajib: e.target.value === "wajib" })}
+                  options={[{ value: "wajib", label: "Wajib dikerjakan" }, { value: "pilihan", label: "Mapel pilihan siswa" }]}
+                />
+              )}
               <div className="flex gap-2">
                 <Button
                   type="submit"

@@ -37,6 +37,7 @@ class UjianSiswaOut(BaseModel):
 class UjianSiswaStartRequest(BaseModel):
     jadwal_ujian_id: int
     siswa_id: Optional[int] = None
+    selected_pelajaran_ids: Optional[List[int]] = None
 
 
 class UjianSiswaStartOut(BaseModel):

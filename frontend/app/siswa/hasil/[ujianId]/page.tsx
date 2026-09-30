@@ -293,29 +293,29 @@ export default function HasilDetailPage() {
   const skorPersen = skorPembanding != null ? Math.max(0, Math.min(100, skorPembanding)) : 0;
 
   return (
-    <main className="min-h-screen bg-transparent">
+    <main className="student-result-page min-h-screen bg-transparent">
       {/* ===== TOP BAR: back + judul + posisi soal (fixed, semua breakpoint) ===== */}
-      <div className="fixed inset-x-0 top-[var(--st-header-h)] z-30 border-b border-card-border bg-card-bg">
+      <div className="fixed inset-x-0 top-[var(--st-header-h)] z-30 border-b border-white/15 bg-brand-primary text-heading-light">
         <div className="mx-auto flex h-[3.25rem] w-full max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
           <Link
             href={hrefKembali}
             aria-label="Kembali ke riwayat"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-btn text-body-dark transition hover:bg-neutral focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-btn text-heading-light transition hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2"
           >
             <ArrowLeft className="h-4.5 w-4.5" aria-hidden="true" />
           </Link>
-          <p className="truncate text-sm font-bold text-heading-dark">Pembahasan{namaBagianFilter ? ` · ${namaBagianFilter}` : ""}</p>
-          <span className="shrink-0 text-xs font-semibold text-text-muted">
+          <p className="truncate text-sm font-bold text-heading-light">Pembahasan{namaBagianFilter ? ` · ${namaBagianFilter}` : ""}</p>
+          <span className="shrink-0 text-xs font-semibold text-heading-light/80">
             {posisiAktif.ke} / {posisiAktif.dari}
           </span>
         </div>
       </div>
 
       {/* ===== NAVIGATOR NOMOR SOAL (mobile/tablet saja) ===== */}
-      <div className="fixed inset-x-0 top-[calc(var(--st-header-h)+3.25rem)] z-30 border-b border-card-border bg-card-bg lg:hidden">
-        <div className="mx-auto flex h-[3.5rem] w-full max-w-7xl items-center gap-2 px-4 sm:px-6">
+      <div className="fixed inset-x-0 top-[calc(var(--st-header-h)+3rem)] z-30 border-b border-card-border bg-card-bg lg:hidden">
+        <div className="mx-auto flex h-[3rem] w-full max-w-7xl items-center gap-2 px-4 sm:px-6">
           <span className="shrink-0 text-[11px] font-bold uppercase tracking-wider text-text-muted">Soal</span>
-          <div ref={navStripRef} className="flex items-center gap-1.5 overflow-x-auto px-1.5 py-1.5" style={{ scrollbarWidth: "thin" }}>
+          <div ref={navStripRef} className="flex items-center gap-2.5 overflow-x-auto px-2 py-1.5" style={{ scrollbarWidth: "thin" }}>
             {grupBagian.map((grup, gi) => (
               <Fragment key={`${grup.nama ?? "umum"}-${gi}`}>
                 {adaBagian && grup.nama && (
@@ -331,10 +331,10 @@ export default function HasilDetailPage() {
                       onClick={() => setNomor(soal.nomor)}
                       aria-label={`${judulSoal(soal)}${soal.is_ragu ? " (ragu-ragu)" : ""}`}
                       aria-current={isCurrent ? "true" : undefined}
-                      className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-transparent text-[13px] font-bold transition-all duration-200 hover:scale-110 ${
+                      className={`relative flex shrink-0 items-center justify-center rounded-full border border-transparent font-bold transition-all duration-200 hover:scale-110 ${
                         isCurrent
-                          ? "ring-2 ring-brand-primary ring-offset-1 " + statusCls(st)
-                          : statusCls(st)
+                          ? "h-9 w-9 text-sm font-bold ring-2 ring-orange-400 ring-offset-1 " + statusCls(st)
+                          : "h-8 w-8 text-xs " + statusCls(st)
                       } text-white`}
                     >
                       {labelNomor(soal)}
@@ -349,11 +349,11 @@ export default function HasilDetailPage() {
       </div>
 
       {/* Padding atas mobile mencakup top bar + navigator; desktop hanya top bar */}
-      <div className="mx-auto max-w-7xl px-4 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] pt-[calc(6.75rem+0.75rem)] sm:px-6 lg:pb-28 lg:pt-[calc(3.25rem+1.5rem)]">
+      <div className="mx-auto max-w-7xl px-4 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] pt-[calc(var(--st-header-h)+3.25rem+3.5rem+1rem)] sm:px-6 lg:pb-28 lg:pt-[calc(3.25rem+1.5rem)]">
         <div className="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)_260px] lg:items-start">
 
           {/* ===== RINGKASAN SKOR (mobile/tablet; di desktop ada di panel kiri) ===== */}
-          <div className="flex items-center gap-4 rounded-card border border-card-border bg-card-bg p-4 shadow-card lg:hidden">
+          <div className="student-result-summary flex items-center gap-4 rounded-card border border-card-border bg-card-bg p-4 shadow-card lg:hidden">
             <div className="flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-full border-4 border-brand-primary">
               <span className="text-xl font-extrabold text-heading-dark">{skor != null ? skorBulat : "-"}</span>
             </div>
@@ -389,9 +389,9 @@ export default function HasilDetailPage() {
               </div>
             )}
             {soalAktif ? (
-              <div className="rounded-card border border-card-border bg-card-bg shadow-card">
+              <div className="student-result-card rounded-card border border-card-border bg-card-bg shadow-card">
                 {/* Bar info soal â€” statis, terpisah dari isi soal */}
-                <div className="sticky top-[calc(var(--st-header-h)+6.75rem)] z-20 lg:top-[calc(var(--st-header-h)+3.25rem)] flex flex-wrap items-center justify-between gap-2 rounded-t-card border-b border-card-border bg-card-bg px-5 py-3.5">
+                <div className="student-result-card-head flex flex-wrap items-center justify-between gap-2 rounded-t-card border-b border-card-border bg-card-bg px-4 py-3 lg:sticky lg:top-[calc(var(--st-header-h)+3.25rem)] lg:z-20 sm:px-5 sm:py-3.5">
                   <div className="flex items-center gap-3">
                     <h2 className="text-sm font-bold text-heading-dark">{judulSoal(soalAktif)}</h2>
                     <span className="text-xs text-text-muted">{labelTipeSoal(soalAktif.tipe)}</span>
@@ -415,7 +415,7 @@ export default function HasilDetailPage() {
                   </div>
                 </div>
 
-                <div className="space-y-5 px-5 py-5">
+                <div className="student-result-card-body space-y-5 px-4 py-4 sm:px-5 sm:py-5">
                   <MathContent className="prose prose-sm max-w-none" html={soalAktif.teks_soal} />
 
                   {soalAktif.tipe === "benar_salah" && soalAktif.pernyataan && soalAktif.pernyataan.length > 0 && (
@@ -477,10 +477,10 @@ export default function HasilDetailPage() {
                           badge = <span className="text-xs font-semibold text-red-700">Jawabanmu</span>;
                         }
                         return (
-                          <div key={opt.id} className={`flex items-start gap-2 rounded-input border p-2.5 ${style}`}>
+                          <div key={opt.id} className={`flex min-w-0 flex-wrap items-start gap-2 rounded-input border p-2.5 ${style}`}>
                             <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${isUser ? "bg-brand-primary text-white" : "bg-neutral text-body-dark"}`}>{opt.label}</span>
-                            <span className="flex-1"><MathContent className="prose prose-sm max-w-none" html={opt.teks} /></span>
-                            {badge}
+                            <span className="min-w-0 flex-1"><MathContent className="prose prose-sm max-w-none" html={opt.teks} /></span>
+                            {badge && <span className="max-w-full shrink-0 text-right">{badge}</span>}
                           </div>
                         );
                       })}
@@ -730,15 +730,16 @@ export default function HasilDetailPage() {
 
       {/* ===== FOOTER FIXED: Sebelumnya / Soal X dari Y / Berikutnya ===== */}
       {/* Dinaikkan di atas bottom nav aplikasi pada mobile agar tidak tertutup. */}
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-card-border bg-card-bg pb-[env(safe-area-inset-bottom,0px)]">
-        <div className="mx-auto flex w-full max-w-xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
-          <Button variant="outline" size="sm" disabled={indeksAktif <= 0} onClick={() => indeksAktif > 0 && setNomor(soalList[indeksAktif - 1].nomor)}>
+      <div className="student-result-footer fixed inset-x-0 bottom-0 z-40 border-t border-card-border bg-card-bg pb-[env(safe-area-inset-bottom,0px)]">
+        <div className="mx-auto grid w-full max-w-xl grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 sm:px-6">
+          <Button className="student-result-footer-button" variant="outline" size="sm" disabled={indeksAktif <= 0} onClick={() => indeksAktif > 0 && setNomor(soalList[indeksAktif - 1].nomor)}>
             Sebelumnya
           </Button>
-          <span className="text-xs font-semibold text-text-muted">
-            {adaBagian && grupAktif?.nama ? `${grupAktif.nama} · ` : ""}Soal {posisiAktif.ke} dari {posisiAktif.dari}
+          <span className="student-result-footer-label min-w-0 text-center text-xs font-semibold leading-tight text-text-muted">
+            {adaBagian && grupAktif?.nama && <span className="block truncate">{grupAktif.nama}</span>}
+            <span className="block">Soal {posisiAktif.ke} dari {posisiAktif.dari}</span>
           </span>
-          <Button variant="outline" size="sm" disabled={indeksAktif < 0 || indeksAktif >= soalList.length - 1} onClick={() => indeksAktif >= 0 && indeksAktif < soalList.length - 1 && setNomor(soalList[indeksAktif + 1].nomor)}>
+          <Button className="student-result-footer-button" variant="outline" size="sm" disabled={indeksAktif < 0 || indeksAktif >= soalList.length - 1} onClick={() => indeksAktif >= 0 && indeksAktif < soalList.length - 1 && setNomor(soalList[indeksAktif + 1].nomor)}>
             Berikutnya
           </Button>
         </div>

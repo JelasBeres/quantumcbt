@@ -9,6 +9,7 @@ BAGIAN_STATUS = ("draft", "pending_review", "revision_required", "approved")
 class BagianPaketCreate(BaseModel):
     nama: str = ""
     urutan: int = 0
+    wajib: bool = True
     durasi_menit: None = None
     pelajaran_id: int
     is_random_soal: Optional[bool] = True
@@ -21,6 +22,7 @@ class BagianPaketCreate(BaseModel):
 class BagianPaketUpdate(BaseModel):
     nama: Optional[str] = None
     urutan: Optional[int] = None
+    wajib: Optional[bool] = None
     pelajaran_id: Optional[int] = None
     is_random_soal: Optional[bool] = None
     is_random_opsi: Optional[bool] = None
@@ -34,6 +36,7 @@ class BagianPaketOut(BaseModel):
     paket_ujian_id: int
     nama: str
     urutan: int
+    wajib: bool = True
     durasi_menit: Optional[int] = None
     pelajaran_id: Optional[int] = None
     is_random_soal: Optional[bool] = True

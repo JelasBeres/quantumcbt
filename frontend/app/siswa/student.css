@@ -205,6 +205,16 @@ a.student-stat:focus-visible { outline: 2px solid #2d3c8f; outline-offset: 2px; 
 .student-exam { padding-bottom: 0; }
 .student-exam ::selection { background: #2d3c8f33; }
 
+/* Halaman pembahasan mengikuti alur mobile halaman pengerjaan: satu kolom,
+   header soal ikut mengalir, dan konten rich text tidak boleh mendorong layar. */
+.student-result-page { overflow-x: hidden; }
+.student-result-page .rich-content { min-width: 0; overflow-wrap: anywhere; }
+.student-result-page .rich-content img { max-width: 100%; height: auto; }
+.student-result-page .rich-content pre { max-width: 100%; overflow-x: auto; }
+.student-result-page .rich-content table { max-width: 100%; }
+.student-result-page .student-result-card-body > * { min-width: 0; }
+.student-result-page .student-result-card-body .overflow-x-auto { max-width: 100%; }
+
 @media (min-width: 1024px) {
   .student-desktop-nav { display: flex; }
   .student-shell .bottom-nav-shell { display: none !important; }
@@ -257,6 +267,35 @@ a.student-stat:focus-visible { outline: 2px solid #2d3c8f; outline-offset: 2px; 
   .student-back { margin-bottom: 18px; }
   .student-stat { padding: 14px; }
   .student-stat strong { font-size: 23px; }
+
+  .student-result-page .prose { font-size: .9375rem; line-height: 1.6; }
+  .student-result-page .prose p { overflow-wrap: anywhere; }
+  .student-result-page .rounded-card { border-radius: 14px; }
+
+  /* Pembahasan memakai ritme dan ruang yang sama dengan area pengerjaan soal. */
+  .student-result-page > .fixed:first-child > div { height: 3rem; padding-left: 12px; padding-right: 12px; }
+  .student-result-page > .fixed:first-child + .fixed > div { height: 3rem; padding-left: 12px; padding-right: 12px; }
+  .student-result-page > .fixed:first-child + .fixed > div > span { font-size: 10px; }
+  .student-result-page > .fixed:first-child + .fixed > div > div { min-width: 0; gap: 5px; padding-left: 0; padding-right: 0; }
+  .student-result-page > .fixed:first-child + .fixed button { width: 32px; height: 32px; font-size: 12px; }
+  .student-result-page > .fixed:first-child + .fixed button[aria-current="true"] { width: 36px; height: 36px; font-size: 13px; }
+  .student-result-page > .mx-auto.max-w-7xl { margin-top: -24px; padding-top: calc(var(--st-header-h) + 3rem + 3rem); padding-left: 12px; padding-right: 12px; }
+  .student-result-page > .fixed:first-child + .fixed > div > div { gap: 10px; }
+  .student-result-summary { gap: 12px; padding: 12px; }
+  .student-result-summary > div:first-child { width: 54px; height: 54px; border-width: 3px; }
+  .student-result-summary > div:first-child span { font-size: 17px; }
+  .student-result-card-head { align-items: flex-start; padding: 12px; }
+  .student-result-card-head > div:first-child { min-width: 0; flex: 1 1 100%; gap: 7px; }
+  .student-result-card-head h2 { min-width: 0; overflow-wrap: anywhere; font-size: 13px; line-height: 1.35; }
+  .student-result-card-head > div:last-child { width: 100%; justify-content: space-between; }
+  .student-result-card-head button { padding-left: 0; padding-right: 0; }
+  .student-result-card-body { padding: 14px 12px; }
+  .student-result-card-body .overflow-x-auto table { min-width: 460px; }
+  .student-result-card-body .flex.min-w-0.flex-wrap { align-items: flex-start; }
+  .student-result-card-body .flex.min-w-0.flex-wrap > span:last-child { flex: 0 0 100%; padding-left: 2rem; text-align: left; }
+  .student-result-footer > div { gap: 8px; padding: 8px 12px; }
+  .student-result-footer-button { min-width: 0; padding-left: 9px !important; padding-right: 9px !important; font-size: 11px !important; }
+  .student-result-footer-label { font-size: 11px; }
 
   /* Modal pilih mode: ringkas agar muat satu layar tanpa scroll */
   .student-modal-backdrop { padding: 12px; }

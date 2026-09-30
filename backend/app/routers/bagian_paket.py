@@ -99,6 +99,7 @@ def _bagian_detail(bagian: BagianPaket, db: Session, paket: PaketUjian | None = 
         paket_ujian_id=bagian.paket_ujian_id,
         nama=bagian.nama,
         urutan=bagian.urutan,
+        wajib=bagian.wajib,
         durasi_menit=bagian.durasi_menit,
         pelajaran_id=bagian.pelajaran_id,
         is_random_soal=bagian.is_random_soal,
@@ -251,6 +252,7 @@ def create_bagian(payload: BagianPaketCreate, paket_id: int, db: Session = Depen
         paket_ujian_id=paket_id,
         nama=_resolve_nama_bagian(db, paket_id, pelajaran, payload.nama),
         urutan=payload.urutan if payload.urutan > 0 else _next_urutan(paket_id, db),
+        wajib=payload.wajib,
         durasi_menit=None,
         pelajaran_id=payload.pelajaran_id,
         is_random_soal=payload.is_random_soal,
@@ -337,6 +339,8 @@ def update_bagian(bagian_id: int, payload: BagianPaketUpdate, paket_id: int, db:
         bagian.nama = _resolve_nama_bagian(db, paket_id, pelajaran, payload.nama, bagian.id)
     if payload.urutan is not None:
         bagian.urutan = payload.urutan
+    if payload.wajib is not None:
+        bagian.wajib = payload.wajib
     if "pelajaran_id" in payload.model_fields_set:
         bagian.pelajaran_id = selected_pelajaran_id
         ensure_paket_mapel(db, paket_id, pelajaran.id)

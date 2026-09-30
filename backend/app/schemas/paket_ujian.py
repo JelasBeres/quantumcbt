@@ -30,6 +30,8 @@ class PaketUjianCreate(BaseModel):
     metode_penilaian: Literal["biasa", "kohort"] = "biasa"
     skala_kohort: Optional[Literal["utbk", "tka"]] = None
     izinkan_pilih_mapel: bool = True
+    min_mapel_pilihan: int = Field(default=0, ge=0, le=50)
+    max_mapel_pilihan: int = Field(default=0, ge=0, le=50)
     kkm: float = Field(default=75, ge=0, le=100)
 
     @model_validator(mode="after")
@@ -37,6 +39,8 @@ class PaketUjianCreate(BaseModel):
         if self.kategori_id is None and self.kategori is None:
             raise ValueError("Kategori wajib diisi")
         _validate_scoring(self.tipe, self.metode_penilaian)
+        if self.min_mapel_pilihan > self.max_mapel_pilihan:
+            raise ValueError("Minimal mapel pilihan tidak boleh melebihi maksimal")
         return self
 
 
@@ -56,6 +60,8 @@ class PaketUjianUpdate(BaseModel):
     metode_penilaian: Optional[Literal["biasa", "kohort"]] = None
     skala_kohort: Optional[Literal["utbk", "tka"]] = None
     izinkan_pilih_mapel: Optional[bool] = None
+    min_mapel_pilihan: Optional[int] = Field(default=None, ge=0, le=50)
+    max_mapel_pilihan: Optional[int] = Field(default=None, ge=0, le=50)
     kkm: Optional[float] = Field(default=None, ge=0, le=100)
 
 
@@ -78,6 +84,8 @@ class PaketUjianOut(BaseModel):
     metode_penilaian: Literal["biasa", "kohort"] = "biasa"
     skala_kohort: Literal["utbk", "tka"] = "utbk"
     izinkan_pilih_mapel: bool = True
+    min_mapel_pilihan: int = 0
+    max_mapel_pilihan: int = 0
     kkm: float = 75
     jumlah_bagian: int = 0
     jumlah_bagian_kosong: int = 0

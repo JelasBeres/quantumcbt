@@ -23,6 +23,8 @@ type FormData = {
   is_random_soal: boolean;
   is_random_opsi: boolean;
   izinkan_pilih_mapel: boolean;
+  min_mapel_pilihan: string;
+  max_mapel_pilihan: string;
   kkm: string;
 };
 
@@ -44,6 +46,8 @@ export default function TambahPaketUjianPage() {
     is_random_soal: true,
     is_random_opsi: true,
     izinkan_pilih_mapel: true,
+    min_mapel_pilihan: "1",
+    max_mapel_pilihan: "2",
     kkm: "75",
   });
   const [kategoriList, setKategoriList] = useState<KategoriPaket[]>([]);
@@ -82,6 +86,8 @@ export default function TambahPaketUjianPage() {
             is_random_soal: item.is_random_soal,
             is_random_opsi: item.is_random_opsi,
             izinkan_pilih_mapel: item.izinkan_pilih_mapel !== false,
+            min_mapel_pilihan: String(item.min_mapel_pilihan ?? 1),
+            max_mapel_pilihan: String(item.max_mapel_pilihan ?? 2),
             kkm: String(item.kkm ?? 75),
           });
           setLegacyPelajaranId(item.pelajaran_id ?? null);
@@ -101,6 +107,8 @@ export default function TambahPaketUjianPage() {
     (item) => item.is_active && (item.tipe === "keduanya" || item.tipe === formData.tipe),
   );
   const listHref = `/admin/paket-ujian?tipe=${formData.tipe}${formData.kategori_id ? `&kategori=${formData.kategori_id}` : ""}`;
+  const selectedCategory = kategoriList.find((item) => String(item.id) === formData.kategori_id);
+  const isTka = `${selectedCategory?.kode ?? ""} ${selectedCategory?.nama ?? ""}`.toUpperCase().includes("TKA");
 
   const handleCategoryChange = (kategoriId: string) => {
     const category = kategoriList.find((item) => String(item.id) === kategoriId);
@@ -131,6 +139,8 @@ export default function TambahPaketUjianPage() {
         is_random_soal: formData.is_random_soal,
         is_random_opsi: formData.is_random_opsi,
         izinkan_pilih_mapel: formData.tipe === "ujian" ? formData.izinkan_pilih_mapel : true,
+        min_mapel_pilihan: isTka ? Number(formData.min_mapel_pilihan) : 0,
+        max_mapel_pilihan: isTka ? Number(formData.max_mapel_pilihan) : 0,
         kkm,
         jumlah_soal: jumlahSoal,
         pelajaran_id: editId ? legacyPelajaranId : null,
@@ -206,6 +216,16 @@ export default function TambahPaketUjianPage() {
                   />
                 )}
               </div>
+              {isTka && (
+                <div className="mt-4 rounded-input border border-brand-primary/20 bg-brand-primary/5 p-4">
+                  <p className="text-sm font-bold text-heading-dark">Pilihan Mapel TKA</p>
+                  <p className="mt-1 text-xs text-text-muted">Mapel wajib ditentukan pada kartu mapel. Siswa akan memilih mapel pilihan sebelum mulai mengerjakan.</p>
+                  <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                    <Input label="Minimal mapel pilihan" type="number" min={1} max={19} required value={formData.min_mapel_pilihan} onChange={(e) => setFormData({ ...formData, min_mapel_pilihan: e.target.value })} />
+                    <Input label="Maksimal mapel pilihan" type="number" min={1} max={19} required value={formData.max_mapel_pilihan} onChange={(e) => setFormData({ ...formData, max_mapel_pilihan: e.target.value })} />
+                  </div>
+                </div>
+              )}
               {formData.metode_penilaian === "kohort" && <p className="mt-3 text-xs text-text-muted">Benchmark Kohort membandingkan jawaban dengan peserta terbaru dalam program yang sama. Nilai sementara hingga minimal 5 peserta dan selama koreksi esai belum selesai (esai belum dinilai dihitung 0); belum tersedia jika seluruh soal dijawab benar.</p>}
             </div>
           )}
