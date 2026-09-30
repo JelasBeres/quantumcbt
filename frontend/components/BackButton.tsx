@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
 import { ArrowLeft } from "lucide-react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 // Parent route used when there is no in-app history (page opened directly / new tab).
 function parentPath(pathname: string) {
@@ -11,22 +10,41 @@ function parentPath(pathname: string) {
   return `/${segments.slice(0, -1).join("/")}`;
 }
 
+function packageHref(pathname: string, searchParams: URLSearchParams) {
+  const basePath = pathname.startsWith("/guru/") ? "/guru" : "/admin";
+  const packageId = searchParams.get("paket_id") || searchParams.get("id");
+  if (!packageId || !/^\d+$/.test(packageId)) return null;
+
+  const isAssignment = pathname.endsWith("/paket-ujian/isi-soal");
+  const isSetSoal = pathname.endsWith("/paket-ujian/set-soal");
+  const isPackageDetail = pathname === `${basePath}/paket-ujian` && searchParams.has("paket_id");
+  if (!isAssignment && !isSetSoal && !isPackageDetail) return null;
+
+  const tipe = searchParams.get("tipe") || (isSetSoal ? "latihan" : "");
+  const kategori = searchParams.get("kategori_id") || searchParams.get("kategori");
+  if (isAssignment || isSetSoal) {
+    const query = new URLSearchParams({ paket_id: packageId });
+    if (tipe) query.set("tipe", tipe);
+    if (kategori) query.set("kategori_id", kategori);
+    return `${basePath}/paket-ujian?${query.toString()}`;
+  }
+
+  const query = new URLSearchParams();
+  if (tipe) query.set("tipe", tipe);
+  if (kategori) query.set("kategori_id", kategori);
+  return `${basePath}/paket-ujian${query.toString() ? `?${query.toString()}` : ""}`;
+}
+
 export default function BackButton() {
   const router = useRouter();
   const pathname = usePathname() ?? "";
-  const firstPath = useRef(pathname);
-  const hasInAppHistory = useRef(false);
-
-  useEffect(() => {
-    if (pathname !== firstPath.current) hasInAppHistory.current = true;
-  }, [pathname]);
+  const searchParams = useSearchParams();
 
   const segments = pathname.split("/").filter(Boolean);
   if (segments.length < 2 || segments[1] === "dashboard") return null;
 
   const goBack = () => {
-    if (hasInAppHistory.current) router.back();
-    else router.push(parentPath(pathname));
+    router.push(packageHref(pathname, searchParams) ?? parentPath(pathname));
   };
 
   return (
