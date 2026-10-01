@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { CSSProperties, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, Lock } from "lucide-react";
 import { api, getErrorMessage } from "@/lib/api";
 import { KATEGORI_LAINNYA, fetchRiwayatLatihan, kategoriKey } from "@/lib/riwayat";
 
-// Riwayat Latihan langkah 1: pilih kategori (sama seperti menu Latihan), lalu sesi latihan.
+const WARNA_KATEGORI = ["#2d3c8f", "#0f766e", "#c2410c", "#7c3aed", "#be123c", "#0369a1"];
+
 type Kategori = { kode: string; nama: string; tipe: "ujian" | "latihan" | "keduanya"; is_active: boolean };
 
 export default function RiwayatLatihanKategoriPage() {
@@ -31,8 +32,6 @@ export default function RiwayatLatihanKategoriPage() {
         const aktif = (katRes.data ?? [])
           .filter((k) => k.is_active && (k.tipe === "keduanya" || k.tipe === "latihan"))
           .map((k) => ({ kode: k.kode, nama: k.nama }));
-        // Kategori di luar menu Latihan (mis. latihan per-mapel dari paket tryout,
-        // atau kategori yang sudah nonaktif) tetap tampil bila siswa punya riwayatnya.
         const kodeAktif = new Set(aktif.map((k) => k.kode));
         const tambahan = Object.keys(count)
           .filter((kode) => kode !== KATEGORI_LAINNYA && !kodeAktif.has(kode))
@@ -62,18 +61,23 @@ export default function RiwayatLatihanKategoriPage() {
         <p className="student-notice mt-6">Belum ada latihan yang selesai dikerjakan.</p>
       ) : (
         <div className="student-kategori-grid">
-          {kategori.map((k) => {
+          {kategori.map((k, i) => {
             const n = jumlah[k.kode] ?? 0;
+            const Icon = n > 0 ? BookOpen : Lock;
             const inner = (
               <>
-                <strong>{k.nama}</strong>
+                <span className="student-kategori-icon"><Icon size={24} aria-hidden="true" /></span>
+                <span className="student-kategori-text">
+                  <strong>{k.nama}</strong>
+                  <small>{n > 0 ? `${n} sesi latihan` : "Belum ada riwayat pada kategori ini"}</small>
+                </span>
                 <span className="student-kategori-foot">
-                  {n > 0 ? <><em>{n} sesi latihan</em><ArrowRight size={16} aria-hidden="true" /></> : <em>Belum ada riwayat</em>}
+                  {n > 0 ? <><em>Buka</em><ArrowRight size={16} aria-hidden="true" /></> : <em>Kosong</em>}
                 </span>
               </>
             );
             return n > 0
-              ? <Link key={k.kode} href={`/siswa/riwayat/latihan/${encodeURIComponent(k.kode)}`} className="student-kategori">{inner}</Link>
+              ? <Link key={k.kode} href={`/siswa/riwayat/latihan/${encodeURIComponent(k.kode)}`} className="student-kategori" style={{ "--kat": WARNA_KATEGORI[i % WARNA_KATEGORI.length] } as CSSProperties}>{inner}</Link>
               : <div key={k.kode} className="student-kategori student-kategori-off" aria-disabled="true">{inner}</div>;
           })}
         </div>

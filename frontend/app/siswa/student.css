@@ -68,7 +68,7 @@
 .student-split-page { padding-top: 28px; }
 .student-back { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--st-muted); margin-bottom: 14px; }
 .student-back:hover { color: var(--st-heading); }
-.student-split-head h1 { font-size: 26px; font-weight: 700; color: var(--st-heading); margin: 4px 0 0; }
+.student-split-head h1 { font-size: 26px; font-weight: 700; color: var(--st-heading); margin: 4px 0 0; overflow-wrap: anywhere; }
 .student-split-main { margin-top: 24px; }
 .student-split-label { font-size: 13px; font-weight: 600; color: var(--st-muted); margin-bottom: 10px; }
 .student-set-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; list-style: none; margin: 0; padding: 0; }
@@ -80,7 +80,7 @@
 .student-set-actions { display: flex; flex-direction: column; gap: 6px; }
 .student-set-actions .student-btn, .student-set-actions .student-pill { width: 100%; text-align: center; }
 /* Kotak pencarian daftar Latihan/Tryout */
-.student-search { display: flex; align-items: center; gap: 10px; max-width: 420px; padding: 0 14px; height: 44px; border-radius: 12px; border: 1px solid var(--st-border-strong); background: var(--st-surface); color: var(--st-muted); transition: border-color .2s; }
+.student-search { display: flex; align-items: center; gap: 10px; max-width: 420px; width: 100%; padding: 0 14px; height: 44px; border-radius: 12px; border: 1px solid var(--st-border-strong); background: var(--st-surface); color: var(--st-muted); transition: border-color .2s; }
 .student-search:focus-within { border-color: var(--st-accent-soft); }
 .student-search input { flex: 1; min-width: 0; height: 100%; border: 0; outline: none; background: transparent; color: var(--st-heading); font-size: 14px; }
 .student-search input::placeholder { color: var(--st-subtle); }
@@ -226,18 +226,18 @@ a.student-stat:focus-visible { outline: 2px solid #2d3c8f; outline-offset: 2px; 
   .student-split-main { margin-top: 16px; }
   .student-kategori-grid { gap: 10px; }
   .student-kategori { gap: 12px; padding: 14px; }
-  .student-kategori-icon { width: 42px; height: 42px; border-radius: 12px; }
+  .student-kategori-icon { width: 44px; height: 44px; border-radius: 12px; }
   .student-kategori strong { font-size: 16px; }
-  .student-kategori-foot { padding: 6px 10px; font-size: 12px; }
-  /* HP: kartu set 3 kolom, dibuat ringkas */
-  .student-set-list { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-  .student-set { min-height: 0; gap: 8px; padding: 10px; border-radius: 12px; }
-  .student-set-no { width: 26px; height: 26px; border-radius: 8px; font-size: 12px; }
-  .student-set h3 { font-size: 13px; line-height: 1.3; }
-  .student-set .student-meta { gap: 2px; font-size: 11px; }
-  .student-set .student-meta svg { width: 12px; height: 12px; }
+  .student-kategori-foot { padding: 6px 12px; font-size: 12px; }
+  /* HP: kartu set dibuat ringkas */
+  .student-set-list { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+  .student-set { min-height: 0; gap: 8px; padding: 12px; border-radius: 12px; }
+  .student-set-no { width: 28px; height: 28px; border-radius: 8px; font-size: 12px; }
+  .student-set h3 { font-size: 13.5px; line-height: 1.3; }
+  .student-set .student-meta { gap: 4px; font-size: 11.5px; }
+  .student-set .student-meta svg { width: 13px; height: 13px; }
   .student-set .student-meta span { gap: 4px; }
-  .student-set-actions .student-btn, .student-set-actions .student-pill { gap: 4px; padding: 7px 4px; font-size: 12px; border-radius: 8px; }
+  .student-set-actions .student-btn, .student-set-actions .student-pill { gap: 4px; padding: 8px 6px; font-size: 12px; border-radius: 8px; }
   .student-set-actions .student-btn svg { width: 13px; height: 13px; }
   .student-mapel-layout { grid-template-columns: minmax(0, 1fr); gap: 14px; }
   .student-mapel-list { flex-direction: row; overflow-x: auto; margin: 0 -16px; padding: 0 16px 4px; scrollbar-width: none; }
@@ -257,14 +257,14 @@ a.student-stat:focus-visible { outline: 2px solid #2d3c8f; outline-offset: 2px; 
   .student-category-icon { width: 40px; height: 40px; }
   .student-category-text strong { font-size: 14px; }
   .student-category-text small { display: none; }
-  .student-tryouts { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 14px; margin: 0 -16px; padding: 0 16px 8px; scrollbar-width: none; }
-  .student-tryouts::-webkit-scrollbar { display: none; }
-  .student-tryout { flex: 0 0 78%; scroll-snap-align: center; }
+  .student-tryouts:not(.student-list-compact) { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 14px; margin: 0 -16px; padding: 0 16px 8px; scrollbar-width: none; }
+  .student-tryouts:not(.student-list-compact)::-webkit-scrollbar { display: none; }
+  .student-tryouts:not(.student-list-compact) .student-tryout { flex: 0 0 78%; scroll-snap-align: center; }
   /* Hanya satu try out: kartu dibuat selebar layar, tidak perlu geser. */
   .student-tryouts-single .student-tryout { flex-basis: 100%; }
   .student-tryout-cover { min-height: 190px; }
-  .student-split-page { padding-top: 40px; }
-  .student-back { margin-bottom: 18px; }
+  .student-split-page { padding-top: 24px; }
+  .student-back { margin-bottom: 14px; font-size: 12.5px; }
   .student-stat { padding: 14px; }
   .student-stat strong { font-size: 23px; }
 
@@ -272,15 +272,7 @@ a.student-stat:focus-visible { outline: 2px solid #2d3c8f; outline-offset: 2px; 
   .student-result-page .prose p { overflow-wrap: anywhere; }
   .student-result-page .rounded-card { border-radius: 14px; }
 
-  /* Pembahasan memakai ritme dan ruang yang sama dengan area pengerjaan soal. */
-  .student-result-page > .fixed:first-child > div { height: 3rem; padding-left: 12px; padding-right: 12px; }
-  .student-result-page > .fixed:first-child + .fixed > div { height: 3rem; padding-left: 12px; padding-right: 12px; }
-  .student-result-page > .fixed:first-child + .fixed > div > span { font-size: 10px; }
-  .student-result-page > .fixed:first-child + .fixed > div > div { min-width: 0; gap: 5px; padding-left: 0; padding-right: 0; }
-  .student-result-page > .fixed:first-child + .fixed button { width: 32px; height: 32px; font-size: 12px; }
-  .student-result-page > .fixed:first-child + .fixed button[aria-current="true"] { width: 36px; height: 36px; font-size: 13px; }
-  .student-result-page > .mx-auto.max-w-7xl { margin-top: -24px; padding-top: calc(var(--st-header-h) + 3rem + 3rem); padding-left: 12px; padding-right: 12px; }
-  .student-result-page > .fixed:first-child + .fixed > div > div { gap: 10px; }
+  .student-result-page > .fixed:first-child > div { height: 3.25rem; padding-left: 16px; padding-right: 16px; }
   .student-result-summary { gap: 12px; padding: 12px; }
   .student-result-summary > div:first-child { width: 54px; height: 54px; border-width: 3px; }
   .student-result-summary > div:first-child span { font-size: 17px; }
@@ -317,10 +309,52 @@ a.student-stat:focus-visible { outline: 2px solid #2d3c8f; outline-offset: 2px; 
   .student-mode-confirm { margin-top: 16px; padding-top: 16px; }
   .student-section-heading h2 { font-size: 18px; }
 }
-@media (max-width: 420px) { .student-header-inner { gap: 10px; } .student-logout { padding: 9px 11px; } .student-logout span { display: none; } .student-brand { gap: 8px; font-size: 15px; } .student-brand img { width: 34px; height: 34px; } .student-brand-sub { font-size: 10px; } .student-tryout { flex-basis: 84%; } }
+
+@media (max-width: 640px) {
+  .student-kategori {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr);
+    column-gap: 12px;
+    row-gap: 8px;
+    align-items: center;
+    padding: 14px 16px;
+    border-radius: 16px;
+  }
+  .student-kategori-icon {
+    grid-row: span 2;
+    width: 44px;
+    height: 44px;
+  }
+  .student-kategori-text {
+    min-width: 0;
+  }
+  .student-kategori strong {
+    font-size: 15.5px;
+    line-height: 1.3;
+  }
+  .student-kategori small {
+    font-size: 12px;
+    line-height: 1.4;
+  }
+  .student-kategori-foot {
+    grid-column: 2;
+    justify-self: start;
+    padding: 4px 10px;
+    font-size: 11.5px;
+  }
+}
+
+@media (max-width: 420px) {
+  .student-header-inner { gap: 10px; }
+  .student-logout { padding: 9px 11px; }
+  .student-logout span { display: none; }
+  .student-brand { gap: 8px; font-size: 15px; }
+  .student-brand img { width: 34px; height: 34px; }
+  .student-brand-sub { font-size: 10px; }
+}
+
 @media (prefers-reduced-motion: reduce) { .student-shell * { scroll-behavior: auto !important; transition: none !important; } }
 .student-exam footer button, .student-exam footer a { white-space: nowrap; }
-
 
 /* ---------- Pemberitahuan ---------- */
 .student-desktop-nav a { position: relative; }
@@ -366,29 +400,106 @@ a.student-stat:focus-visible { outline: 2px solid #2d3c8f; outline-offset: 2px; 
 @media (max-width: 767px) { .student-notif-item { padding: 14px; gap: 12px; } .student-notif-head .student-notif-secondary { width: 100%; } }
 
 /* ---------- Riwayat: grup Tryout / Latihan ---------- */
-.student-shell .student-riwayat-grup { margin: 24px 0 0; max-width: 640px; gap: 12px; }
-.student-riwayat-grup .student-category { padding: 14px 16px; gap: 12px; }
-.student-riwayat-grup .student-category-icon { width: 40px; height: 40px; border-radius: 10px; }
-.student-riwayat-grup .student-category-icon svg { width: 20px; height: 20px; }
-.student-riwayat-grup .student-category-text strong { font-size: 15px; }
+.student-shell .student-riwayat-grup { margin: 24px 0 0; max-width: 640px; gap: 14px; }
+.student-riwayat-grup .student-category { padding: 16px 18px; gap: 14px; }
+.student-riwayat-grup .student-category-icon { width: 44px; height: 44px; border-radius: 12px; }
+.student-riwayat-grup .student-category-icon svg { width: 22px; height: 22px; }
+.student-riwayat-grup .student-category-text strong { font-size: 16px; }
+.student-riwayat-grup .student-category-text small { font-size: 12px; color: var(--st-muted); }
 
 /* Daftar paket (menu Tryout/Latihan) & riwayat: kartu ringkas, bukan kartu besar beranda. */
-.student-shell .student-list-compact { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; margin: 20px 0 0; padding: 0; overflow: visible; }
-.student-list-compact .student-tryout { flex: none; }
-.student-list-compact .student-tryout-cover { min-height: 0; gap: 14px; padding: 12px 14px 14px; }
-.student-list-compact .student-tryout-cover h3 { font-size: 15px; line-height: 1.35; }
-.student-list-compact .student-tryout-sub { margin-top: 4px; font-size: 11.5px; }
-.student-list-compact .student-pill { padding: 4px 10px; }
-.student-list-compact .student-tryout-body { padding: 10px 14px 14px; gap: 10px; }
-.student-list-compact .student-meta { padding-top: 0; border-top: 0; font-size: 11.5px; }
-.student-list-compact .student-primary-link { padding: 9px 14px; font-size: 12.5px; border-radius: 10px; }
+.student-shell .student-list-compact { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; margin: 20px 0 0; padding: 0; overflow: visible; }
+.student-list-compact .student-tryout { flex: none; border-radius: 16px; box-shadow: 0 2px 8px rgba(16, 24, 40, .04); }
+.student-list-compact .student-tryout-cover { min-height: 0; gap: 12px; padding: 14px 16px; }
+.student-list-compact .student-tryout-cover h3 { font-size: 15.5px; line-height: 1.35; }
+.student-list-compact .student-tryout-sub { margin-top: 4px; font-size: 12px; line-height: 1.45; }
+.student-list-compact .student-pill { padding: 4px 10px; font-size: 10px; }
+.student-list-compact .student-tryout-body { padding: 12px 16px 16px; gap: 12px; }
+.student-list-compact .student-meta { padding-top: 0; border-top: 0; font-size: 12px; gap: 8px 14px; }
+.student-list-compact .student-primary-link { padding: 10px 16px; font-size: 13px; font-weight: 700; border-radius: 10px; }
+
+/* Riwayat try out: pilihan mapel berada di atas daftar set soal. */
+.student-riwayat-detail .student-mapel-layout { display: block; }
+.student-riwayat-detail .student-mapel-list { display: flex; flex-direction: row; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+.student-riwayat-detail .student-mapel-tab { width: auto; min-width: 140px; padding: 10px 16px; }
+.student-riwayat-detail .student-mapel-layout > div { margin-top: 0; }
+
 @media (max-width: 767px) {
-  .student-shell .student-riwayat-grup { margin-top: 18px; gap: 10px; }
-  .student-riwayat-grup .student-category { padding: 12px 14px; }
-  .student-riwayat-grup .student-category-text small { display: block; }
-  .student-shell .student-list-compact { grid-template-columns: minmax(0, 1fr); gap: 10px; margin-top: 16px; }
+  .student-shell .student-riwayat-grup { grid-template-columns: 1fr; margin-top: 16px; gap: 12px; width: 100%; max-width: 100%; }
+  .student-riwayat-grup .student-category { padding: 14px 16px; gap: 12px; }
+  .student-riwayat-grup .student-category-text small { display: block; font-size: 12px; color: var(--st-muted); }
+
+  .student-shell .student-list-compact {
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: visible !important;
+    scroll-snap-type: none !important;
+    margin: 16px 0 0 !important;
+    padding: 0 !important;
+    gap: 12px !important;
+    width: 100% !important;
+  }
+  .student-shell .student-list-compact .student-tryout {
+    flex: 1 1 auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    scroll-snap-align: none !important;
+  }
+  .student-shell .student-list-compact .student-primary-link {
+    width: 100%;
+    text-align: center;
+    justify-content: center;
+  }
+
+  .student-riwayat-detail .student-mapel-list {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    margin: 0 -16px 16px;
+    padding: 0 16px 6px;
+    gap: 8px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .student-riwayat-detail .student-mapel-list::-webkit-scrollbar {
+    display: none;
+  }
+  .student-riwayat-detail .student-mapel-tab {
+    flex: 0 0 auto;
+    min-width: 0;
+    padding: 8px 14px;
+    font-size: 13px;
+    border-radius: 9999px;
+  }
+  .student-riwayat-detail .student-set-list {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .student-riwayat-detail .student-set {
+    min-height: 0;
+    padding: 14px 16px;
+    gap: 12px;
+    border-radius: 14px;
+  }
+  .student-riwayat-detail .student-set h3 {
+    font-size: 15px;
+  }
+  .student-riwayat-detail .student-set .student-meta {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    font-size: 12px;
+  }
+  .student-riwayat-detail .student-set-actions {
+    margin-top: 4px;
+  }
+  .student-riwayat-detail .student-set-actions .student-btn {
+    width: 100%;
+    padding: 10px 16px;
+    font-size: 13px;
+    border-radius: 10px;
+  }
 }
-@media (max-width: 420px) { .student-shell .student-riwayat-grup { grid-template-columns: minmax(0, 1fr); } }
 
 /* ---------- Paging daftar riwayat ---------- */
 .student-paging { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-top: 20px; font-size: 13px; color: var(--st-muted); }
@@ -396,7 +507,35 @@ a.student-stat:focus-visible { outline: 2px solid #2d3c8f; outline-offset: 2px; 
 .student-paging-actions { display: flex; align-items: center; gap: 10px; }
 .student-paging-actions span { min-width: 48px; text-align: center; font-weight: 700; color: var(--st-heading); }
 .student-paging-actions .student-btn { padding: 8px 12px; }
-@media (max-width: 767px) { .student-paging { justify-content: center; } .student-paging p { width: 100%; text-align: center; } }
+
+@media (max-width: 767px) {
+  .student-paging {
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    margin-top: 20px;
+  }
+  .student-paging p {
+    width: 100%;
+    text-align: center;
+    font-size: 12px;
+  }
+  .student-paging-actions {
+    width: 100%;
+    justify-content: center;
+    gap: 8px;
+  }
+  .student-paging-actions .student-btn {
+    flex: 1;
+    max-width: 130px;
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+  .student-paging-actions span {
+    font-size: 13px;
+    min-width: 36px;
+  }
+}
 
 /* Riwayat latihan per set: daftar percobaan sebelumnya di bawah kartu */
 .student-attempts { padding-top: 10px; border-top: 1px solid var(--st-border); }
@@ -405,6 +544,14 @@ a.student-stat:focus-visible { outline: 2px solid #2d3c8f; outline-offset: 2px; 
 .student-attempts a { display: flex; justify-content: space-between; gap: 10px; padding: 6px 10px; border-radius: 8px; font-size: 12px; color: var(--st-text); background: var(--st-surface-2); transition: background .2s, color .2s; }
 .student-attempts a:hover { color: var(--st-accent); background: #2d3c8f14; }
 .student-attempts a span:last-child { flex: none; font-weight: 700; }
+
+@media (max-width: 767px) {
+  .student-attempts a {
+    padding: 8px 10px;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+}
 
 /* Paket tanpa pilih mapel: satu kartu ringkasan selebar konten. */
 .student-set-list.student-set-list-single { grid-template-columns: minmax(0, 1fr); max-width: 560px; }

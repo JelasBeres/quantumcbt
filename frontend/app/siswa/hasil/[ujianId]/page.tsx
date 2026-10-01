@@ -1,6 +1,6 @@
-﻿"use client";
+"use client";
 
-import { FormEvent, Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { AlertTriangle, ArrowLeft, Check, Flag, X } from "lucide-react";
@@ -295,7 +295,7 @@ export default function HasilDetailPage() {
   return (
     <main className="student-result-page min-h-screen bg-transparent">
       {/* ===== TOP BAR: back + judul + posisi soal (fixed, semua breakpoint) ===== */}
-      <div className="fixed inset-x-0 top-[var(--st-header-h)] z-30 border-b border-white/15 bg-brand-primary text-heading-light">
+      <div className="fixed inset-x-0 top-0 z-30 border-b border-white/15 bg-brand-primary text-heading-light">
         <div className="mx-auto flex h-[3.25rem] w-full max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
           <Link
             href={hrefKembali}
@@ -311,45 +311,67 @@ export default function HasilDetailPage() {
         </div>
       </div>
 
-      {/* ===== NAVIGATOR NOMOR SOAL (mobile/tablet saja) ===== */}
-      <div className="fixed inset-x-0 top-[calc(var(--st-header-h)+3rem)] z-30 border-b border-card-border bg-card-bg lg:hidden">
-        <div className="mx-auto flex h-[3rem] w-full max-w-7xl items-center gap-2 px-4 sm:px-6">
-          <span className="shrink-0 text-[11px] font-bold uppercase tracking-wider text-text-muted">Soal</span>
-          <div ref={navStripRef} className="flex items-center gap-2.5 overflow-x-auto px-2 py-1.5" style={{ scrollbarWidth: "thin" }}>
-            {grupBagian.map((grup, gi) => (
-              <Fragment key={`${grup.nama ?? "umum"}-${gi}`}>
-                {adaBagian && grup.nama && (
-                  <span className={`shrink-0 whitespace-nowrap text-[11px] font-semibold text-text-muted ${gi > 0 ? "ml-2" : ""}`}>{grup.nama}</span>
-                )}
-                {grup.soal.map((soal) => {
-                  const st = statusSoal(soal, kunciDitahan);
-                  const isCurrent = soal.nomor === nomor;
-                  return (
-                    <button
-                      key={soal.soal_id}
-                      type="button"
-                      onClick={() => setNomor(soal.nomor)}
-                      aria-label={`${judulSoal(soal)}${soal.is_ragu ? " (ragu-ragu)" : ""}`}
-                      aria-current={isCurrent ? "true" : undefined}
-                      className={`relative flex shrink-0 items-center justify-center rounded-full border border-transparent font-bold transition-all duration-200 hover:scale-110 ${
-                        isCurrent
-                          ? "h-9 w-9 text-sm font-bold ring-2 ring-orange-400 ring-offset-1 " + statusCls(st)
-                          : "h-8 w-8 text-xs " + statusCls(st)
-                      } text-white`}
-                    >
-                      {labelNomor(soal)}
-                      {soal.is_ragu && <TandaRagu />}
-                    </button>
-                  );
-                })}
-              </Fragment>
-            ))}
+      {/* ===== NAVIGATOR DUA TINGKAT (mobile/tablet saja) ===== */}
+      <div className="fixed inset-x-0 top-[3.25rem] z-30 border-b border-card-border bg-card-bg lg:hidden shadow-sm">
+        {adaBagian && (
+          <div className="border-b border-gray-100 bg-white py-1">
+            <div className="mx-auto flex w-full max-w-7xl items-center gap-1.5 overflow-x-auto px-3 [scrollbar-width:none] sm:px-6 [&::-webkit-scrollbar]:hidden">
+              {grupBagian.map((grup, gi) => {
+                const aktif = grupAktif === grup;
+                const terjawab = grup.soal.filter((s) => s.is_dijawab || (s.jawaban_user != null && s.jawaban_user !== "")).length;
+                return (
+                  <button
+                    key={`${grup.nama ?? "umum"}-${gi}`}
+                    type="button"
+                    onClick={() => grup.soal[0] && setNomor(grup.soal[0].nomor)}
+                    aria-current={aktif ? "step" : undefined}
+                    className={`inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-[11px] font-semibold transition-all duration-200 ${
+                      aktif
+                        ? "border border-brand-primary bg-brand-primary text-white shadow-sm"
+                        : "border border-gray-200 bg-white text-gray-700 hover:border-brand-primary/40 hover:bg-gray-50"
+                    }`}
+                  >
+                    <span className={`flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold ${aktif ? "bg-black/20 text-white" : "bg-gray-100 text-gray-600"}`}>
+                      {gi + 1}
+                    </span>
+                    <span className="whitespace-nowrap">{grup.nama || `Mapel ${gi + 1}`}</span>
+                    <span className={`tabular-nums text-[10px] ${aktif ? "text-white/80" : "text-gray-400"}`}>
+                      {terjawab}/{grup.soal.length}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        <div className="mx-auto flex h-11 w-full max-w-7xl items-center gap-2 px-3 sm:px-6">
+          <div ref={navStripRef} className="flex flex-1 items-center gap-1.5 overflow-x-auto px-0.5 py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {(grupAktif?.soal ?? grupBagian.flatMap((g) => g.soal)).map((soal) => {
+              const isCurrent = soal.nomor === nomor;
+              return (
+                <button
+                  key={soal.soal_id}
+                  type="button"
+                  onClick={() => setNomor(soal.nomor)}
+                  aria-label={`${judulSoal(soal)}${soal.is_ragu ? " (ragu-ragu)" : ""}`}
+                  aria-current={isCurrent ? "true" : undefined}
+                  className={`relative flex shrink-0 items-center justify-center rounded-full transition-all duration-200 active:scale-95 ${
+                    isCurrent
+                      ? "h-8 w-8 text-xs font-extrabold border-2 border-orange-500 bg-orange-500 text-white shadow-sm ring-2 ring-orange-300 ring-offset-1 ring-offset-white"
+                      : "h-7 w-7 text-[11px] font-semibold border border-gray-300 bg-white text-gray-700 hover:border-brand-primary hover:bg-gray-50"
+                  }`}
+                >
+                  {labelNomor(soal)}
+                  {soal.is_ragu && <TandaRagu />}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
 
       {/* Padding atas mobile mencakup top bar + navigator; desktop hanya top bar */}
-      <div className="mx-auto max-w-7xl px-4 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] pt-[calc(var(--st-header-h)+3.25rem+3.5rem+1rem)] sm:px-6 lg:pb-28 lg:pt-[calc(3.25rem+1.5rem)]">
+      <div className={`mx-auto max-w-7xl px-4 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] ${adaBagian ? "pt-[calc(3.25rem+5rem+0.75rem)]" : "pt-[calc(3.25rem+2.75rem+0.75rem)]"} sm:px-6 lg:pb-28 lg:pt-[calc(3.25rem+1.5rem)]`}>
         <div className="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)_260px] lg:items-start">
 
           {/* ===== RINGKASAN SKOR (mobile/tablet; di desktop ada di panel kiri) ===== */}
@@ -391,7 +413,7 @@ export default function HasilDetailPage() {
             {soalAktif ? (
               <div className="student-result-card rounded-card border border-card-border bg-card-bg shadow-card">
                 {/* Bar info soal â€” statis, terpisah dari isi soal */}
-                <div className="student-result-card-head flex flex-wrap items-center justify-between gap-2 rounded-t-card border-b border-card-border bg-card-bg px-4 py-3 lg:sticky lg:top-[calc(var(--st-header-h)+3.25rem)] lg:z-20 sm:px-5 sm:py-3.5">
+                <div className="student-result-card-head flex flex-wrap items-center justify-between gap-2 rounded-t-card border-b border-card-border bg-card-bg px-4 py-3 lg:sticky lg:top-[3.25rem] lg:z-20 sm:px-5 sm:py-3.5">
                   <div className="flex items-center gap-3">
                     <h2 className="text-sm font-bold text-heading-dark">{judulSoal(soalAktif)}</h2>
                     <span className="text-xs text-text-muted">{labelTipeSoal(soalAktif.tipe)}</span>
@@ -564,7 +586,7 @@ export default function HasilDetailPage() {
       </div>
 
       {/* ===== PANEL KIRI & KANAN (fixed, tidak ikut scroll konten soal; masing-masing scroll internal) ===== */}
-      <div className="pointer-events-none fixed inset-x-0 top-[calc(var(--st-header-h)+3.25rem+1rem)] bottom-20 z-20 hidden lg:block">
+      <div className="pointer-events-none fixed inset-x-0 top-[calc(3.25rem+1rem)] bottom-20 z-20 hidden lg:block">
         <div className="mx-auto grid h-full max-w-7xl gap-6 px-4 sm:px-6 lg:grid-cols-[240px_minmax(0,1fr)_260px]">
           {/* KIRI: SKOR & RINGKASAN â€” scrollbar disembunyikan */}
           <div className="pointer-events-auto h-full overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">

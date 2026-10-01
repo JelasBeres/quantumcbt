@@ -8,8 +8,6 @@ import { api, getErrorMessage } from "@/lib/api";
 import SetSoalPerMapel from "@/components/SetSoalPerMapel";
 import { DetailHasil, RiwayatItem, fetchRiwayatTryout, formatSkor, formatTanggal, ringkas } from "@/lib/riwayat";
 
-// Riwayat langkah 3: mapel & set soal dari satu tryout; tiap set membuka pembahasan mapel itu.
-// Soal di luar bagian mana pun ("Bagian lainnya") memakai kunci bagian "none".
 const TANPA_BAGIAN = -1;
 
 type SetRiwayat = {
@@ -107,7 +105,7 @@ export default function RiwayatMapelPage() {
             )}
           </header>
 
-          <section className="student-split-main" aria-live="polite">
+          <section className="student-split-main student-riwayat-detail" aria-live="polite">
             {sets.length === 0 ? (
               <p className="student-notice">Belum ada rincian soal.</p>
             ) : (
@@ -137,7 +135,7 @@ export default function RiwayatMapelPage() {
               />
             )}
             {sets.length > 1 && (
-              <Link className="student-primary-link mt-6 inline-flex" href={hrefPembahasan()}>
+              <Link className="student-primary-link mt-6 w-full sm:w-auto sm:inline-flex text-center justify-center" href={hrefPembahasan()}>
                 Lihat pembahasan semua mapel <ArrowRight size={15} aria-hidden="true" />
               </Link>
             )}

@@ -198,7 +198,7 @@ export default function TambahPaketUjianPage() {
                   options={[{ value: "ya", label: "Ya - tampilkan daftar mapel & izinkan latihan per mapel" }, { value: "tidak", label: "Tidak - langsung ke ujian" }]}
                 />
               </div>
-              <p className="mt-3 text-xs text-text-muted">Jika "Ya", siswa melihat daftar mapel/bagian dulu (tombol "Kerjakan Set Soal") dan bisa latihan per mapel sebelum try out. Jika "Tidak", tombol paket langsung "Mulai Ujian" tanpa breakdown mapel.</p>
+              <p className="mt-3 text-xs text-text-muted">Jika "Ya", siswa melihat daftar mapel/bagian dulu (tombol "Kerjakan Set Soal") dan dapat menjadikannya latihan setelah try out dikerjakan. Jika "Tidak", tombol paket langsung "Mulai Ujian" tanpa breakdown mapel.</p>
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 <Select
                   label="Metode Penilaian"
