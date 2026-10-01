@@ -753,17 +753,15 @@ export default function HasilDetailPage() {
       {/* ===== FOOTER FIXED: Sebelumnya / Soal X dari Y / Berikutnya ===== */}
       {/* Dinaikkan di atas bottom nav aplikasi pada mobile agar tidak tertutup. */}
       <div className="student-result-footer fixed inset-x-0 bottom-0 z-40 border-t border-card-border bg-card-bg pb-[env(safe-area-inset-bottom,0px)]">
-        <div className="mx-auto grid w-full max-w-xl grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 sm:px-6">
-          <Button className="student-result-footer-button" variant="outline" size="sm" disabled={indeksAktif <= 0} onClick={() => indeksAktif > 0 && setNomor(soalList[indeksAktif - 1].nomor)}>
-            Sebelumnya
-          </Button>
-          <span className="student-result-footer-label min-w-0 text-center text-xs font-semibold leading-tight text-text-muted">
+        <div className="mx-auto flex w-full max-w-md items-center justify-center gap-2 px-3 py-3">
+          <div className="w-28 sm:w-32"><Button className="student-result-footer-button w-full" variant="outline" size="sm" disabled={indeksAktif <= 0} onClick={() => indeksAktif > 0 && setNomor(soalList[indeksAktif - 1].nomor)}>
+            Sebelumnya</Button></div>
+          <span className="student-result-footer-label flex-1 px-2 text-center text-xs font-semibold leading-tight text-text-muted min-w-0">
             {adaBagian && grupAktif?.nama && <span className="block truncate">{grupAktif.nama}</span>}
             <span className="block">Soal {posisiAktif.ke} dari {posisiAktif.dari}</span>
           </span>
-          <Button className="student-result-footer-button" variant="outline" size="sm" disabled={indeksAktif < 0 || indeksAktif >= soalList.length - 1} onClick={() => indeksAktif >= 0 && indeksAktif < soalList.length - 1 && setNomor(soalList[indeksAktif + 1].nomor)}>
-            Berikutnya
-          </Button>
+          <div className="w-28 sm:w-32"><Button className="student-result-footer-button w-full" variant="outline" size="sm" disabled={indeksAktif < 0 || indeksAktif >= soalList.length - 1} onClick={() => indeksAktif >= 0 && indeksAktif < soalList.length - 1 && setNomor(soalList[indeksAktif + 1].nomor)}>
+            Berikutnya</Button></div>
         </div>
       </div>
 
