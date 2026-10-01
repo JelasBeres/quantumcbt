@@ -891,10 +891,7 @@ export default function PaketUjianPage() {
       {scheduleTarget && (
         <div className="fixed inset-0 z-[70] flex items-start justify-center overflow-y-auto bg-heading-dark/50 p-4">
           <div className="my-6 w-full max-w-md rounded-modal bg-card-bg shadow-modal">
-            <div className="border-b border-card-border p-5">
-              <h2 className="text-lg font-bold">Jadwalkan Try Out</h2>
-              <p className="text-sm text-text-muted">{scheduleTarget.nama}</p>
-            </div>
+            <div className="flex items-start justify-between gap-3 border-b border-card-border p-5"><div><h2 className="text-lg font-bold text-heading-dark">Jadwalkan Try Out</h2><p className="mt-1 text-sm text-text-muted">{scheduleTarget.nama}</p></div><button type="button" onClick={() => { setScheduleTarget(null); setScheduleMulai(""); setScheduleSelesai(""); }} aria-label="Tutup" className="rounded-btn px-2 py-1 text-xl text-text-muted transition hover:bg-neutral hover:text-heading-dark">&times;</button></div>
             <div className="space-y-4 p-5">
               <Input
                 label="Mulai Ujian"
