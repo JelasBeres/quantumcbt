@@ -218,30 +218,8 @@ export default function DetailPaketPage() {
       );
     }
     if (canStart) {
-      if (isTkaSelection && b.pelajaran_id != null) {
-        const isWajib = b.wajib !== false;
-        const isSelected = isWajib || selectedPelajaranIds.includes(b.pelajaran_id);
-        if (isSelected) {
-          return (
-            <button
-              type="button"
-              className="student-btn"
-              disabled={starting || !selectionValid}
-              onClick={startExam}
-            >
-              <Play size={15} aria-hidden="true" /> {starting ? "Memuat..." : "Mulai"}
-            </button>
-          );
-        }
-        return (
-          <button
-            type="button"
-            className="student-btn student-btn-outline"
-            onClick={() => toggleSelectMapel(b.pelajaran_id)}
-          >
-            Pilih Mapel Ini
-          </button>
-        );
+      if (isTkaSelection) {
+        return null;
       }
 
       return (
@@ -340,10 +318,22 @@ export default function DetailPaketPage() {
                         );
                       })}
                     </div>
-                    <p className={`mt-3 text-xs font-semibold ${selectionValid ? "text-green-700" : "text-amber-700"}`}>
-                      Pilihan mapel: {chosenOptionalCount} dari {jadwal.min_mapel_pilihan ?? 0}-{jadwal.max_mapel_pilihan ?? 0}
-                      {!selectionValid && ` (Pilih ${(jadwal.min_mapel_pilihan ?? 0) - chosenOptionalCount > 0 ? `${(jadwal.min_mapel_pilihan ?? 0) - chosenOptionalCount} mapel lagi` : `maksimal ${jadwal.max_mapel_pilihan ?? 0} mapel`})`}
-                    </p>
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-4 rounded-md bg-white p-3">
+                      <p className={`text-sm font-semibold ${selectionValid ? "text-green-700" : "text-amber-700"}`}>
+                        Pilihan mapel: {chosenOptionalCount} dari {jadwal.min_mapel_pilihan ?? 0}-{jadwal.max_mapel_pilihan ?? 0}
+                        {!selectionValid && ` (Pilih ${(jadwal.min_mapel_pilihan ?? 0) - chosenOptionalCount > 0 ? `${(jadwal.min_mapel_pilihan ?? 0) - chosenOptionalCount} mapel lagi` : `maksimal ${jadwal.max_mapel_pilihan ?? 0} mapel`})`}
+                      </p>
+                      {canStart && (
+                        <button
+                          type="button"
+                          className="student-btn px-6"
+                          disabled={starting || !selectionValid}
+                          onClick={startExam}
+                        >
+                          <Play size={16} aria-hidden="true" /> {starting ? "Memuat..." : "Mulai Ujian"}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
                 {bagianList.length === 0 ? (

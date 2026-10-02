@@ -11,7 +11,7 @@ import { api, getErrorMessage } from "@/lib/api";
 import { labelBagianStatus, toneBagianStatus } from "@/lib/bagian-status";
 import { BagianPaket, PaketUjian, Pelajaran, Soal, Topik } from "@/lib/types";
 import { labelTipeSoal } from "@/lib/tipe-soal";
-import { ArrowDown, ArrowUp, CheckCircle2, FileDown } from "lucide-react";
+import { ArrowDown, ArrowUp, CheckCircle2, FileDown, Pencil, Trash2, MoreVertical, Clock, Send, Eye } from "lucide-react";
 
 const LAPORAN_SOAL_PRESET = [
   "Soal tidak sesuai mapel",
@@ -47,6 +47,7 @@ export default function BagianSetCards({
   const router = useRouter();
   const { showAlert, showConfirm, showPrompt, dialog } = useAppDialog();
   const [bagianPicker, setBagianPicker] = useState<BagianPaket | null>(null);
+  const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
   const [bagianQuestions, setBagianQuestions] = useState<Soal[]>([]);
   const [reviewNote, setReviewNote] = useState("");
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
@@ -231,89 +232,85 @@ export default function BagianSetCards({
           {bagianList.map((bagian) => (
             <article
               key={bagian.id}
-              className="rounded-card border border-card-border p-4"
+              className="rounded-card border border-card-border p-4 relative bg-white"
             >
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="min-w-0">
-                  <h4 className="font-bold text-heading-dark">{bagian.nama}</h4>
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <h4 className="font-bold text-heading-dark line-clamp-1" title={bagian.nama}>{bagian.nama}</h4>
                   {paket.kategori?.toLowerCase().includes("tka") && <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${bagian.wajib === false ? "bg-amber-100 text-amber-800" : "bg-green-100 text-green-800"}`}>{bagian.wajib === false ? "Mapel pilihan" : "Mapel wajib"}</span>}
                 </div>
-                <div className="flex items-center gap-1">
-                  {!isGuru && <>
-                    <button type="button" className="rounded p-1 text-text-muted hover:bg-neutral disabled:opacity-30" disabled={bagianList.every((item) => item.id === bagian.id || item.urutan >= bagian.urutan)} onClick={() => void moveBagian(bagian, -1)} aria-label="Naikkan urutan"><ArrowUp className="h-4 w-4" /></button>
-                    <button type="button" className="rounded p-1 text-text-muted hover:bg-neutral disabled:opacity-30" disabled={bagianList.every((item) => item.id === bagian.id || item.urutan <= bagian.urutan)} onClick={() => void moveBagian(bagian, 1)} aria-label="Turunkan urutan"><ArrowDown className="h-4 w-4" /></button>
-                  </>}
+                <div className="flex items-center gap-1 shrink-0">
                   <Badge tone={toneBagianStatus(bagian.status)}>{labelBagianStatus(bagian.status)}</Badge>
+                  {!isGuru && (
+                    <>
+                      <div className="h-4 w-px bg-card-border mx-1" aria-hidden="true" />
+                      <button type="button" onClick={() => onEdit(bagian)} className="rounded p-1 text-text-muted transition-colors hover:bg-neutral hover:text-brand-primary" aria-label="Edit Bagian"><Pencil className="h-4 w-4" /></button>
+                      <button type="button" onClick={() => deleteBagian(bagian)} className="rounded p-1 text-text-muted transition-colors hover:bg-red-50 hover:text-red-600" aria-label="Hapus Bagian"><Trash2 className="h-4 w-4" /></button>
+                    </>
+                  )}
                 </div>
               </div>
               <p className="mt-1 text-sm text-text-muted">
                 {getNama(pelajaranList, bagian.pelajaran_id)}
                 {!isGuru && bagian.guru_pengampu && ` · ${bagian.guru_pengampu}`}
               </p>
-              <p className="mt-2 text-sm">
-                {bagian.durasi_menit
-                  ? `${bagian.durasi_menit} menit`
-                  : "Durasi belum diatur"}{" "}
-                · {bagian.jumlah_soal} soal
+              <p className="mt-2 text-sm font-medium">
+                {bagian.durasi_menit ? `${bagian.durasi_menit} menit` : <span className="text-amber-600">Durasi belum diatur</span>} · {bagian.jumlah_soal} soal
               </p>
               {bagian.status === "revision_required" && (
                 <p className="mt-2 rounded-input border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs text-red-700">
                   Perlu revisi: {bagian.review_note || "Tidak ada catatan tambahan."}
                 </p>
               )}
-              <div className="mt-4 flex flex-wrap gap-2">
-                <Button size="sm" onClick={() => openBagianPicker(bagian)}>
-                  {isGuru ? "Isi Soal" : bagian.status === "pending_review" ? "Periksa Bagian" : "Lihat Soal"}
-                </Button>
-                {!isGuru && (
-                  <Button size="sm" variant="outline" onClick={() => openIsiSoal(bagian)}>
-                    Isi Soal
-                  </Button>
-                )}
-                {(!isGuru || bagian.status !== "pending_review") && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => updateBagianDuration(bagian)}
+              
+              <div className="mt-5 flex items-center gap-2">
+                <div className="flex-1 flex gap-1">
+                  {!isGuru && <>
+                    <button type="button" className="flex items-center justify-center rounded border border-card-border bg-white p-1.5 text-text-muted transition-colors hover:bg-neutral disabled:opacity-30 disabled:hover:bg-white" disabled={bagianList.every((item) => item.id === bagian.id || item.urutan >= bagian.urutan)} onClick={() => void moveBagian(bagian, -1)} aria-label="Naikkan urutan"><ArrowUp className="h-4 w-4" /></button>
+                    <button type="button" className="flex items-center justify-center rounded border border-card-border bg-white p-1.5 text-text-muted transition-colors hover:bg-neutral disabled:opacity-30 disabled:hover:bg-white" disabled={bagianList.every((item) => item.id === bagian.id || item.urutan <= bagian.urutan)} onClick={() => void moveBagian(bagian, 1)} aria-label="Turunkan urutan"><ArrowDown className="h-4 w-4" /></button>
+                  </>}
+                  <Button 
+                    size="sm" 
+                    className="flex-1" 
+                    onClick={() => {
+                      if (!isGuru && bagian.status === "pending_review") openBagianPicker(bagian);
+                      else openIsiSoal(bagian);
+                    }}
                   >
-                    Atur Durasi
+                    {!isGuru && bagian.status === "pending_review" ? "Periksa Bagian" : "Isi Soal"}
                   </Button>
-                )}
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={!bagian.jumlah_soal}
-                  onClick={() => bukaEkspor(bagian)}
-                >
-                  <FileDown className="h-4 w-4" aria-hidden="true" /> Unduh Soal
-                </Button>
-                {isGuru && (bagian.status === "draft" || bagian.status === "revision_required") && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => submitBagianReview(bagian)}
-                  >
-                    Ajukan Review
-                  </Button>
-                )}
-                {!isGuru && (
-                  <>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => onEdit(bagian)}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="danger"
-                      onClick={() => deleteBagian(bagian)}
-                    >
-                      Hapus
-                    </Button>
-                  </>
-                )}
+                </div>
+                
+                <div className="relative">
+                  <button type="button" onClick={() => setOpenDropdownId(openDropdownId === bagian.id ? null : bagian.id)} className="flex h-[34px] w-[34px] items-center justify-center rounded-btn border border-card-border bg-white text-text-muted transition-colors hover:bg-neutral hover:text-heading-dark focus:outline-none focus:ring-2 focus:ring-brand-primary/30" aria-label="Opsi lainnya" aria-expanded={openDropdownId === bagian.id}>
+                    <MoreVertical className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                  {openDropdownId === bagian.id && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setOpenDropdownId(null)} aria-hidden="true" />
+                      <div className="absolute bottom-full right-0 z-50 mb-1 w-44 rounded-modal border border-card-border bg-white p-1 shadow-card animate-in fade-in zoom-in-95 origin-bottom-right">
+                        {!isGuru && bagian.status !== "pending_review" && (
+                          <button type="button" onClick={() => { setOpenDropdownId(null); openBagianPicker(bagian); }} className="flex w-full items-center gap-2 rounded px-3 py-2 text-sm text-body-dark transition-colors hover:bg-neutral hover:text-brand-primary">
+                            <Eye className="h-4 w-4 text-text-muted" aria-hidden="true" /> Lihat Soal
+                          </button>
+                        )}
+                        {(!isGuru || bagian.status !== "pending_review") && (
+                          <button type="button" onClick={() => { setOpenDropdownId(null); updateBagianDuration(bagian); }} className="flex w-full items-center gap-2 rounded px-3 py-2 text-sm text-body-dark transition-colors hover:bg-neutral hover:text-brand-primary">
+                            <Clock className="h-4 w-4 text-text-muted" aria-hidden="true" /> Atur Durasi
+                          </button>
+                        )}
+                        <button type="button" disabled={!bagian.jumlah_soal} onClick={() => { setOpenDropdownId(null); bukaEkspor(bagian); }} className="flex w-full items-center gap-2 rounded px-3 py-2 text-sm text-body-dark transition-colors hover:bg-neutral hover:text-brand-primary disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white disabled:hover:text-body-dark">
+                          <FileDown className="h-4 w-4 text-text-muted" aria-hidden="true" /> Unduh Soal
+                        </button>
+                        {isGuru && (bagian.status === "draft" || bagian.status === "revision_required") && (
+                          <button type="button" onClick={() => { setOpenDropdownId(null); submitBagianReview(bagian); }} className="flex w-full items-center gap-2 rounded px-3 py-2 text-sm text-body-dark transition-colors hover:bg-neutral hover:text-brand-primary">
+                            <Send className="h-4 w-4 text-text-muted" aria-hidden="true" /> Ajukan Review
+                          </button>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             </article>
           ))}
