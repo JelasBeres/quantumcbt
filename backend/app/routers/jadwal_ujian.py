@@ -214,7 +214,9 @@ def update_jadwal_ujian(jadwal_id: int, payload: JadwalUjianCreate, db: Session 
         # diubah hanya perpanjangan/pemendekan waktu selesai.
         if payload.paket_ujian_id != jadwal.paket_ujian_id:
             raise HTTPException(status_code=409, detail="Jadwal sudah dikerjakan siswa sehingga paketnya tidak dapat diganti. Buat jadwal baru.")
-        if abs((ensure_utc(payload.mulai) - ensure_utc(jadwal.mulai)).total_seconds()) >= 1:
+        # Form edit hanya presisi menit (datetime-local), jadi bandingkan per menit.
+        per_menit = lambda waktu: ensure_utc(waktu).replace(second=0, microsecond=0)
+        if per_menit(payload.mulai) != per_menit(jadwal.mulai):
             raise HTTPException(status_code=409, detail="Jadwal sudah dikerjakan siswa sehingga waktu mulai tidak dapat diubah. Ubah waktu selesai saja.")
     paket = _ref_paket(db, payload.paket_ujian_id)
     validate_jadwal(db, payload, ignore_id=jadwal_id)

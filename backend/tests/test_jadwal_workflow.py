@@ -105,4 +105,6 @@ def test_jadwal_yang_sudah_dikerjakan_hanya_boleh_ubah_waktu_selesai():
 
     assert ubah(paket_ujian_id=paket_lain).status_code == 409
     assert ubah(mulai=(mulai + timedelta(minutes=30)).isoformat()).status_code == 409
+    # Form edit admin hanya presisi menit: detik yang terbuang bukan perubahan.
+    assert ubah(mulai=mulai.replace(second=0, microsecond=0).isoformat()).status_code == 200
     assert ubah().status_code == 200
