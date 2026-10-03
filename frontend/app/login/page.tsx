@@ -22,8 +22,12 @@ export default function LoginPage() {
     try {
       const user = await login(formData.username, formData.password);
 
-      // Redirect based on role
-      if (user.role === "siswa") {
+      // Kembali ke halaman asal bila sesi habis di tengah jalan (mis. ruang ujian),
+      // asalkan path internal dan sesuai role yang login.
+      const redirect = new URLSearchParams(window.location.search).get("redirect");
+      if (redirect && redirect.startsWith(`/${user.role}/`) && !redirect.startsWith("//")) {
+        router.push(redirect);
+      } else if (user.role === "siswa") {
         router.push("/siswa/dashboard");
       } else if (user.role === "guru") {
         router.push("/guru/dashboard");
@@ -31,7 +35,16 @@ export default function LoginPage() {
         router.push("/admin/dashboard");
       }
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Login gagal. Periksa username dan password Anda.");
+      const status = err.response?.status;
+      if (status === 429) {
+        setError("Terlalu banyak percobaan login. Coba lagi dalam 5 menit.");
+      } else if (status === 401 || status === 422) {
+        setError("Username atau password salah, atau akun tidak aktif.");
+      } else if (!err.response) {
+        setError("Tidak dapat terhubung ke server. Periksa koneksi internet Anda.");
+      } else {
+        setError("Login gagal karena gangguan server. Coba lagi beberapa saat lagi.");
+      }
     } finally {
       setLoading(false);
     }
