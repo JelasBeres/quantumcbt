@@ -51,6 +51,18 @@ def test_small_cohort_uses_points_and_is_temporary():
     assert result.status == "sementara"
 
 
+def test_tka_kohort_hanya_menilai_soal_mapel_yang_dipilih():
+    """Peserta TKA memilih mapel berbeda; soal mapel yang tidak dipilih tidak
+    boleh dihitung salah, sehingga jawaban sempurna tetap bernilai maksimal."""
+    points = {q: 2 for q in range(1, 7)}
+    fisika = {1: True, 2: True, 3: True, 4: True}
+    kimia = {1: True, 2: True, 5: True, 6: True}
+    result = calculate_cohort_scores([fisika] * 3 + [kimia] * 3, points, "tka")
+    assert result.scores == [800] * 6
+    # Proporsi soal Fisika dihitung dari 3 peserta yang mendapatkannya.
+    assert result.proportions[3] == 1.0
+
+
 def test_all_correct_has_no_cohort_score():
     result = calculate_cohort_scores([{1: True}] * 5, {1: 1}, "utbk")
     assert result.scores == [None] * 5
@@ -100,3 +112,10 @@ def test_effective_program_separates_cohorts_and_has_fallback():
     assert effective_program_key(CohortAttempt(10, 1), schedules, students, package) == "7"
     assert effective_program_key(CohortAttempt(10, 2), schedules, students, package) == "8"
     assert effective_program_key(CohortAttempt(11, None), schedules, students, package) == "tanpa_program"
+
+
+def test_esai_tidak_dijawab_bernilai_nol_dan_tidak_menunggu_koreksi():
+    assert evaluate_answer("esai", None) == (False, 0.0, False)
+    assert evaluate_answer("esai", "<p> </p>") == (False, 0.0, False)
+    assert evaluate_answer("esai", "<p>Jawaban</p>") == (False, 0.0, True)
+    assert evaluate_answer("esai", '<p><img src="/uploads/a.png"></p>') == (False, 0.0, True)

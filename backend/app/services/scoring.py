@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP
 import json
+import re
 from typing import Any, Dict, Hashable, Iterable, Mapping, Optional, Sequence
 
 from sqlalchemy.orm import Session
@@ -45,29 +46,40 @@ def calculate_cohort_scores(
     question_points: Mapping[int, float],
     scale: str = "utbk",
 ) -> CohortScoreResult:
+    """Tiap baris hanya memuat soal yang diterima peserta itu. Pada TKA peserta
+    memilih mapel berbeda, jadi proporsi benar suatu soal dihitung dari peserta
+    yang mendapat soal tersebut, dan nilai peserta dibagi bobot soalnya sendiri
+    (bukan bobot semua soal kohort, yang membuat nilai sempurna tidak mungkin)."""
     n = len(answers)
     question_ids = list(question_points)
+    penerima = {question_id: sum(1 for row in answers if question_id in row) for question_id in question_ids}
     proportions = {
-        question_id: (sum(1 for row in answers if row.get(question_id) is True) / n if n else 0.0)
+        question_id: (
+            sum(1 for row in answers if row.get(question_id) is True) / penerima[question_id]
+            if penerima[question_id] else 0.0
+        )
         for question_id in question_ids
     }
     weights = {
         question_id: float(question_points[question_id])
-        * (1.0 if n < 5 else 1.0 - proportions[question_id])
+        * (1.0 if penerima[question_id] < 5 else 1.0 - proportions[question_id])
         for question_id in question_ids
     }
-    total_weight = sum(weights.values())
-    status = "kosong" if not answers or total_weight <= 0 else ("sementara" if n < 5 else "final")
-    if total_weight <= 0:
-        empty = [None for _ in answers]
-        return CohortScoreResult(empty, empty.copy(), weights, proportions, status, n)
-    ratios = [
-        sum(weights[question_id] for question_id in question_ids if row.get(question_id) is True) / total_weight
-        for row in answers
-    ]
+    ratios: list[Optional[float]] = []
+    for row in answers:
+        row_weight = sum(weights[question_id] for question_id in row if question_id in weights)
+        if row_weight <= 0:
+            ratios.append(None)
+            continue
+        earned = sum(weights[question_id] for question_id, benar in row.items() if benar is True and question_id in weights)
+        ratios.append(earned / row_weight)
+    if not answers or all(ratio is None for ratio in ratios):
+        status = "kosong"
+    else:
+        status = "sementara" if n < 5 else "final"
     return CohortScoreResult(
-        [scale_cohort_score(ratio, scale) for ratio in ratios],
-        [round_half_up(ratio * 100.0) for ratio in ratios],
+        [scale_cohort_score(ratio, scale) if ratio is not None else None for ratio in ratios],
+        [round_half_up(ratio * 100.0) if ratio is not None else None for ratio in ratios],
         weights,
         proportions,
         status,
@@ -116,6 +128,13 @@ def _empty_breakdown_entry(pelajaran_id: Optional[int], nama: str) -> Dict[str, 
         "jumlah_benar": 0,
         "skor": 0.0,
     }
+
+
+def _ada_isi(raw_answer: Optional[str]) -> bool:
+    if not raw_answer:
+        return False
+    teks = re.sub(r"<[^>]*>", " ", raw_answer).replace("&nbsp;", " ")
+    return bool(teks.strip()) or bool(re.search(r"<img\b", raw_answer, re.IGNORECASE))
 
 
 def _normalize_teks(text: str) -> str:
@@ -173,6 +192,10 @@ def evaluate_answer(
     if manual_score is not None:
         fraction = max(0.0, min(100.0, manual_score)) / 100.0
         return fraction >= 0.6, fraction, False
+    if not _ada_isi(raw_answer):
+        # Tidak dijawab: tidak ada yang bisa dikoreksi, jadi langsung 0 dan tidak
+        # menahan status "menunggu koreksi" (pada kohort: status seluruh peserta).
+        return False, 0.0, False
     return False, 0.0, True
 
 
@@ -441,7 +464,11 @@ def _compute_cohort(db: Session, target: UjianSiswa, package: PaketUjian) -> Has
         row: Dict[int, bool] = {}
         pending = 0
         breakdown: Dict[str, Dict[str, Any]] = {}
-        for question_id, question in question_map.items():
+        # Hanya soal yang diterima peserta ini (TKA: mapel pilihan berbeda-beda).
+        for question_id in dict.fromkeys(question_ids_by_attempt[attempt.id]):
+            question = question_map.get(question_id)
+            if question is None:
+                continue
             correct, _, is_pending = evaluate_question(
                 db,
                 question,
@@ -493,7 +520,10 @@ def _compute_cohort(db: Session, target: UjianSiswa, package: PaketUjian) -> Has
         status = "sementara" if cohort_has_pending and calculation.status != "kosong" else calculation.status
         breakdown = breakdown_by_attempt[attempt.id]
         for key, item in breakdown.items():
-            subject_question_ids = question_ids_by_subject.get(key, [])
+            subject_question_ids = [
+                question_id for question_id in question_ids_by_subject.get(key, [])
+                if question_id in correctness_rows[index]
+            ]
             total_weight = sum(calculation.weights[question_id] for question_id in subject_question_ids)
             earned_weight = sum(
                 calculation.weights[question_id]
@@ -548,6 +578,10 @@ def _compute_cohort(db: Session, target: UjianSiswa, package: PaketUjian) -> Has
 
 
 def compute_and_store_hasil(db: Session, ujian: UjianSiswa) -> HasilUjian:
+    # Session memakai autoflush=False: tanpa flush, is_submitted=True milik
+    # attempt ini belum terlihat oleh query kohort sehingga peserta yang baru
+    # mengumpulkan tidak ikut dihitung dan nilainya kosong.
+    db.flush()
     package = db.query(PaketUjian).filter(PaketUjian.id == ujian.paket_ujian_id).first()
     # Attempt yang scoped ke satu bagian (latihan per-mapel dari paket tryout,
     # lihat /mulai-latihan) selalu dinilai biasa, tidak pernah masuk kohort,
