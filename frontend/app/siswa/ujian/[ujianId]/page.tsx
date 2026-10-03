@@ -15,7 +15,7 @@ import {
   LogOut,
   Send,
 } from "lucide-react";
-import { API_BASE_URL, api } from "@/lib/api";
+import { API_BASE_URL, api, terjemahkanPesan } from "@/lib/api";
 import Button from "@/components/Button";
 import MathContent from "@/components/MathContent";
 import TabelBenarSalah from "@/components/TabelBenarSalah";
@@ -802,7 +802,7 @@ export default function ExamRoomPage() {
         {error && (
           <div className="mb-4 flex items-center gap-2 rounded-card border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             <AlertTriangle className="h-4 w-4 shrink-0" />
-            {error}
+            {terjemahkanPesan(error)}
           </div>
         )}
 

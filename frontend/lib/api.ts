@@ -3,9 +3,28 @@ import { clearTokens, getAccessToken, getRefreshToken, setTokens } from "./auth"
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 
+// Pesan backend ruang ujian masih berbahasa Inggris dan sebagian dipakai
+// frontend sebagai sinyal (mis. "expired" -> kumpulkan otomatis), jadi
+// diterjemahkan hanya saat ditampilkan ke siswa.
+const PESAN_INDONESIA: Array<[RegExp, string]> = [
+  [/ujian time has expired/i, "Waktu ujian sudah habis. Jawaban Anda dikumpulkan otomatis."],
+  [/ujian has been submitted/i, "Ujian sudah dikumpulkan."],
+  [/soal does not belong to this ujian/i, "Soal ini tidak termasuk dalam ujian Anda."],
+  [/ujian siswa not found|ujian tidak ditemukan/i, "Ujian tidak ditemukan."],
+  [/jadwal ujian not found/i, "Jadwal ujian tidak ditemukan."],
+  [/insufficient permissions/i, "Anda tidak memiliki akses ke ujian ini."],
+  [/no soal available/i, "Belum ada soal yang tersedia untuk ujian ini."],
+  [/invalid opsi jawaban/i, "Pilihan jawaban tidak valid. Muat ulang halaman."],
+];
+
+export function terjemahkanPesan(message: string): string {
+  const found = PESAN_INDONESIA.find(([pola]) => pola.test(message));
+  return found ? found[1] : message;
+}
+
 export function getErrorMessage(error: unknown, fallback = "Terjadi kesalahan."): string {
   const detail = (error as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail;
-  if (typeof detail === "string") return detail || fallback;
+  if (typeof detail === "string") return detail ? terjemahkanPesan(detail) : fallback;
   if (Array.isArray(detail)) {
     const messages = detail
       .map((item) => (typeof item === "string" ? item : (item as { msg?: string })?.msg))
