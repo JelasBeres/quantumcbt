@@ -70,7 +70,8 @@ export default function SiswaPaketSplit({ tipe, kategori }: { tipe: "latihan" | 
         } else {
           const [jadwalRes, riwayatRes] = await Promise.all([api.get<JadwalRaw[]>("/siswa/jadwal-tersedia"), api.get<RiwayatRaw[]>("/siswa/riwayat-ujian")]);
           if (cancelled) return;
-          const selesaiSet = new Set((riwayatRes.data ?? []).filter((r) => r.is_submitted && r.jadwal_ujian_id != null).map((r) => r.jadwal_ujian_id as number));
+          // jadwal -> attempt try out yang sudah dikumpulkan, untuk tombol "Lihat Hasil".
+          const hasilByJadwal = new Map((riwayatRes.data ?? []).filter((r) => r.is_submitted && r.jadwal_ujian_id != null).map((r) => [r.jadwal_ujian_id as number, r.ujian_siswa_id]));
           const cocok = (jadwalRes.data ?? []).filter((j) => j.tipe === "ujian" && j.status !== "berakhir" && (j.kategori || "lainnya") === kategori);
           setNamaKategori(cocok[0]?.kategori_nama || "");
           setItems(cocok.map((j) => ({
@@ -81,11 +82,13 @@ export default function SiswaPaketSplit({ tipe, kategori }: { tipe: "latihan" | 
             ...hitungBagian(j.bagian),
             durasi: j.durasi_menit ?? 0,
             status: j.status,
-            selesai: selesaiSet.has(j.jadwal_ujian_id),
+            selesai: hasilByJadwal.has(j.jadwal_ujian_id),
             mulai: j.mulai,
             tutup: j.selesai,
             izinkanPilihMapel: j.izinkan_pilih_mapel !== false,
-            href: `/siswa/paket/${j.jadwal_ujian_id}?kategori=${encodeURIComponent(kategori)}${j.izinkan_pilih_mapel === false ? "&mulai=1" : ""}`,
+            href: hasilByJadwal.has(j.jadwal_ujian_id)
+              ? `/siswa/hasil/${hasilByJadwal.get(j.jadwal_ujian_id)}`
+              : `/siswa/paket/${j.jadwal_ujian_id}?kategori=${encodeURIComponent(kategori)}${j.izinkan_pilih_mapel === false ? "&mulai=1" : ""}`,
           })));
         }
       } catch (e) {

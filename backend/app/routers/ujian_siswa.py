@@ -75,6 +75,14 @@ def effective_durasi_menit(ujian: UjianSiswa, paket: PaketUjian) -> int:
         bagian = next((b for b in ujian.bagian_urutan if b.get("bagian_id") == ujian.latihan_bagian_id), None)
         if bagian and bagian.get("durasi_menit"):
             return bagian["durasi_menit"]
+    # Try out berbagian: total waktu = jumlah durasi bagian yang benar-benar
+    # dikerjakan. Pada TKA siswa hanya mengerjakan mapel terpilih, sedangkan
+    # durasi paket menjumlahkan semua bagian termasuk mapel yang tidak dipilih.
+    # Durasi paket tetap berlaku sebagai batas atas.
+    if paket.tipe == "ujian" and ujian.latihan_bagian_id is None and ujian.bagian_urutan:
+        durasi_bagian = [b.get("durasi_menit") for b in ujian.bagian_urutan]
+        if all(durasi_bagian):
+            return min(sum(durasi_bagian), paket.durasi_menit or sum(durasi_bagian))
     return paket.durasi_menit
 
 
@@ -302,7 +310,7 @@ def start_ujian_siswa(
             soal_urutan=existing_ujian.soal_urutan,
             waktu_mulai=existing_ujian.started_at,
             waktu_selesai=waktu_selesai,
-            durasi_menit=paket.durasi_menit,
+            durasi_menit=effective_durasi_menit(existing_ujian, paket),
             jumlah_soal=len(existing_ujian.soal_urutan),
             sisa_waktu_detik=sisa_waktu_detik,
         )
@@ -524,7 +532,7 @@ def _initialize_attempt(db: Session, siswa: Siswa, paket: PaketUjian, jadwal_id:
             bagian_urutan=[BagianUjianOut(**b) for b in existing.bagian_urutan] if existing.bagian_urutan else None,
             waktu_mulai=existing.started_at,
             waktu_selesai=waktu_selesai,
-            durasi_menit=paket.durasi_menit,
+            durasi_menit=effective_durasi_menit(existing, paket),
             jumlah_soal=len(existing.soal_urutan) if existing.soal_urutan else 0,
             sisa_waktu_detik=sisa_waktu_detik,
         )

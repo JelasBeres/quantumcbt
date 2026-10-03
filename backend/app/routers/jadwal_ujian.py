@@ -6,6 +6,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.security import get_current_active_user, require_roles
+from app.core.timeutils import ensure_utc
 from app.db.database import get_db
 from app.models.jadwal_ujian import JadwalUjian
 from app.models.paket_soal import PaketSoal
@@ -13,6 +14,7 @@ from app.models.paket_ujian import PaketUjian
 from app.models.bagian_paket import BagianPaket
 from app.models.siswa import Siswa
 from app.models.soal import Soal
+from app.models.ujian_siswa import UjianSiswa
 from app.services.pemberitahuan import sinkron_pemberitahuan_jadwal
 from app.schemas.jadwal_ujian import JadwalDeleteRequest, JadwalPublishUpdate, JadwalReviewAction, JadwalReviewReject, JadwalUjianCreate, JadwalUjianOut
 
@@ -52,6 +54,23 @@ def _program_kelas_efektif(payload: JadwalUjianCreate, paket: PaketUjian):
     )
 
 
+def _validate_pilihan_mapel(db: Session, paket: PaketUjian) -> None:
+    """Aturan mapel pilihan TKA harus bisa dipenuhi siswa; kalau tidak, siswa
+    baru tertolak saat menekan Mulai di hari ujian."""
+    sections = db.query(BagianPaket.pelajaran_id, BagianPaket.wajib).filter(
+        BagianPaket.paket_ujian_id == paket.id, BagianPaket.pelajaran_id.isnot(None)
+    ).all()
+    wajib = {pelajaran_id for pelajaran_id, is_wajib in sections if is_wajib}
+    pilihan = {pelajaran_id for pelajaran_id, is_wajib in sections if not is_wajib} - wajib
+    if not pilihan:
+        return
+    minimal, maksimal = paket.min_mapel_pilihan or 0, paket.max_mapel_pilihan or 0
+    if maksimal < 1:
+        raise HTTPException(status_code=409, detail="Try Out belum siap dijadwalkan: paket punya mapel pilihan, atur minimal dan maksimal mapel pilihan pada pengaturan paket.")
+    if len(pilihan) < minimal:
+        raise HTTPException(status_code=409, detail=f"Try Out belum siap dijadwalkan: siswa wajib memilih minimal {minimal} mapel pilihan, tetapi paket hanya punya {len(pilihan)} mapel pilihan.")
+
+
 def _validate_package_readiness(db: Session, paket: PaketUjian) -> None:
     sections_exist = db.query(BagianPaket.id).filter(BagianPaket.paket_ujian_id == paket.id).first()
     if sections_exist:
@@ -71,6 +90,7 @@ def _validate_package_readiness(db: Session, paket: PaketUjian) -> None:
         soal_ids = [row[0] for row in db.query(PaketSoal.soal_id).filter(PaketSoal.paket_ujian_id == paket.id).distinct().all()]
         if soal_ids and db.query(Soal.id).filter(Soal.id.in_(soal_ids), Soal.status != "approved").first():
             raise HTTPException(status_code=409, detail="Try Out belum siap dijadwalkan: terdapat soal yang belum approved.")
+        _validate_pilihan_mapel(db, paket)
     elif paket.kategori_id is not None or paket.kategori is not None:
         raise HTTPException(status_code=409, detail="Try Out belum siap dijadwalkan: tambahkan minimal satu bagian/mata pelajaran terlebih dahulu.")
 
@@ -188,6 +208,14 @@ def update_jadwal_ujian(jadwal_id: int, payload: JadwalUjianCreate, db: Session 
     if not jadwal:
         raise HTTPException(status_code=404, detail="Jadwal Ujian not found")
     _require_jadwal_owner(jadwal, current_user)
+    sudah_dikerjakan = db.query(UjianSiswa.id).filter(UjianSiswa.jadwal_ujian_id == jadwal.id).first() is not None
+    if sudah_dikerjakan:
+        # Attempt siswa terikat ke paket & waktu mulai jadwal ini; yang aman
+        # diubah hanya perpanjangan/pemendekan waktu selesai.
+        if payload.paket_ujian_id != jadwal.paket_ujian_id:
+            raise HTTPException(status_code=409, detail="Jadwal sudah dikerjakan siswa sehingga paketnya tidak dapat diganti. Buat jadwal baru.")
+        if abs((ensure_utc(payload.mulai) - ensure_utc(jadwal.mulai)).total_seconds()) >= 1:
+            raise HTTPException(status_code=409, detail="Jadwal sudah dikerjakan siswa sehingga waktu mulai tidak dapat diubah. Ubah waktu selesai saja.")
     paket = _ref_paket(db, payload.paket_ujian_id)
     validate_jadwal(db, payload, ignore_id=jadwal_id)
     durasi_efektif = _durasi_efektif(db, payload.paket_ujian_id, payload.durasi_menit_paket)

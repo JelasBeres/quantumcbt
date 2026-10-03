@@ -41,7 +41,7 @@ def _paket_tka(mapel, min_pilihan=1, max_pilihan=1):
     """mapel: daftar (nama, wajib). Tiap mapel mendapat satu bagian berisi 2 soal."""
     suffix = uuid4().hex[:8]
     with SessionLocal() as db:
-        paket = PaketUjian(nama=f"TKA {suffix}", tipe="ujian", durasi_menit=60, jumlah_soal=2 * len(mapel),
+        paket = PaketUjian(nama=f"TKA {suffix}", tipe="ujian", durasi_menit=30 * len(mapel), jumlah_soal=2 * len(mapel),
                            is_random_soal=False, min_mapel_pilihan=min_pilihan, max_mapel_pilihan=max_pilihan)
         db.add(paket)
         db.flush()
@@ -91,6 +91,8 @@ def test_tka_soal_hanya_dari_mapel_terpilih():
     assert data["jumlah_soal"] == 4
     assert len(data["soal_urutan"]) == 4
     assert {b["pelajaran_id"] for b in data["bagian_urutan"]} == {ids["Matematika"], ids["Kimia"]}
+    # Durasi attempt = bagian terpilih (2 x 30), bukan seluruh paket (3 x 30).
+    assert data["durasi_menit"] == 60
 
 
 def test_tka_hanya_mapel_wajib_langsung_mulai():
@@ -98,3 +100,45 @@ def test_tka_hanya_mapel_wajib_langsung_mulai():
     r = _mulai(jadwal_id)
     assert r.status_code == 200, r.text
     assert len(r.json()["soal_urutan"]) == 4
+
+
+def test_jadwal_menolak_aturan_pilihan_yang_tidak_bisa_dipenuhi():
+    import pytest
+    from fastapi import HTTPException
+    from app.routers.jadwal_ujian import _validate_pilihan_mapel
+
+    def cek(mapel, min_pilihan, max_pilihan):
+        jadwal_id, _ = _paket_tka(mapel, min_pilihan, max_pilihan)
+        with SessionLocal() as db:
+            from app.models.jadwal_ujian import JadwalUjian
+            paket = db.get(PaketUjian, db.get(JadwalUjian, jadwal_id).paket_ujian_id)
+            _validate_pilihan_mapel(db, paket)
+
+    cek([("Matematika", True), ("Fisika", False), ("Kimia", False)], 1, 2)
+    cek([("Matematika", True), ("Fisika", True)], 0, 0)
+    with pytest.raises(HTTPException) as kurang:
+        cek([("Matematika", True), ("Fisika", False)], 2, 2)
+    assert kurang.value.status_code == 409
+    with pytest.raises(HTTPException) as belum_diatur:
+        cek([("Matematika", True), ("Fisika", False)], 0, 0)
+    assert belum_diatur.value.status_code == 409
+
+
+def test_kohort_peserta_yang_baru_mengumpulkan_langsung_dapat_nilai():
+    """Session autoflush=False: tanpa flush, peserta yang baru submit tidak
+    terlihat oleh query kohort dan nilainya kosong sampai ada peserta lain."""
+    from app.models.hasil_ujian import HasilUjian
+    from app.models.jadwal_ujian import JadwalUjian
+
+    jadwal_id, ids = _paket_tka([("Matematika", True)], 0, 0)
+    with SessionLocal() as db:
+        paket = db.get(PaketUjian, db.get(JadwalUjian, jadwal_id).paket_ujian_id)
+        paket.metode_penilaian, paket.skala_kohort = "kohort", "tka"
+        db.commit()
+    headers = _siswa()
+    ujian_id = client.post("/ujian-siswa/mulai", json={"jadwal_ujian_id": jadwal_id}, headers=headers).json()["ujian_siswa_id"]
+    assert client.patch(f"/ujian-siswa/{ujian_id}/submit", headers=headers).status_code == 200
+    with SessionLocal() as db:
+        hasil = db.query(HasilUjian).filter(HasilUjian.ujian_siswa_id == ujian_id).one()
+        assert hasil.skor is not None
+        assert hasil.skor_per_pelajaran_json["_meta"]["kohort_n"] == 1

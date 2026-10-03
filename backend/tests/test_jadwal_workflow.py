@@ -78,3 +78,31 @@ def test_admin_package_visible_and_guru_only_sees_own_packages():
     response = client.get("/paket-ujian/", headers=headers("jadwal-guru-list", "JadwalGuruList1"))
     assert response.status_code == 200
     assert all(guru.id not in (item.get("assigned_guru_ids") or []) for item in response.json())
+
+
+def test_jadwal_yang_sudah_dikerjakan_hanya_boleh_ubah_waktu_selesai():
+    from app.models.jadwal_ujian import JadwalUjian
+    from tests.test_tka_pilih_mapel import _mulai, _paket_tka
+
+    ensure_user("jadwal-lock-admin", "JadwalLock1", "admin")
+    admin_h = headers("jadwal-lock-admin", "JadwalLock1")
+    jadwal_id, _ = _paket_tka([("Matematika", True)], 0, 0)
+    paket_lain_jadwal, _ = _paket_tka([("Fisika", True)], 0, 0)
+    with SessionLocal() as db:
+        jadwal = db.get(JadwalUjian, jadwal_id)
+        paket_id, mulai, selesai = jadwal.paket_ujian_id, jadwal.mulai, jadwal.selesai
+        lain = db.get(JadwalUjian, paket_lain_jadwal)
+        paket_lain = lain.paket_ujian_id
+        # Geser agar tidak bentrok dengan jadwal yang diuji.
+        lain.mulai, lain.selesai = lain.mulai + timedelta(days=5), lain.selesai + timedelta(days=5)
+        db.commit()
+    assert _mulai(jadwal_id).status_code == 200
+
+    def ubah(**kw):
+        body = {"paket_ujian_id": paket_id, "mulai": mulai.isoformat(), "selesai": (selesai + timedelta(hours=1)).isoformat(), "is_published": True}
+        body.update(kw)
+        return client.put(f"/jadwal-ujian/{jadwal_id}", json=body, headers=admin_h)
+
+    assert ubah(paket_ujian_id=paket_lain).status_code == 409
+    assert ubah(mulai=(mulai + timedelta(minutes=30)).isoformat()).status_code == 409
+    assert ubah().status_code == 200

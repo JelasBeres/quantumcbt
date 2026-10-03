@@ -161,7 +161,9 @@ export default function DetailPaketPage() {
 
   useEffect(() => {
     if (!autoMulai || loading || !jadwal || autoTriggeredRef.current) return;
-    if (jadwal.izinkan_pilih_mapel === false) {
+    // Paket TKA tetap menampilkan pilihan mapel walau "Bisa Lihat Mapel" = Tidak;
+    // tanpa pilihan, mulai otomatis pasti ditolak server dan siswa tertahan.
+    if (jadwal.izinkan_pilih_mapel === false && !isTkaSelection) {
       if (selesaiUjianId !== null) {
         autoTriggeredRef.current = true;
         router.replace(`/siswa/hasil/${selesaiUjianId}`);
@@ -246,6 +248,7 @@ export default function DetailPaketPage() {
     autoMulai &&
     jadwal &&
     jadwal.izinkan_pilih_mapel === false &&
+    !isTkaSelection &&
     (selesaiUjianId !== null || activeUjianId !== null || jadwal.status === "berlangsung")
   ) {
     return (
@@ -276,7 +279,8 @@ export default function DetailPaketPage() {
           </header>
 
           <section className="student-split-main" aria-live="polite">
-            {jadwal.izinkan_pilih_mapel === false ? (
+            {/* Paket TKA selalu memakai tampilan lengkap: siswa harus melihat daftar mapel untuk memilih. */}
+            {jadwal.izinkan_pilih_mapel === false && !isTkaSelection ? (
               <ul className="student-set-list student-set-list-single">
                 <li className="student-set">
                   <div className="student-meta">
@@ -289,7 +293,18 @@ export default function DetailPaketPage() {
               </ul>
             ) : (
               <>
-                {isTkaSelection && (
+                {isTkaSelection && (selesaiUjianId !== null || activeUjianId !== null) && (
+                  <div className="mb-5 flex flex-wrap items-center justify-between gap-4 rounded-card border border-brand-primary/20 bg-brand-primary/5 p-4">
+                    <div>
+                      <h2 className="font-bold text-heading-dark">{selesaiUjianId !== null ? "Try out sudah dikerjakan" : "Try out sedang dikerjakan"}</h2>
+                      <p className="mt-1 text-sm text-text-muted">{selesaiUjianId !== null ? "Lihat nilai dan pembahasan dari pengerjaan Anda." : "Lanjutkan pengerjaan sebelum waktunya habis."}</p>
+                    </div>
+                    <Link className="student-btn px-6" href={selesaiUjianId !== null ? `/siswa/hasil/${selesaiUjianId}` : `/siswa/ujian/${activeUjianId}`}>
+                      {selesaiUjianId !== null ? <><CheckCircle2 size={16} aria-hidden="true" /> Lihat Hasil</> : <><Play size={16} aria-hidden="true" /> Lanjutkan Ujian</>}
+                    </Link>
+                  </div>
+                )}
+                {isTkaSelection && selesaiUjianId === null && activeUjianId === null && (
                   <div className="mb-5 rounded-card border border-brand-primary/20 bg-brand-primary/5 p-4">
                     <h2 className="font-bold text-heading-dark">Pilih Mapel TKA</h2>
                     <p className="mt-1 text-sm text-text-muted">
