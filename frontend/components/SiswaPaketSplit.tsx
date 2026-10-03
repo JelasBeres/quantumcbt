@@ -165,7 +165,11 @@ export default function SiswaPaketSplit({ tipe, kategori }: { tipe: "latihan" | 
                   </p>
                 )}
                 <Link className="student-primary-link" href={item.href}>
-                  {!isLatihan && item.izinkanPilihMapel === false ? "Mulai Ujian" : "Kerjakan Set Soal"} <ArrowRight size={15} aria-hidden="true" />
+                  {!isLatihan && item.selesai
+                    ? "Lihat Hasil"
+                    : !isLatihan && item.izinkanPilihMapel === false
+                    ? "Mulai Ujian"
+                    : "Kerjakan Set Soal"} <ArrowRight size={15} aria-hidden="true" />
                 </Link>
               </div>
             </article>

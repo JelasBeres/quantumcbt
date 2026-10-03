@@ -288,8 +288,9 @@ export default function HasilDetailPage() {
 
   const meta = hasil.skor_per_pelajaran_json?._meta;
   const isCohort = meta?.metode_penilaian === "kohort";
-  const skorBulat = skor != null ? Math.round(skor) : 0;
-  const skorPembanding = isCohort ? meta?.skor_mentah ?? null : skor;
+  const skorDitampilkan = kunciDitahan ? null : skor;
+  const skorBulat = skorDitampilkan != null ? Math.round(skorDitampilkan) : 0;
+  const skorPembanding = isCohort ? (kunciDitahan ? null : (meta?.skor_mentah ?? null)) : skorDitampilkan;
   const skorPersen = skorPembanding != null ? Math.max(0, Math.min(100, skorPembanding)) : 0;
 
   return (
@@ -377,7 +378,7 @@ export default function HasilDetailPage() {
           {/* ===== RINGKASAN SKOR (mobile/tablet; di desktop ada di panel kiri) ===== */}
           <div className="student-result-summary flex items-center gap-4 rounded-card border border-card-border bg-card-bg p-4 shadow-card lg:hidden">
             <div className="flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-full border-4 border-brand-primary">
-              <span className="text-xl font-extrabold text-heading-dark">{skor != null ? skorBulat : "-"}</span>
+              <span className="text-xl font-extrabold text-heading-dark">{skorDitampilkan != null ? skorBulat : "-"}</span>
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-[11px] font-bold uppercase tracking-wider text-text-muted">Nilai</p>
@@ -603,12 +604,12 @@ export default function HasilDetailPage() {
                     />
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-3xl font-extrabold text-heading-dark">{skor != null ? skorBulat : "-"}</span>
+                    <span className="text-3xl font-extrabold text-heading-dark">{skorDitampilkan != null ? skorBulat : "-"}</span>
                   </div>
                 </div>
                 <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-text-muted">{isCohort ? `Benchmark IRT · ${(meta?.skala ?? "utbk").toUpperCase()}` : "Nilai Biasa"}</p>
-                {isCohort && <p className="mt-1 text-xs text-text-muted">Skor mentah {meta?.skor_mentah ?? "-"} · {meta?.kohort_status === "final" ? "Final" : meta?.kohort_status === "kosong" ? "Belum tersedia" : "Sementara"}</p>}
-                <p className="mt-2 text-sm font-medium text-body-dark">{messageByScore(skorPembanding)}</p>
+                {isCohort && <p className="mt-1 text-xs text-text-muted">Skor mentah {kunciDitahan ? "-" : (meta?.skor_mentah ?? "-")} · {meta?.kohort_status === "final" ? "Final" : meta?.kohort_status === "kosong" ? "Belum tersedia" : "Sementara"}</p>}
+                <p className="mt-2 text-sm font-medium text-body-dark">{kunciDitahan ? "Tunggu jadwal try out berakhir." : messageByScore(skorPembanding)}</p>
               </div>
 
               <div className="my-4 border-t border-card-border" />
@@ -685,8 +686,12 @@ export default function HasilDetailPage() {
                       <div key={pelajaran} className="rounded-input bg-neutral p-2.5">
                         <p className="text-xs font-semibold text-heading-dark">{String(d.nama ?? pelajaran)}</p>
                         <p className="mt-0.5 text-xs text-text-muted">
-                          {String(d.jumlah_benar ?? 0)} benar · {String(d.jumlah_soal ?? 0)} soal
-                          <span className="ml-1 font-semibold text-heading-dark">{String(d.skor ?? 0)}</span>
+                          {kunciDitahan ? (
+                            <>Menunggu jadwal berakhir</>
+                          ) : (
+                            <>{String(d.jumlah_benar ?? 0)} benar · {String(d.jumlah_soal ?? 0)} soal
+                            <span className="ml-1 font-semibold text-heading-dark">{String(d.skor ?? 0)}</span></>
+                          )}
                         </p>
                       </div>
                     );

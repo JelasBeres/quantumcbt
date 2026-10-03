@@ -194,8 +194,11 @@ export default function PaketQuestionAssignment() {
     if (!paket) return `${basePath}/paket-ujian`;
     const tipe = paket.tipe === "latihan" ? "latihan" : "ujian";
     const kategoriId = paket.kategori_id == null ? "belum" : String(paket.kategori_id);
+    if (tipe === "latihan" && bagian?.pelajaran_id) {
+      return `${basePath}/paket-ujian/set-soal?id=${paket.id}&pelajaran_id=${bagian.pelajaran_id}`;
+    }
     return `${basePath}/paket-ujian?tipe=${tipe}&kategori_id=${encodeURIComponent(kategoriId)}&paket_id=${paket.id}`;
-  }, [basePath, paket]);
+  }, [basePath, paket, bagian]);
 
   const getNama = <T extends { id: number; nama: string }>(list: T[], id: number | null | undefined) => {
     if (!id) return "-";

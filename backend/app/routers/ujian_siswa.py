@@ -249,22 +249,26 @@ def start_ujian_siswa(
         sections = db.query(BagianPaket).filter(BagianPaket.paket_ujian_id == paket.id).all()
         required_ids = {b.pelajaran_id for b in sections if b.wajib and b.pelajaran_id is not None}
         optional_ids = {b.pelajaran_id for b in sections if not b.wajib and b.pelajaran_id is not None} - required_ids
-        if paket.min_mapel_pilihan < 1 or paket.max_mapel_pilihan < paket.min_mapel_pilihan:
-            raise HTTPException(status_code=409, detail="Aturan mapel pilihan TKA belum dikonfigurasi dengan benar")
-        if optional_ids and len(optional_ids) < paket.min_mapel_pilihan:
-            raise HTTPException(status_code=409, detail="Jumlah mapel pilihan yang tersedia belum memenuhi batas minimal paket")
-        selected_ids = set(selected_pelajaran_ids or [])
-        if not selected_ids.issubset(required_ids | optional_ids):
-            raise HTTPException(status_code=400, detail="Ada mapel pilihan yang tidak tersedia pada paket ini")
-        chosen_optional = selected_ids.intersection(optional_ids)
-        if not required_ids.issubset(selected_ids):
-            raise HTTPException(status_code=400, detail="Semua mapel wajib harus dipilih")
-        if optional_ids and (len(chosen_optional) < paket.min_mapel_pilihan or len(chosen_optional) > paket.max_mapel_pilihan):
-            raise HTTPException(status_code=400, detail=f"Pilih minimal {paket.min_mapel_pilihan} dan maksimal {paket.max_mapel_pilihan} mapel pilihan")
-        if optional_ids and not chosen_optional and paket.min_mapel_pilihan > 0:
-            raise HTTPException(status_code=400, detail="Pilih mapel pilihan terlebih dahulu")
-        if not optional_ids and required_ids and selected_pelajaran_ids is not None and not required_ids.issubset(selected_ids):
-            raise HTTPException(status_code=400, detail="Semua mapel wajib harus dipilih")
+        
+        if optional_ids:
+            if paket.min_mapel_pilihan < 1 or paket.max_mapel_pilihan < paket.min_mapel_pilihan:
+                raise HTTPException(status_code=409, detail="Aturan mapel pilihan TKA belum dikonfigurasi dengan benar")
+            if len(optional_ids) < paket.min_mapel_pilihan:
+                raise HTTPException(status_code=409, detail="Jumlah mapel pilihan yang tersedia belum memenuhi batas minimal paket")
+            selected_ids = set(selected_pelajaran_ids or [])
+            if not selected_ids.issubset(required_ids | optional_ids):
+                raise HTTPException(status_code=400, detail="Ada mapel pilihan yang tidak tersedia pada paket ini")
+            chosen_optional = selected_ids.intersection(optional_ids)
+            if not required_ids.issubset(selected_ids):
+                raise HTTPException(status_code=400, detail="Semua mapel wajib harus dipilih")
+            if len(chosen_optional) < paket.min_mapel_pilihan or len(chosen_optional) > paket.max_mapel_pilihan:
+                raise HTTPException(status_code=400, detail=f"Pilih minimal {paket.min_mapel_pilihan} dan maksimal {paket.max_mapel_pilihan} mapel pilihan")
+            if not chosen_optional and paket.min_mapel_pilihan > 0:
+                raise HTTPException(status_code=400, detail="Pilih mapel pilihan terlebih dahulu")
+        else:
+            # If there are no optional subjects, the user doesn't need to choose.
+            # Set selected_pelajaran_ids to None so it fetches all required subjects automatically.
+            selected_pelajaran_ids = None
 
     # Cegah mengerjakan ulang: siswa hanya boleh satu kali per jadwal ujian
     submitted_ujian = (
