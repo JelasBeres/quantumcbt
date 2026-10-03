@@ -69,6 +69,12 @@ const FontSize = Extension.create({
   },
 });
 
+const TOOLBAR_KOSONG = {
+  fontFamily: "", fontSize: "", bold: false, italic: false, underline: false, subscript: false, superscript: false,
+  paragraph: false, heading: false, blockquote: false, orderedList: false, bulletList: false,
+  alignLeft: false, alignCenter: false, alignRight: false, alignJustify: false, table: false,
+};
+
 interface RichEditorProps {
   value: string;
   onChange: (html: string) => void;
@@ -86,6 +92,9 @@ export default function RichEditor({ value, onChange, placeholder, minHeight = "
   const [tableForm, setTableForm] = useState({ rows: 3, cols: 3, header: true });
 
   const editor = useEditor({
+    // Komponen ini hanya dirender di browser (dynamic ssr:false di RichEditor.tsx),
+    // jadi editor aman dibuat langsung pada render pertama.
+    immediatelyRender: true,
     extensions: [
       StarterKit,
       Superscript,
@@ -188,7 +197,9 @@ export default function RichEditor({ value, onChange, placeholder, minHeight = "
     },
   });
 
-  if (!editor || !state) return null;
+  if (!editor) return null;
+  // Status toolbar bisa belum terisi pada render pertama; editor tetap tampil.
+  const toolbar = state ?? TOOLBAR_KOSONG;
 
   return (
     <div className="w-full">
@@ -201,7 +212,7 @@ export default function RichEditor({ value, onChange, placeholder, minHeight = "
       <div className="overflow-hidden rounded-input border border-card-border">
         <div className="flex flex-wrap items-center gap-0.5 border-b border-card-border bg-neutral px-2 py-1.5">
           <select
-            value={state.fontFamily}
+            value={toolbar.fontFamily}
             onChange={(e) => {
               const val = e.target.value;
               if (val) editor.chain().focus().setFontFamily(val).run();
@@ -213,7 +224,7 @@ export default function RichEditor({ value, onChange, placeholder, minHeight = "
             {FONT_OPTIONS.map((font) => <option key={font.label} value={font.value} style={{ fontFamily: font.value }}>{font.label}</option>)}
           </select>
           <select
-            value={state.fontSize}
+            value={toolbar.fontSize}
             onChange={(e) => {
               const val = e.target.value;
               if (val) editor.chain().focus().setFontSize(val + 'pt').run();
@@ -225,10 +236,10 @@ export default function RichEditor({ value, onChange, placeholder, minHeight = "
             {SIZE_OPTIONS.map((size) => <option key={size} value={size}>{size} pt</option>)}
           </select>
           <span className="mx-1 h-5 w-px bg-card-border" />
-          <ToolbarButton isActive={state.bold} onClick={() => editor.chain().focus().toggleBold().run()} title="Tebal"><strong>B</strong></ToolbarButton>
-          <ToolbarButton isActive={state.italic} onClick={() => editor.chain().focus().toggleItalic().run()} title="Miring"><em>I</em></ToolbarButton>
-          <ToolbarButton isActive={state.underline} onClick={() => editor.chain().focus().toggleUnderline().run()} title="Garis bawah"><u>U</u></ToolbarButton>
-          <ToolbarButton isActive={state.subscript} onClick={() => {
+          <ToolbarButton isActive={toolbar.bold} onClick={() => editor.chain().focus().toggleBold().run()} title="Tebal"><strong>B</strong></ToolbarButton>
+          <ToolbarButton isActive={toolbar.italic} onClick={() => editor.chain().focus().toggleItalic().run()} title="Miring"><em>I</em></ToolbarButton>
+          <ToolbarButton isActive={toolbar.underline} onClick={() => editor.chain().focus().toggleUnderline().run()} title="Garis bawah"><u>U</u></ToolbarButton>
+          <ToolbarButton isActive={toolbar.subscript} onClick={() => {
               if (editor.isActive('subscript')) {
                 editor.chain().focus().unsetSubscript().run();
               } else {
@@ -239,7 +250,7 @@ export default function RichEditor({ value, onChange, placeholder, minHeight = "
                 }
               }
             }} title="Subscript">x<sub>2</sub></ToolbarButton>
-          <ToolbarButton isActive={state.superscript} onClick={() => {
+          <ToolbarButton isActive={toolbar.superscript} onClick={() => {
               if (editor.isActive('superscript')) {
                 editor.chain().focus().unsetSuperscript().run();
               } else {
@@ -252,19 +263,19 @@ export default function RichEditor({ value, onChange, placeholder, minHeight = "
             }} title="Superscript">x<sup>2</sup></ToolbarButton>
           
           <span className="mx-1 h-5 w-px bg-card-border" />
-          <ToolbarButton onClick={() => editor.chain().focus().setParagraph().run()} isActive={state.paragraph} title="Paragraf">P</ToolbarButton>
-          <ToolbarButton onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} isActive={state.heading} title="Judul">H</ToolbarButton>
-          <ToolbarButton onClick={() => editor.chain().focus().toggleBlockquote().run()} isActive={state.blockquote} title="Kutipan">❝</ToolbarButton>
+          <ToolbarButton onClick={() => editor.chain().focus().setParagraph().run()} isActive={toolbar.paragraph} title="Paragraf">P</ToolbarButton>
+          <ToolbarButton onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} isActive={toolbar.heading} title="Judul">H</ToolbarButton>
+          <ToolbarButton onClick={() => editor.chain().focus().toggleBlockquote().run()} isActive={toolbar.blockquote} title="Kutipan">❝</ToolbarButton>
           
           <span className="mx-1 h-5 w-px bg-card-border" />
-          <ToolbarButton onClick={() => editor.chain().focus().toggleOrderedList().run()} isActive={state.orderedList} title="Daftar bernomor">1.</ToolbarButton>
-          <ToolbarButton onClick={() => editor.chain().focus().toggleBulletList().run()} isActive={state.bulletList} title="Daftar berpoin">•</ToolbarButton>
+          <ToolbarButton onClick={() => editor.chain().focus().toggleOrderedList().run()} isActive={toolbar.orderedList} title="Daftar bernomor">1.</ToolbarButton>
+          <ToolbarButton onClick={() => editor.chain().focus().toggleBulletList().run()} isActive={toolbar.bulletList} title="Daftar berpoin">•</ToolbarButton>
           
           <span className="mx-1 h-5 w-px bg-card-border" />
-          <ToolbarButton onClick={() => editor.chain().focus().setTextAlign('left').run()} isActive={state.alignLeft} title="Rata kiri">≡|</ToolbarButton>
-          <ToolbarButton onClick={() => editor.chain().focus().setTextAlign('center').run()} isActive={state.alignCenter} title="Rata tengah">|≡|</ToolbarButton>
-          <ToolbarButton onClick={() => editor.chain().focus().setTextAlign('right').run()} isActive={state.alignRight} title="Rata kanan">|≡</ToolbarButton>
-          <ToolbarButton onClick={() => editor.chain().focus().setTextAlign('justify').run()} isActive={state.alignJustify} title="Rata penuh">|≡≡|</ToolbarButton>
+          <ToolbarButton onClick={() => editor.chain().focus().setTextAlign('left').run()} isActive={toolbar.alignLeft} title="Rata kiri">≡|</ToolbarButton>
+          <ToolbarButton onClick={() => editor.chain().focus().setTextAlign('center').run()} isActive={toolbar.alignCenter} title="Rata tengah">|≡|</ToolbarButton>
+          <ToolbarButton onClick={() => editor.chain().focus().setTextAlign('right').run()} isActive={toolbar.alignRight} title="Rata kanan">|≡</ToolbarButton>
+          <ToolbarButton onClick={() => editor.chain().focus().setTextAlign('justify').run()} isActive={toolbar.alignJustify} title="Rata penuh">|≡≡|</ToolbarButton>
 
           <span className="mx-1 h-5 w-px bg-card-border" />
           <ToolbarButton onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()} title="Hapus format">Tx</ToolbarButton>
@@ -306,7 +317,7 @@ export default function RichEditor({ value, onChange, placeholder, minHeight = "
           </div>
         )}
 
-        {state.table && (
+        {toolbar.table && (
           <div className="flex flex-wrap items-center gap-1 border-b border-card-border bg-brand-primary/5 px-2 py-1.5 text-xs">
             <span className="mr-1 font-semibold text-text-muted">Tabel:</span>
             <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => editor.chain().focus().addRowAfter().run()} className="rounded px-2 py-1 font-semibold transition hover:bg-brand-primary hover:text-heading-light text-body-dark">+ Baris</button>
