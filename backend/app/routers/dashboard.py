@@ -2,10 +2,10 @@ from datetime import timedelta
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
-from app.core.security import require_roles
+from app.core.security import guru_accessible_package_ids, require_roles
 from app.core.timeutils import ensure_utc, utc_now
 from app.db.database import get_db
 from app.models.hasil_ujian import HasilUjian
@@ -283,6 +283,15 @@ def get_dashboard_hasil_siswa(
         .join(Siswa, UjianSiswa.siswa_id == Siswa.id)
         .join(PaketUjian, UjianSiswa.paket_ujian_id == PaketUjian.id)
     )
+    # Rekap hanya pengerjaan resmi: latihan per mapel dari paket try out dan sesi
+    # drilling (tidak masuk riwayat) tidak boleh menggandakan siswa di rekap.
+    query = query.filter(
+        or_(PaketUjian.tipe != "ujian", UjianSiswa.latihan_bagian_id.is_(None)),
+        or_(UjianSiswa.mode_latihan.is_(None), UjianSiswa.mode_latihan != "drill"),
+    )
+    if current_user.role == "guru":
+        paket_ids = guru_accessible_package_ids(db, current_user, [row.id for row in db.query(PaketUjian.id).all()])
+        query = query.filter(PaketUjian.id.in_(paket_ids or [-1]))
     if siswa_id is not None:
         query = query.filter(Siswa.id == siswa_id)
     if paket_ujian_id is not None:

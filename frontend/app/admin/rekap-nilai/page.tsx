@@ -170,7 +170,11 @@ export default function RekapNilaiPage() {
         cell.alignment = i === 0 || i === 4 || i === 5 ? { horizontal: "center", vertical: "middle" } : { vertical: "middle" };
       });
 
-      if (nilai != null) {
+      if (nilai != null && r.metode_penilaian === "kohort") {
+        // Skala kohort (200–800 / 0–1000) tidak memakai KKM: tanpa warna lulus/tidak.
+        row.getCell(5).font = { name: "Calibri", size: 10, bold: true, color: { argb: "FF1E1E1E" } };
+        row.getCell(6).font = { name: "Calibri", size: 10, bold: true, color: { argb: r.kohort_status === "final" ? ARGB_GREEN : ARGB_MUTED } };
+      } else if (nilai != null) {
         const nilaiCell = row.getCell(5);
         nilaiCell.font = { name: "Calibri", size: 10, bold: true, color: { argb: lulus ? ARGB_GREEN : ARGB_RED } };
         const statusCell = row.getCell(6);
