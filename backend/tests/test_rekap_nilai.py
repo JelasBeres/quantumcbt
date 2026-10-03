@@ -47,3 +47,33 @@ def test_rekap_terbatas_scope_guru_dan_tanpa_latihan_mapel():
     assert any(row["paket_ujian_id"] == paket_id for row in pengampu)
     bukan_pengampu = client.get("/dashboard/hasil-siswa", headers=_staf("guru", lain_id)).json()
     assert all(row["paket_ujian_id"] != paket_id for row in bukan_pengampu)
+
+
+def test_rata_rata_dashboard_dipisah_per_skala_nilai():
+    """Nilai biasa (0-100) tidak boleh dirata-rata bersama nilai kohort (200-800)."""
+    from app.models.hasil_ujian import HasilUjian
+    from app.models.paket_ujian import PaketUjian
+    from app.models.siswa import Siswa
+    from app.models.ujian_siswa import UjianSiswa
+
+    with SessionLocal() as db:
+        user = User(username=f"skala-{uuid4().hex[:6]}", password_hash=get_password_hash("Skala123"), role="siswa", is_active=True)
+        db.add(user)
+        db.flush()
+        siswa = Siswa(user_id=user.id, nama_lengkap=f"Skala {uuid4().hex[:6]}")
+        paket = PaketUjian(nama=f"Skala {uuid4().hex[:6]}", tipe="ujian", durasi_menit=30)
+        db.add_all([siswa, paket])
+        db.flush()
+        for skor, meta in ((80.0, {"metode_penilaian": "biasa"}), (600.0, {"metode_penilaian": "kohort", "skala": "tka"})):
+            ujian = UjianSiswa(siswa_id=siswa.id, paket_ujian_id=paket.id, is_submitted=True)
+            db.add(ujian)
+            db.flush()
+            db.add(HasilUjian(ujian_siswa_id=ujian.id, skor=skor, skor_per_pelajaran_json={"_meta": meta}))
+        db.commit()
+
+    data = client.get("/dashboard/hasil-analytics", headers=_staf("admin")).json()
+    per_skala = {item["skala"]: item for item in data["rata_rata_per_skala"]}
+    assert per_skala["tka"]["tertinggi"] >= 600
+    assert per_skala["biasa"]["tertinggi"] <= 100
+    assert data["rata_rata_nilai"] == per_skala["biasa"]["rata_rata"]
+    assert data["nilai_tertinggi"] <= 100

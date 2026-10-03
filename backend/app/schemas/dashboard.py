@@ -88,9 +88,20 @@ class DashboardHasilSiswaOut(BaseModel):
     calculated_at: Optional[datetime] = None
 
 
+class RataRataSkalaOut(BaseModel):
+    skala: str  # "biasa" (0-100), "tka" (200-800), "utbk" (0-1000)
+    jumlah: int
+    rata_rata: float
+    tertinggi: float
+    terendah: float
+
+
 class HasilAnalyticsOut(BaseModel):
     jumlah_hasil: int
     rata_rata_nilai: Optional[float] = None
     nilai_tertinggi: Optional[float] = None
     nilai_terendah: Optional[float] = None
     jumlah_lulus_75: int
+    # Nilai biasa dan kohort berbeda skala: rata_rata_nilai/tertinggi/terendah
+    # hanya dari nilai biasa, rincian kohort per skala ada di sini.
+    rata_rata_per_skala: List[RataRataSkalaOut] = []

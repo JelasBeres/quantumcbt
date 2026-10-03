@@ -14,6 +14,7 @@ import {
   Users
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { formatNilai, NAMA_SKALA, RENTANG_SKALA, SkalaNilai } from "@/lib/skala-nilai";
 import Card from "@/components/Card";
 import Skeleton from "@/components/Skeleton";
 import StatCard from "@/components/StatCard";
@@ -42,6 +43,7 @@ interface PerluTindakan {
 interface Analytics {
   jumlah_hasil: number;
   rata_rata_nilai?: number | null;
+  rata_rata_per_skala?: Array<{ skala: SkalaNilai; jumlah: number; rata_rata: number }>;
 }
 
 export default function AdminDashboardPage() {
@@ -242,7 +244,15 @@ export default function AdminDashboardPage() {
             <div className="flex items-center justify-between gap-3"><dt className="text-text-muted">Paket ujian</dt><dd className="font-bold text-heading-dark">{data?.total_paket ?? 0}</dd></div>
             <div className="flex items-center justify-between gap-3"><dt className="text-text-muted">Jadwal terbit</dt><dd className="font-bold text-heading-dark">{statistik?.total_jadwal_published ?? 0}</dd></div>
             <div className="flex items-center justify-between gap-3"><dt className="text-text-muted">Ujian selesai</dt><dd className="font-bold text-heading-dark">{data?.total_ujian_selesai ?? 0}</dd></div>
-            <div className="flex items-center justify-between gap-3"><dt className="text-text-muted">Rata-rata nilai</dt><dd className="font-bold text-heading-dark">{analytics?.rata_rata_nilai != null ? analytics.rata_rata_nilai.toFixed(1) : "-"}</dd></div>
+            {/* Nilai biasa dan kohort berbeda skala, jadi rata-ratanya ditampilkan per skala. */}
+            {analytics?.rata_rata_per_skala?.length ? analytics.rata_rata_per_skala.map((item) => (
+              <div key={item.skala} className="flex items-center justify-between gap-3">
+                <dt className="text-text-muted">Rata-rata {item.skala === "biasa" ? "nilai" : NAMA_SKALA[item.skala]} <span className="text-xs">({RENTANG_SKALA[item.skala]})</span></dt>
+                <dd className="font-bold text-heading-dark">{formatNilai(item.rata_rata, item.skala)}</dd>
+              </div>
+            )) : (
+              <div className="flex items-center justify-between gap-3"><dt className="text-text-muted">Rata-rata nilai</dt><dd className="font-bold text-heading-dark">-</dd></div>
+            )}
           </dl>
           <Link href="/admin/jadwal-ujian" className="mt-6 flex items-center justify-center gap-2 rounded-lg border border-card-border px-3 py-2 text-sm font-semibold text-body-dark transition hover:border-brand-primary hover:text-brand-primary">
             <CalendarClock className="h-4 w-4" aria-hidden="true" /> Kelola jadwal

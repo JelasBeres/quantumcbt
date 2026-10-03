@@ -12,6 +12,7 @@ function salamWaktu() {
   return { label: "Malam", Icon: Moon };
 }
 import { api, getErrorMessage } from "@/lib/api";
+import { formatNilai, RENTANG_SKALA, ringkasPerSkala, skalaNilai, SkalaNilai } from "@/lib/skala-nilai";
 import { getUser } from "@/lib/auth";
 import Skeleton from "@/components/Skeleton";
 import { formatWaktuJadwal } from "@/lib/waktu-jadwal";
@@ -39,6 +40,9 @@ type Riwayat = {
   finished_at?: string | null;
   is_submitted: boolean;
   skor?: number | null;
+  metode_penilaian?: string | null;
+  skala?: string | null;
+  kohort_status?: string | null;
 };
 
 type RiwayatLatihan = {
@@ -188,20 +192,27 @@ export default function SiswaHomePage() {
 
   // Try out = sesi berjadwal; sesi tanpa jadwal dari paket tryout termasuk latihan per-mapel.
   const tryoutSelesai = riwayat.filter((r) => r.is_submitted && r.jadwal_ujian_id != null);
-  const statTryout = rataRataSkor(tryoutSelesai);
+  // Nilai biasa (0–100) dan kohort (TKA 200–800 / UTBK 0–1000) dirata-rata terpisah.
+  const statTryoutPerSkala = ringkasPerSkala(tryoutSelesai);
   const statLatihan = rataRataSkor(riwayatLatihan);
   const tryoutBelumDikerjakan = jadwalTersedia.filter((item) => item.status === "berlangsung" && !jadwalSelesaiSet.has(item.jadwal_ujian_id)).length;
   const terakhir = [
-    ...tryoutSelesai.map((r) => ({ jenis: "Try Out" as const, nama: r.nama_paket, skor: r.skor, waktu: waktuMs(r.finished_at ?? r.started_at), href: `/siswa/riwayat/tryout/${encodeURIComponent(kategoriKey(r))}/${r.ujian_siswa_id}` })),
-    ...riwayatLatihan.map((r) => ({ jenis: "Latihan" as const, nama: r.pelajaran_nama ? `${r.nama_paket} · ${r.pelajaran_nama}` : r.nama_paket, skor: r.skor, waktu: waktuMs(r.finished_at), href: "/siswa/riwayat/latihan" }))
+    ...tryoutSelesai.map((r) => ({ jenis: "Try Out" as const, nama: r.nama_paket, skor: r.skor, skala: skalaNilai(r), waktu: waktuMs(r.finished_at ?? r.started_at), href: `/siswa/riwayat/tryout/${encodeURIComponent(kategoriKey(r))}/${r.ujian_siswa_id}` })),
+    ...riwayatLatihan.map((r) => ({ jenis: "Latihan" as const, nama: r.pelajaran_nama ? `${r.nama_paket} · ${r.pelajaran_nama}` : r.nama_paket, skor: r.skor, skala: "biasa" as SkalaNilai, waktu: waktuMs(r.finished_at), href: "/siswa/riwayat/latihan" }))
   ].sort((a, b) => b.waktu - a.waktu)[0];
   const fmt = (value: number) => value.toFixed(1);
 
+  const kartuTryout = statTryoutPerSkala.length
+    ? statTryoutPerSkala.map((stat) => ({
+        label: stat.skala === "biasa" ? "Rata-rata Nilai Try Out" : `Rata-rata Try Out ${stat.skala === "tka" ? "TKA" : "UTBK"}`,
+        tag: "Try Out", value: formatNilai(stat.rata, stat.skala), icon: Award, href: "/siswa/riwayat/tryout",
+        detail: `${stat.skala === "biasa" ? "" : `Skala ${RENTANG_SKALA[stat.skala]} · `}Dari ${stat.jumlah} try out · tertinggi ${formatNilai(stat.tertinggi, stat.skala)}${stat.adaSementara ? " · ada nilai sementara" : ""}`,
+        cta: "Lihat riwayat try out"
+      }))
+    : [{ label: "Rata-rata Nilai Try Out", tag: "Try Out", value: "-", icon: Award, href: "/siswa/riwayat/tryout", detail: "Belum ada try out yang dinilai", cta: "Lihat riwayat try out" }];
+
   const stats = [
-    {
-      label: "Rata-rata Nilai Try Out", tag: "Try Out", value: statTryout ? fmt(statTryout.rata) : "-", icon: Award, href: "/siswa/riwayat/tryout",
-      detail: statTryout ? `Dari ${statTryout.jumlah} try out · tertinggi ${fmt(statTryout.tertinggi)}` : "Belum ada try out yang dinilai", cta: "Lihat riwayat try out"
-    },
+    ...kartuTryout,
     {
       label: "Rata-rata Nilai Latihan", tag: "Latihan", value: statLatihan ? fmt(statLatihan.rata) : "-", icon: BookOpen, href: "/siswa/riwayat/latihan",
       detail: statLatihan ? `Dari ${statLatihan.jumlah} latihan · tertinggi ${fmt(statLatihan.tertinggi)}` : "Belum ada latihan yang selesai", cta: "Lihat riwayat latihan"
@@ -212,8 +223,8 @@ export default function SiswaHomePage() {
       cta: tryoutBelumDikerjakan > 0 ? "Kerjakan sekarang" : "Lihat riwayat"
     },
     {
-      label: "Nilai Terakhir", tag: terakhir?.jenis ?? null, value: terakhir?.skor != null ? fmt(terakhir.skor) : "-", icon: Sparkles, href: terakhir?.href ?? "/siswa/riwayat",
-      detail: terakhir ? terakhir.nama : "Belum ada ujian yang selesai", cta: terakhir ? "Lihat hasil" : "Buka riwayat"
+      label: "Nilai Terakhir", tag: terakhir?.jenis ?? null, value: terakhir?.skor != null ? formatNilai(terakhir.skor, terakhir.skala) : "-", icon: Sparkles, href: terakhir?.href ?? "/siswa/riwayat",
+      detail: terakhir ? `${terakhir.nama}${terakhir.skala === "biasa" ? "" : ` · skala ${RENTANG_SKALA[terakhir.skala]}`}` : "Belum ada ujian yang selesai", cta: terakhir ? "Lihat hasil" : "Buka riwayat"
     }
   ];
 
@@ -308,7 +319,7 @@ export default function SiswaHomePage() {
           <h2 id="progress-heading">Ringkasan</h2>
           <Link href="/siswa/riwayat" className="student-outline-link">Riwayat <ArrowRight size={13} aria-hidden="true" /></Link>
         </div>
-        <div className="student-stat-grid student-stat-grid-4">
+        <div className={`student-stat-grid ${stats.length > 4 ? "student-stat-grid-6" : "student-stat-grid-4"}`}>
           {stats.map((stat) => (
             <Link href={stat.href} className="student-stat" key={stat.label}>
               <span className="student-stat-top">

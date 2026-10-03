@@ -21,6 +21,7 @@ from app.models.siswa import Siswa
 from app.models.ujian_siswa import UjianSiswa
 from app.schemas.dashboard import (
     DashboardAdminOut,
+    RataRataSkalaOut,
     DashboardHasilSiswaOut,
     DashboardLogKecuranganOut,
     DashboardStatistikOut,
@@ -154,6 +155,33 @@ def _status_ujian(ujian: UjianSiswa, paket: PaketUjian) -> str:
     return "sedang"
 
 
+def _ringkasan_nilai_per_skala(db: Session) -> List[RataRataSkalaOut]:
+    """Nilai biasa (0-100) dan kohort (TKA 200-800 / UTBK 0-1000) dirata-rata
+    terpisah. Sama seperti rekap: latihan per mapel dari try out dan drilling
+    tidak ikut."""
+    rows = (
+        db.query(HasilUjian.skor, HasilUjian.skor_per_pelajaran_json)
+        .join(UjianSiswa, HasilUjian.ujian_siswa_id == UjianSiswa.id)
+        .join(PaketUjian, UjianSiswa.paket_ujian_id == PaketUjian.id)
+        .filter(
+            HasilUjian.skor.isnot(None),
+            or_(PaketUjian.tipe != "ujian", UjianSiswa.latihan_bagian_id.is_(None)),
+            or_(UjianSiswa.mode_latihan.is_(None), UjianSiswa.mode_latihan != "drill"),
+        )
+        .all()
+    )
+    grup: dict[str, list[float]] = {}
+    for skor, payload in rows:
+        meta = (payload or {}).get("_meta", {})
+        skala = "biasa" if meta.get("metode_penilaian") != "kohort" else ("tka" if meta.get("skala") == "tka" else "utbk")
+        grup.setdefault(skala, []).append(float(skor))
+    return [
+        RataRataSkalaOut(skala=skala, jumlah=len(nilai), rata_rata=sum(nilai) / len(nilai), tertinggi=max(nilai), terendah=min(nilai))
+        for skala in ("biasa", "tka", "utbk")
+        if (nilai := grup.get(skala))
+    ]
+
+
 @router.get("/statistik", response_model=DashboardStatistikOut)
 def get_dashboard_statistik(
     db: Session = Depends(get_db),
@@ -166,7 +194,8 @@ def get_dashboard_statistik(
         if paket and _status_ujian(ujian, paket) == "sedang":
             ujian_berjalan += 1
 
-    rata_rata_nilai = db.query(func.avg(HasilUjian.skor)).scalar()
+    biasa = next((item for item in _ringkasan_nilai_per_skala(db) if item.skala == "biasa"), None)
+    rata_rata_nilai = biasa.rata_rata if biasa else None
     return DashboardStatistikOut(
         total_siswa=db.query(Siswa).count(),
         total_paket_ujian=db.query(PaketUjian).count(),
@@ -328,9 +357,11 @@ def get_hasil_analytics(
     current_user=Depends(require_roles(["admin", "guru"])),
 ):
     jumlah_hasil = db.query(HasilUjian).count()
-    rata_rata_nilai = db.query(func.avg(HasilUjian.skor)).scalar()
-    nilai_tertinggi = db.query(func.max(HasilUjian.skor)).scalar()
-    nilai_terendah = db.query(func.min(HasilUjian.skor)).scalar()
+    per_skala = _ringkasan_nilai_per_skala(db)
+    biasa = next((item for item in per_skala if item.skala == "biasa"), None)
+    rata_rata_nilai = biasa.rata_rata if biasa else None
+    nilai_tertinggi = biasa.tertinggi if biasa else None
+    nilai_terendah = biasa.terendah if biasa else None
     # Lulus = skor >= KKM paket masing-masing; paket kohort (skala 0-1000) tidak dihitung.
     jumlah_lulus_75 = (
         db.query(HasilUjian)
@@ -345,4 +376,5 @@ def get_hasil_analytics(
         nilai_tertinggi=float(nilai_tertinggi) if nilai_tertinggi is not None else None,
         nilai_terendah=float(nilai_terendah) if nilai_terendah is not None else None,
         jumlah_lulus_75=jumlah_lulus_75,
+        rata_rata_per_skala=per_skala,
     )

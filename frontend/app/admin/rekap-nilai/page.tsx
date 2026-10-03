@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Award, Download, RotateCcw, Search, TrendingDown, TrendingUp, Users } from "lucide-react";
 import { api } from "@/lib/api";
+import { formatNilai, NAMA_SKALA, RENTANG_SKALA, ringkasPerSkala } from "@/lib/skala-nilai";
 import Button from "@/components/Button";
 import Card from "@/components/Card";
 import Select from "@/components/Select";
@@ -82,14 +83,11 @@ export default function RekapNilaiPage() {
   }, [rows, q]);
 
   const stats = useMemo(() => {
-    const skor = rows.map((r) => r.skor).filter((s): s is number => s != null);
-    if (skor.length === 0) return { jumlah: 0, rata: null, tertinggi: null, terendah: null, lulus: 0 };
-    const rata = skor.reduce((a, b) => a + b, 0) / skor.length;
+    // Nilai biasa (0–100) dan kohort (TKA 200–800 / UTBK 0–1000) tidak dicampur.
+    const perSkala = ringkasPerSkala(rows);
     return {
-      jumlah: skor.length,
-      rata,
-      tertinggi: Math.max(...skor),
-      terendah: Math.min(...skor),
+      jumlah: perSkala.reduce((total, item) => total + item.jumlah, 0),
+      perSkala,
       // Status lulus (≥ KKM paket) hanya berlaku untuk penilaian biasa (skala 0–100).
       lulus: rows.filter((r) => r.skor != null && r.metode_penilaian !== "kohort" && r.skor >= kkmOf(r)).length
     };
@@ -263,11 +261,20 @@ export default function RekapNilaiPage() {
   }
 
   const selectedKkm = selectedPaket ? (paketList.find((p) => p.id === Number(selectedPaket))?.kkm ?? 75) : null;
+  // Satu baris per skala nilai; label skala hanya ditulis bila bukan nilai biasa satu-satunya.
+  const perSkalaLines = (pilih: (item: (typeof stats.perSkala)[number]) => number) =>
+    stats.perSkala.length === 0
+      ? ["-"]
+      : stats.perSkala.map((item) =>
+          stats.perSkala.length === 1 && item.skala === "biasa"
+            ? formatNilai(pilih(item), item.skala)
+            : `${formatNilai(pilih(item), item.skala)} · ${NAMA_SKALA[item.skala]}${item.skala === "biasa" ? "" : ` (${RENTANG_SKALA[item.skala]})`}`
+        );
   const summary = [
-    { label: "Peserta dinilai", value: String(stats.jumlah), icon: Users },
-    { label: "Rata-rata", value: stats.rata != null ? stats.rata.toFixed(1) : "-", icon: Award },
-    { label: selectedKkm != null ? `Lulus (≥ KKM ${selectedKkm})` : "Lulus (≥ KKM)", value: String(stats.lulus), icon: TrendingUp },
-    { label: "Nilai terendah", value: stats.terendah != null ? stats.terendah.toFixed(1) : "-", icon: TrendingDown }
+    { label: "Peserta dinilai", lines: [String(stats.jumlah)], icon: Users },
+    { label: "Rata-rata", lines: perSkalaLines((item) => item.rata), icon: Award },
+    { label: selectedKkm != null ? `Lulus (≥ KKM ${selectedKkm})` : "Lulus (≥ KKM, nilai biasa)", lines: [String(stats.lulus)], icon: TrendingUp },
+    { label: "Nilai terendah", lines: perSkalaLines((item) => item.terendah), icon: TrendingDown }
   ];
 
   return (
@@ -283,7 +290,7 @@ export default function RekapNilaiPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {summary.map(({ label, value, icon: Icon }) => (
+        {summary.map(({ label, lines, icon: Icon }) => (
           <Card key={label}>
             <div className="flex items-center gap-3">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-brand-primary/10 text-brand-primary">
@@ -291,7 +298,12 @@ export default function RekapNilaiPage() {
               </div>
               <div>
                 <p className="text-sm text-text-muted">{label}</p>
-                <p className="text-xl font-bold text-heading-dark">{value}</p>
+                {lines.length === 1 && !lines[0].includes(" · ")
+                  ? <p className="text-xl font-bold text-heading-dark">{lines[0]}</p>
+                  : lines.map((line) => {
+                      const [nilai, skala] = line.split(" · ");
+                      return <p key={line} className="text-base font-bold text-heading-dark">{nilai} <span className="text-xs font-medium text-text-muted">{skala}</span></p>;
+                    })}
               </div>
             </div>
           </Card>

@@ -191,6 +191,9 @@ a.student-stat:focus-visible { outline: 2px solid #2d3c8f; outline-offset: 2px; 
 .student-stat-link { margin-top: auto; padding-top: 10px; display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; color: #2d3c8f; }
 .student-stat-grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 @media (max-width: 900px) { .student-stat-grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* 5–6 kartu (rata-rata try out per skala nilai): 3 kolom agar tidak tersisa satu kartu di baris terakhir. */
+.student-stat-grid-6 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 900px) { .student-stat-grid-6 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .student-notice { border: 1px solid var(--st-border); border-radius: 18px; padding: 18px 20px; background: var(--st-surface); color: var(--st-text); font-size: 13px; }
 
 /* ---------- Bottom nav pill (semua ukuran layar, seperti Bisadanedu) ---------- */
