@@ -260,8 +260,8 @@ a.student-stat:focus-visible { outline: 2px solid #2d3c8f; outline-offset: 2px; 
   .student-tryouts:not(.student-list-compact) { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 14px; margin: 0 -16px; padding: 0 16px 8px; scrollbar-width: none; }
   .student-tryouts:not(.student-list-compact)::-webkit-scrollbar { display: none; }
   .student-tryouts:not(.student-list-compact) .student-tryout { flex: 0 0 78%; scroll-snap-align: center; }
-  /* Hanya satu try out: kartu dibuat selebar layar, tidak perlu geser. */
-  .student-tryouts-single .student-tryout { flex-basis: 100%; }
+  /* Hanya satu try out: kartu selebar layar. :not() menyamakan spesifisitas dengan aturan carousel di atas. */
+  .student-tryouts-single:not(.student-list-compact) .student-tryout { flex-basis: 100%; }
   .student-tryout-cover { min-height: 190px; }
   .student-split-page { padding-top: 24px; }
   .student-back { margin-bottom: 14px; font-size: 12.5px; }
