@@ -24,10 +24,19 @@ const opsiBenarSalah = (): LocalOpsi[] => [
 // Default lima pilihan (A-E).
 const opsiDefault = (): LocalOpsi[] => Array.from({ length: 5 }, opsiKosong);
 
-const teksPolos = (html: string) => html.replace(/<[^>]*>/g, " ").replace(/&nbsp;/gi, " ").trim();
+const hasContent = (html: string) => {
+  if (!html) return false;
+  if (/<img[^>]*>/i.test(html)) return true;
+  if (/<iframe[^>]*>/i.test(html)) return true;
+  if (/<audio[^>]*>/i.test(html)) return true;
+  if (/<video[^>]*>/i.test(html)) return true;
+  if (html.includes('class="math-tex"') || html.includes('class="katex"')) return true;
+  const stripped = html.replace(/<[^>]*>/g, " ").replace(/&nbsp;/gi, " ").trim();
+  return stripped.length > 0;
+};
 
 const validasiOpsi = (tipe: string, opsi: LocalOpsi[]): string => {
-  const valid = opsi.filter((item) => teksPolos(item.teks_opsi));
+  const valid = opsi.filter((item) => hasContent(item.teks_opsi));
   const jumlahKunci = valid.filter((item) => item.is_benar).length;
   if (tipe === "pilihan_ganda" && (valid.length < 2 || jumlahKunci !== 1)) {
     return "Pilihan ganda wajib punya minimal dua opsi dan tepat satu kunci jawaban.";
@@ -172,7 +181,13 @@ export default function SoalFormModal({
       : prev.map((o, i) => ({ ...o, is_benar: i === index })));
 
   const handleTipeChange = (tipe: string) => {
-    setFormData((prev) => ({ ...prev, tipe }));
+    const tipeLama = formData.tipe;
+    const antarPilihan = [tipeLama, tipe].every((t) => t === "pilihan_ganda" || t === "pilihan_lebih_dari_satu");
+    // Kunci esai berupa HTML sedangkan kunci isian teks polos, jadi tidak dibawa saat berpindah tipe.
+    const kunciDibawa = tipeLama === tipe;
+    setFormData((prev) => ({ ...prev, tipe, kunci_jawaban: kunciDibawa ? prev.kunci_jawaban : "" }));
+    // Opsi yang sudah diketik tetap dipertahankan saat berpindah antara PG dan PG lebih dari satu.
+    if (antarPilihan) return;
     setOpsiList(tipe === "benar_salah" ? opsiBenarSalah() : opsiDefault());
     if (tipe === "benar_salah") setPernyataanList([pernyataanKosong()]);
   };
@@ -187,12 +202,16 @@ export default function SoalFormModal({
       setError("Pelajaran wajib dipilih.");
       return;
     }
-    if (!teksPolos(formData.teks_soal)) {
+    if (!hasContent(formData.teks_soal)) {
       setError("Teks soal wajib diisi.");
       return;
     }
     if (!Number.isFinite(Number(formData.poin)) || Number(formData.poin) <= 0) {
       setError("Poin harus lebih besar dari 0.");
+      return;
+    }
+    if (formData.tipe === "isian" && (!formData.kunci_jawaban || !formData.kunci_jawaban.trim())) {
+      setError("Kunci jawaban isian wajib diisi.");
       return;
     }
     if (formData.tipe === "benar_salah") {
@@ -202,7 +221,7 @@ export default function SoalFormModal({
         setError("Label 1 dan Label 2 wajib diisi dan harus berbeda.");
         return;
       }
-      if (!pernyataanList.length || pernyataanList.some((item) => !teksPolos(item.teks_pernyataan))) {
+      if (!pernyataanList.length || pernyataanList.some((item) => !hasContent(item.teks_pernyataan))) {
         setError("Minimal satu pernyataan wajib diisi.");
         return;
       }
@@ -247,7 +266,7 @@ export default function SoalFormModal({
           pernyataan: pernyataanList
         });
       } else if (formData.tipe === "pilihan_ganda" || formData.tipe === "pilihan_lebih_dari_satu") {
-        await api.put(`/soal/${soalId}/opsi`, { opsi: opsiList });
+        await api.put(`/soal/${soalId}/opsi`, { opsi: opsiList.filter(o => hasContent(o.teks_opsi)) });
       }
       onCreated(soalId);
     } catch (err) {
