@@ -169,6 +169,23 @@ def validate_opsi_for_tipe(tipe: str, opsi_payload: List[OpsiJawabanNestedCreate
     return opsi_valid
 
 
+def _require_soal_lengkap(soal: Soal, db: Session) -> None:
+    """Soal harus lengkap sebelum diajukan/disetujui. Form menyimpan soal lalu
+    opsinya dalam dua request, jadi soal bisa tertinggal tanpa opsi bila request
+    kedua gagal dan tidak boleh lolos ke siswa dalam keadaan itu."""
+    tipe = soal.tipe or "pilihan_ganda"
+    if tipe == "isian":
+        if not (soal.kunci_jawaban or "").strip():
+            raise HTTPException(status_code=400, detail="Soal isian wajib punya kunci jawaban")
+        return
+    if tipe == "esai":
+        return
+    if tipe == "benar_salah" and _pernyataan_rows(soal.id, db):
+        return
+    opsi_rows = db.query(OpsiJawaban).filter(OpsiJawaban.soal_id == soal.id).all()
+    validate_opsi_for_tipe(tipe, opsi_rows)
+
+
 def _sync_child_rows(db: Session, existing: list, items: list, make_row) -> list:
     """Sinkronkan baris opsi/pernyataan milik soal secara in-place.
 
@@ -271,6 +288,12 @@ def serialize_soal_detail_admin(soal: Soal, db: Session) -> SoalDetailAdminOut:
         status=soal.status,
         created_by=soal.created_by,
         created_by_name=_creator_names(db, [soal]).get(soal.created_by) if soal.created_by is not None else None,
+        created_at=soal.created_at,
+        reviewed_by=soal.reviewed_by,
+        submitted_for_review_at=soal.submitted_for_review_at,
+        reviewed_at=soal.reviewed_at,
+        rejection_reason=soal.rejection_reason,
+        published_at=soal.published_at,
         opsi_jawaban=opsi_list,
         pernyataan=_pernyataan_rows(soal.id, db),
     )
@@ -693,6 +716,7 @@ def submit_soal_review(
     _require_edit_soal(soal, current_user, db)
     if soal.status not in {"draft", "rejected"}:
         raise HTTPException(status_code=409, detail="Hanya soal draft atau perlu revisi yang dapat diajukan review")
+    _require_soal_lengkap(soal, db)
     previous = soal.status
     soal.status = "pending_review"
     soal.submitted_for_review_at = datetime.now(timezone.utc)
@@ -738,6 +762,7 @@ def approve_soal(
         raise HTTPException(status_code=404, detail="Soal not found")
     if soal.status != "pending_review":
         raise HTTPException(status_code=409, detail="Hanya soal menunggu review yang dapat disetujui")
+    _require_soal_lengkap(soal, db)
     previous = soal.status
     now = datetime.now(timezone.utc)
     soal.status = "approved"

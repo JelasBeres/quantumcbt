@@ -43,9 +43,9 @@ def test_approved_revision_updates_only_packages_not_started():
     setup_users_and_scope()
     admin_h = login_headers("workflow-admin", "WorkflowAdmin1")
     with SessionLocal() as db:
-        original = Soal(teks_soal="Original", status="approved")
+        original = Soal(teks_soal="Original", tipe="esai", status="approved")
         db.add(original); db.flush()
-        revision = Soal(teks_soal="Revised", status="pending_review", parent_soal_id=original.id)
+        revision = Soal(teks_soal="Revised", tipe="esai", status="pending_review", parent_soal_id=original.id)
         pending = PaketUjian(nama="Future")
         started = PaketUjian(nama="Started")
         db.add_all([revision, pending, started]); db.flush()

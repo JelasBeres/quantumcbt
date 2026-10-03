@@ -178,3 +178,34 @@ def test_other_teacher_revision_requires_admin_approval_and_scope():
         db.query(GuruScope).filter(GuruScope.user_id == other_id).delete()
         db.commit()
     assert client.post(f"/soal/{source['id']}/revision", headers=other_h).status_code == 403
+
+
+def test_soal_belum_lengkap_tidak_bisa_diajukan():
+    """Form menyimpan soal lalu opsi dalam dua request; soal yang tertinggal
+    tanpa opsi/kunci tidak boleh diajukan apalagi sampai ke siswa."""
+    _, _, _, pelajaran_id = setup_users_and_scope()
+    guru_h = headers("workflow-guru", "WorkflowGuru1")
+
+    def buat(tipe, **extra):
+        body = {"pelajaran_id": pelajaran_id, "teks_soal": f"Soal {tipe}", "tipe": tipe, **extra}
+        response = client.post("/soal/", json=body, headers=guru_h)
+        assert response.status_code == 200, response.text
+        return response.json()["id"]
+
+    pg = buat("pilihan_ganda")
+    assert client.post(f"/soal/{pg}/submit-review", json={}, headers=guru_h).status_code == 400
+    opsi = [{"teks_opsi": "A", "is_benar": True}, {"teks_opsi": "B", "is_benar": False}]
+    assert client.put(f"/soal/{pg}/opsi", json={"opsi": opsi}, headers=guru_h).status_code == 200
+    assert client.post(f"/soal/{pg}/submit-review", json={}, headers=guru_h).status_code == 200
+
+    isian = buat("isian")
+    assert client.post(f"/soal/{isian}/submit-review", json={}, headers=guru_h).status_code == 400
+
+    bs = buat("benar_salah")
+    assert client.post(f"/soal/{bs}/submit-review", json={}, headers=guru_h).status_code == 400
+    pernyataan = {"label_benar": "Benar", "label_salah": "Salah", "pernyataan": [{"teks_pernyataan": "P1", "is_benar": True}]}
+    assert client.put(f"/soal/{bs}/pernyataan-benar-salah", json=pernyataan, headers=guru_h).status_code == 200
+    assert client.post(f"/soal/{bs}/submit-review", json={}, headers=guru_h).status_code == 200
+
+    esai = buat("esai")
+    assert client.post(f"/soal/{esai}/submit-review", json={}, headers=guru_h).status_code == 200
