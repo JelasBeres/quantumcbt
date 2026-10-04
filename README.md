@@ -4,7 +4,7 @@ Aplikasi Computer Based Test untuk Bimbel Quantum Research: bank soal, paket Try
 dan Latihan, jadwal, ruang ujian siswa, penilaian (Nilai Biasa dengan KKM atau
 Benchmark Kohort UTBK/TKA), rekap nilai, dan unduh soal ke PDF.
 
-Online (uji client): https://quantum-test.jbackup.my.id
+Status: Siap Produksi
 
 ## Stack
 
