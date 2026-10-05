@@ -54,3 +54,6 @@ WhatsApp Image *.jpeg
 
 #scrape
 my-scrape/
+
+# Zip source code hasil make_zip.py (jangan ikut ter-deploy)
+*.zip

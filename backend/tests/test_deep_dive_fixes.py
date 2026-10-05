@@ -239,6 +239,41 @@ def test_kunci_dan_pembahasan_ditahan_selama_jadwal_tryout_berjalan():
     assert shown["soal"][0]["is_correct"] is True
 
 
+def test_nilai_tryout_ditahan_di_semua_endpoint_siswa_selama_jadwal_berjalan():
+    program = default_program_id()
+    siswa = _login("dd-siswa8", "siswa", program)
+    admin = _login("dd-admin8", "admin")
+    paket, [soal_id] = _paket_pg(program)
+    jadwal = active_schedule_id(paket)
+    ujian = client.post("/ujian-siswa/mulai", headers=siswa, json={"jadwal_ujian_id": jadwal}).json()["ujian_siswa_id"]
+    client.post(f"/ujian-siswa/{ujian}/jawab", headers=siswa, json={"soal_id": soal_id, "opsi_jawaban_id": _correct_opsi(soal_id)})
+    client.patch(f"/ujian-siswa/{ujian}/submit", headers=siswa)
+
+    hasil = client.get(f"/hasil-ujian/ujian/{ujian}", headers=siswa).json()
+    assert hasil["skor"] is None
+    meta = hasil["skor_per_pelajaran_json"]["_meta"]
+    assert meta["nilai_ditahan"] is True and "skor_mentah" not in meta
+    assert all("skor" not in v and "jumlah_benar" not in v for k, v in hasil["skor_per_pelajaran_json"].items() if k != "_meta")
+    assert all(row["skor"] is None for row in client.get("/hasil-ujian/", headers=siswa).json())
+    assert client.get(f"/hasil-ujian/{hasil['id']}", headers=siswa).json()["skor"] is None
+    detail = client.get(f"/hasil-ujian/ujian/{ujian}/detail", headers=siswa).json()
+    assert detail["skor"] is None and detail["skor_mentah"] is None
+    riwayat = next(r for r in client.get("/siswa/riwayat-ujian", headers=siswa).json() if r["ujian_siswa_id"] == ujian)
+    assert riwayat["skor"] is None and riwayat["nilai_ditahan"] is True and riwayat["skor_mentah"] is None
+    assert client.get("/siswa/dashboard", headers=siswa).json()["hasil_terakhir"] is None
+
+    # Admin tetap melihat nilai.
+    assert client.get(f"/hasil-ujian/ujian/{ujian}", headers=admin).json()["skor"] == 100.0
+
+    with SessionLocal() as db:
+        db.get(JadwalUjian, jadwal).selesai = utc_now() - timedelta(minutes=1)
+        db.commit()
+    assert client.get(f"/hasil-ujian/ujian/{ujian}", headers=siswa).json()["skor"] == 100.0
+    riwayat = next(r for r in client.get("/siswa/riwayat-ujian", headers=siswa).json() if r["ujian_siswa_id"] == ujian)
+    assert riwayat["skor"] == 100.0 and riwayat["nilai_ditahan"] is False
+    assert client.get("/siswa/dashboard", headers=siswa).json()["hasil_terakhir"] == 100.0
+
+
 def test_auto_submit_melewati_drill_dan_mengumpulkan_tryout_yang_habis():
     program = default_program_id()
     siswa = _login("dd-siswa7", "siswa", program)

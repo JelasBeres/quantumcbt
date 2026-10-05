@@ -1,51 +1,50 @@
 *PROGRESS REVISI QUANTUM CBT*
-Update: 04 Oktober 2026
+Update: 05 Oktober 2026
 
 Keterangan status:
-[Selesai] = fitur sudah rampung dan siap digunakan di production
+[Selesai] = sudah dikerjakan dan dites
+[Belum] = belum dijalankan, menunggu persetujuan
 [Konfirmasi] = menunggu jawaban client
 
-*A. Persiapan Produksi (Terbaru)*
-[Selesai] Database server sudah di-wipe (dibersihkan) bersih dari data testing/dummy. Hanya menyisakan akun inti (Admin, Siswa, Guru) agar siap digunakan di produksi/VPS.
-[Selesai] Source code bersih dalam format .zip (tanpa cache/node_modules) sudah digenerate.
-[Selesai] Editor soal (Tiptap) sudah diperbarui, bug tombol superskrip (x2), subskrip, hapus format, dan opsi kosong lolos sudah dibereskan secara tuntas.
-[Selesai] Validasi "isian singkat" sudah diwajibkan untuk diisi pada frontend saat pembuatan soal.
+*A. Persiapan serah terima (terbaru)*
+[Selesai] Source code bersih dalam format .zip: hanya kode, tanpa file konfigurasi rahasia, database, maupun log
+[Selesai] Dokumentasi diperbarui: cara instalasi dari nol, membuat akun admin, deploy, dan catatan revisi lengkap
+[Selesai] Script pembersih data server sudah diperbaiki dan dites (versi sebelumnya gagal sehingga tidak ada data yang terhapus)
+[Belum] Pembersihan data uji coba di server. Data saat ini masih berisi paket, soal, dan pengerjaan uji coba. Akun, program, kelas, dan mapel tetap dipertahankan
+[Selesai] Nilai try out kini benar-benar ditahan sampai jadwal berakhir di semua halaman siswa (sebelumnya masih terlihat di dashboard)
 
-*B. Ruang ujian siswa*
-[Selesai] Popup sebelum lanjut/kumpulkan menampilkan nomor soal yang belum dijawab dan ragu-ragu (tombol "Kembali Mengerjakan" / "Tetap Lanjut")
-[Selesai] Warna nomor soal: oranye = sedang dikerjakan, biru tua = terjawab, kuning = ragu-ragu, garis merah = dibuka tapi belum diisi, putih = belum dikerjakan
-[Selesai] Soal Benar/Salah dengan beberapa pernyataan baru dihitung terjawab jika semua pernyataan sudah diisi
-[Selesai] Nomor soal di laptop diperkecil agar area soal lebih luas
-[Selesai] Mode drilling: tombol "Kumpulkan" jadi "Selesai" dan tidak masuk riwayat
+*B. Try Out TKA & penilaian*
+[Selesai] Mapel wajib dan mapel pilihan pada Try Out TKA, siswa memilih mapel sebelum mulai (minimal/maksimal diatur per paket)
+[Selesai] Siswa hanya mengerjakan soal dari mapel yang dipilih; waktu pengerjaan mengikuti mapel yang dikerjakan
+[Selesai] Nilai kohort TKA diperbaiki (nilai sempurna 800)
+[Selesai] Kunci, pembahasan, dan nilai try out ditahan sampai semua jadwal paket berakhir
+[Selesai] Rata-rata nilai dipisah per skala: nilai biasa, TKA, dan UTBK
+[Selesai] Esai yang tidak dijawab bernilai 0 dan tidak menunggu koreksi
 
-*C. Halaman siswa*
-[Selesai] Menu "Ujian Aktif" dihapus
-[Selesai] Kartu kategori Try Out/Latihan dipercantik: satu kartu per baris, berwarna dan berikon; kategori yang tersedia tampil paling atas, yang belum ada paketnya abu-abu dengan gembok
-[Selesai] Tombol "Lihat Mapel" diganti "Kerjakan Set Soal"
+*C. Jadwal & rekap nilai*
+[Selesai] Jadwal yang sudah dikerjakan siswa hanya bisa diubah waktu selesainya
+[Selesai] Guru hanya melihat rekap nilai mapel yang diampu; latihan per mapel dan drilling tidak masuk rekap
 
 *D. Bank soal & editor*
-[Selesai] Editor soal: tombol rata kanan-kiri (justify)
-[Selesai] Lebar kolom tabel di editor bisa digeser
-[Selesai] Default soal baru: tingkat kesulitan sedang, poin 2 (soal lama berpoin 1 sudah disamakan jadi 2)
-[Selesai] Isi Soal > Pilih Manual: filter satu baris (Bab, Sub Bab, Tingkat Kesulitan, Pembuat Soal, Tgl dibuat, Sampai Tgl, Reset) + pilihan tipe soal diawali "Semua"
-[Selesai] Isi Soal > Auto-Generate: urutan Kelas Paket, Mapel, Bab, Sub Bab, Tipe Soal, Tingkat Kesulitan
+[Selesai] Editor soal baru (superskrip, subskrip, rata kanan-kiri, tabel, gambar, rumus)
+[Selesai] Soal yang belum lengkap tidak bisa diajukan/disetujui; isian wajib punya kunci; opsi kosong tidak disimpan
+[Selesai] Default soal baru: tingkat kesulitan sedang, poin 2
+[Selesai] Isi Soal > Pilih Manual dan Auto-Generate sesuai sketsa client
 [Konfirmasi] Tipe Soal "Campuran" di Auto-Generate saat ini mengambil soal acak dari semua tipe. Apakah perlu bisa diatur jumlah per tipe (misal 5 PG, 3 Benar/Salah)?
 
-*E. Unduh soal*
-[Selesai] Tombol "Unduh Soal" di setiap kartu set soal (admin dan guru pengampu)
-[Selesai] Tampilan sesuai contoh: tab Naskah soal / Kunci & pembahasan, kop logo Quantum Research, watermark, nomor halaman, tombol Unduh PDF
+*E. Ruang ujian & halaman siswa*
+[Selesai] Popup sebelum lanjut/kumpulkan menampilkan nomor soal yang belum dijawab dan ragu-ragu
+[Selesai] Warna nomor soal: oranye = sedang dikerjakan, biru tua = terjawab, kuning = ragu-ragu, garis merah = dibuka tapi belum diisi, putih = belum dikerjakan
+[Selesai] Mode drilling: tombol "Selesai" dan tidak masuk riwayat
+[Selesai] Pesan error dan login dalam bahasa Indonesia; setelah sesi habis kembali ke halaman semula
+[Selesai] Kartu kategori Try Out/Latihan dipercantik; tombol "Kerjakan Set Soal"
+
+*F. Unduh soal & admin*
+[Selesai] Tombol "Unduh Soal" per set soal: naskah, kunci & pembahasan, kop Quantum Research, watermark, Unduh PDF
+[Selesai] Dashboard admin: "Tindakan yang Perlu Diperhatikan"; menu "Laporan Soal"; Reset pengerjaan siswa di Rekap Nilai
+[Selesai] KKM per paket (default 75); paket Benchmark Kohort tanpa status lulus
 [Konfirmasi] Unduhan saat ini per set soal. Apakah perlu juga unduh satu paket utuh (semua set sekaligus)?
-
-*F. Admin*
-[Selesai] Dashboard: kartu "Tindakan yang Perlu Diperhatikan" berisi pengajuan soal, set soal, dan jadwal dari guru; bisa diklik langsung ke halamannya
-[Selesai] Menu "Analisis Soal" diganti "Laporan Soal"
-[Selesai] Rekap Nilai: tombol Reset pengerjaan siswa di samping kolom Waktu (siswa bisa mengerjakan ulang selama jadwal masih berlangsung)
-
-*G. Penilaian*
-[Selesai] KKM bisa diatur per paket (default 75); status Lulus/Belum lulus di Rekap Nilai dan Excel mengikuti KKM paket masing-masing
-[Selesai] Paket Benchmark Kohort (skala 0-1000) tidak memakai status lulus/tidak lulus
 [Konfirmasi] Posisi input KKM saat ini di form Buat/Edit Paket, di sebelah Metode Penilaian. Apakah sudah sesuai?
-[Selesai] Penjelasan poin vs tingkat kesulitan sudah dijawab (tingkat kesulitan untuk filter, poin untuk perhitungan nilai)
 
 *Status*
-Persiapan produksi telah rampung, database dibersihkan dan siap dirilis. Zip telah dibuat.
+Semua fitur selesai dan dites. Tinggal pembersihan data uji coba di server (menunggu persetujuan) dan tiga pertanyaan konfirmasi di atas.

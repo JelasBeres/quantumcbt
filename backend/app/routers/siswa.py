@@ -18,6 +18,7 @@ from app.models.program import Program
 from app.models.siswa import Siswa
 from app.models.ujian_siswa import UjianSiswa
 from app.models.user import User
+from app.routers.hasil_ujian import kunci_ditahan, samarkan_skor_json
 from app.services import import_siswa
 from app.schemas.siswa import (
     BagianTersediaOut,
@@ -216,7 +217,7 @@ def get_siswa_dashboard(db: Session = Depends(get_db), current_user=Depends(get_
     ]
     ujian_list = db.query(UjianSiswa).filter(UjianSiswa.siswa_id == siswa.id).all()
     hasil_list = (
-        db.query(HasilUjian)
+        db.query(HasilUjian.skor, UjianSiswa.paket_ujian_id)
         .join(UjianSiswa, HasilUjian.ujian_siswa_id == UjianSiswa.id)
         .join(PaketUjian, UjianSiswa.paket_ujian_id == PaketUjian.id)
         .filter(PaketUjian.tipe == "ujian")
@@ -232,7 +233,8 @@ def get_siswa_dashboard(db: Session = Depends(get_db), current_user=Depends(get_
         jadwal_mendatang=len(jadwal_mendatang),
         ujian_aktif=len([ujian for ujian in ujian_list if not ujian.is_submitted]),
         riwayat_ujian=sum(1 for row in get_siswa_riwayat_ujian(db, current_user) if row.is_submitted),
-        hasil_terakhir=hasil_list[0].skor if hasil_list else None,
+        # Nilai try out yang masih ditahan (jadwalnya belum berakhir) dilewati.
+        hasil_terakhir=next((skor for skor, paket_id in hasil_list if not kunci_ditahan(db, paket_map.get(paket_id))[0]), None),
         program_name=program.nama if program else None,
         kelas_name=kelas.nama if kelas else None,
     )
@@ -393,6 +395,7 @@ def get_siswa_riwayat_ujian(db: Session = Depends(get_db), current_user=Depends(
         )
     }
     rows: List[SiswaRiwayatUjianOut] = []
+    ditahan_map: Dict[int, bool] = {}
     ujian_list = (
         db.query(UjianSiswa)
         .filter(UjianSiswa.siswa_id == siswa.id)
@@ -404,6 +407,10 @@ def get_siswa_riwayat_ujian(db: Session = Depends(get_db), current_user=Depends(
         if not paket or paket.tipe != "ujian":
             continue
         hasil = hasil_map.get(ujian.id)
+        ditahan = ditahan_map.setdefault(paket.id, kunci_ditahan(db, paket)[0])
+        meta = (hasil.skor_per_pelajaran_json or {}).get("_meta", {}) if hasil else {}
+        if ditahan and hasil:
+            meta = samarkan_skor_json({"_meta": meta})["_meta"]
         rows.append(
             SiswaRiwayatUjianOut(
                 ujian_siswa_id=ujian.id,
@@ -415,12 +422,13 @@ def get_siswa_riwayat_ujian(db: Session = Depends(get_db), current_user=Depends(
                 started_at=ujian.started_at,
                 finished_at=ujian.finished_at,
                 is_submitted=ujian.is_submitted,
-                skor=hasil.skor if hasil else None,
-                metode_penilaian=(hasil.skor_per_pelajaran_json or {}).get("_meta", {}).get("metode_penilaian", paket.metode_penilaian or "biasa") if hasil else (paket.metode_penilaian or "biasa"),
-                kohort_status=(hasil.skor_per_pelajaran_json or {}).get("_meta", {}).get("kohort_status") if hasil else None,
-                skala=(hasil.skor_per_pelajaran_json or {}).get("_meta", {}).get("skala") if hasil else None,
-                skor_mentah=(hasil.skor_per_pelajaran_json or {}).get("_meta", {}).get("skor_mentah") if hasil else None,
-                metadata=(hasil.skor_per_pelajaran_json or {}).get("_meta") if hasil else None,
+                skor=hasil.skor if hasil and not ditahan else None,
+                metode_penilaian=meta.get("metode_penilaian", paket.metode_penilaian or "biasa"),
+                kohort_status=meta.get("kohort_status"),
+                skala=meta.get("skala"),
+                skor_mentah=meta.get("skor_mentah"),
+                metadata=meta if hasil else None,
+                nilai_ditahan=ditahan,
             )
         )
     return rows
@@ -465,6 +473,7 @@ def get_siswa_riwayat_latihan(db: Session = Depends(get_db), current_user=Depend
         .all()
     )
     rows: List[SiswaRiwayatLatihanOut] = []
+    ditahan_map: Dict[int, bool] = {}
     for ujian in ujian_list:
         paket = paket_map[ujian.paket_ujian_id]
         bagian = bagian_map.get(ujian.latihan_bagian_id)
@@ -483,7 +492,8 @@ def get_siswa_riwayat_latihan(db: Session = Depends(get_db), current_user=Depend
                 pelajaran_nama=pelajaran_map.get(bagian.pelajaran_id) if bagian else None,
                 started_at=ujian.started_at,
                 finished_at=ujian.finished_at,
-                skor=skor_map.get(ujian.id),
+                # Latihan mapel dari paket try out ikut ditahan selama jadwalnya berjalan.
+                skor=None if ditahan_map.setdefault(paket.id, kunci_ditahan(db, paket)[0]) else skor_map.get(ujian.id),
             )
         )
     return rows

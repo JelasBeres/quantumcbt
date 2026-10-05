@@ -43,6 +43,7 @@ type Riwayat = {
   metode_penilaian?: string | null;
   skala?: string | null;
   kohort_status?: string | null;
+  nilai_ditahan?: boolean;
 };
 
 type RiwayatLatihan = {
@@ -197,8 +198,8 @@ export default function SiswaHomePage() {
   const statLatihan = rataRataSkor(riwayatLatihan);
   const tryoutBelumDikerjakan = jadwalTersedia.filter((item) => item.status === "berlangsung" && !jadwalSelesaiSet.has(item.jadwal_ujian_id)).length;
   const terakhir = [
-    ...tryoutSelesai.map((r) => ({ jenis: "Try Out" as const, nama: r.nama_paket, skor: r.skor, skala: skalaNilai(r), waktu: waktuMs(r.finished_at ?? r.started_at), href: `/siswa/riwayat/tryout/${encodeURIComponent(kategoriKey(r))}/${r.ujian_siswa_id}` })),
-    ...riwayatLatihan.map((r) => ({ jenis: "Latihan" as const, nama: r.pelajaran_nama ? `${r.nama_paket} · ${r.pelajaran_nama}` : r.nama_paket, skor: r.skor, skala: "biasa" as SkalaNilai, waktu: waktuMs(r.finished_at), href: "/siswa/riwayat/latihan" }))
+    ...tryoutSelesai.map((r) => ({ jenis: "Try Out" as const, nama: r.nama_paket, skor: r.skor, ditahan: !!r.nilai_ditahan, skala: skalaNilai(r), waktu: waktuMs(r.finished_at ?? r.started_at), href: `/siswa/riwayat/tryout/${encodeURIComponent(kategoriKey(r))}/${r.ujian_siswa_id}` })),
+    ...riwayatLatihan.map((r) => ({ jenis: "Latihan" as const, nama: r.pelajaran_nama ? `${r.nama_paket} · ${r.pelajaran_nama}` : r.nama_paket, skor: r.skor, ditahan: false, skala: "biasa" as SkalaNilai, waktu: waktuMs(r.finished_at), href: "/siswa/riwayat/latihan" }))
   ].sort((a, b) => b.waktu - a.waktu)[0];
   const fmt = (value: number) => value.toFixed(1);
 
@@ -223,8 +224,9 @@ export default function SiswaHomePage() {
       cta: tryoutBelumDikerjakan > 0 ? "Kerjakan sekarang" : "Lihat riwayat"
     },
     {
-      label: "Nilai Terakhir", tag: terakhir?.jenis ?? null, value: terakhir?.skor != null ? formatNilai(terakhir.skor, terakhir.skala) : "-", icon: Sparkles, href: terakhir?.href ?? "/siswa/riwayat",
-      detail: terakhir ? `${terakhir.nama}${terakhir.skala === "biasa" ? "" : ` · skala ${RENTANG_SKALA[terakhir.skala]}`}` : "Belum ada ujian yang selesai", cta: terakhir ? "Lihat hasil" : "Buka riwayat"
+      label: "Nilai Terakhir", tag: terakhir?.jenis ?? null, value: terakhir?.ditahan ? "Ditahan" : terakhir?.skor != null ? formatNilai(terakhir.skor, terakhir.skala) : "-", icon: Sparkles, href: terakhir?.href ?? "/siswa/riwayat",
+      // Nilai try out ditahan server sampai jadwalnya berakhir.
+      detail: terakhir?.ditahan ? `${terakhir.nama} · tunggu jadwal try out berakhir` : terakhir ? `${terakhir.nama}${terakhir.skala === "biasa" ? "" : ` · skala ${RENTANG_SKALA[terakhir.skala]}`}` : "Belum ada ujian yang selesai", cta: terakhir ? "Lihat hasil" : "Buka riwayat"
     }
   ];
 

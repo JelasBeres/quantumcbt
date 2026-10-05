@@ -90,6 +90,42 @@ def kunci_ditahan(db: Session, paket: Optional[PaketUjian]) -> tuple[bool, Optio
     return True, max(belum_berakhir)
 
 
+# Kunci _meta yang membocorkan nilai (skor mentah, bobot/proporsi benar per soal).
+_META_NILAI = ("skor_mentah", "weights", "kohort_n")
+
+
+def samarkan_skor_json(skor_json: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """Breakdown nilai tanpa angka nilai: per mapel hanya nama & jumlah soal,
+    _meta tanpa skor mentah/bobot, ditandai `nilai_ditahan`."""
+    if not skor_json:
+        return skor_json
+    hasil: Dict[str, Any] = {}
+    for key, value in skor_json.items():
+        if key == "_meta":
+            meta = {k: v for k, v in (value or {}).items() if k not in _META_NILAI}
+            meta["nilai_ditahan"] = True
+            hasil[key] = meta
+        elif isinstance(value, dict):
+            hasil[key] = {k: value.get(k) for k in ("pelajaran_id", "nama", "jumlah_soal")}
+    return hasil
+
+
+def nilai_ditahan_untuk(db: Session, current_user, paket: Optional[PaketUjian]) -> bool:
+    """Nilai try out ikut ditahan bersama kunci, tapi hanya untuk siswa."""
+    return current_user.role == "siswa" and kunci_ditahan(db, paket)[0]
+
+
+def hasil_out(db: Session, current_user, hasil: HasilUjian, ujian: Optional[UjianSiswa] = None) -> HasilUjianOut:
+    out = HasilUjianOut.model_validate(hasil)
+    if current_user.role != "siswa":
+        return out
+    ujian = ujian or db.query(UjianSiswa).filter(UjianSiswa.id == hasil.ujian_siswa_id).first()
+    paket = db.query(PaketUjian).filter(PaketUjian.id == ujian.paket_ujian_id).first() if ujian else None
+    if not nilai_ditahan_untuk(db, current_user, paket):
+        return out
+    return out.model_copy(update={"skor": None, "skor_per_pelajaran_json": samarkan_skor_json(out.skor_per_pelajaran_json)})
+
+
 @router.post("/", response_model=HasilUjianOut)
 def create_hasil_ujian(payload: HasilUjianCreate, db: Session = Depends(get_db), current_user=Depends(get_current_active_user)):
     # Menimpa skor secara manual hanya untuk admin (guru menilai lewat koreksi esai).
@@ -130,7 +166,7 @@ def list_hasil_ujian(
         query = query.join(UjianSiswa, HasilUjian.ujian_siswa_id == UjianSiswa.id).filter(UjianSiswa.paket_ujian_id.in_(paket_ids))
     elif current_user.role != "admin":
         return []
-    return query.all()
+    return [hasil_out(db, current_user, hasil) for hasil in query.all()]
 
 
 @router.get("/ujian/{ujian_siswa_id}", response_model=HasilUjianOut)
@@ -146,7 +182,7 @@ def get_hasil_by_ujian_siswa(
     hasil = get_or_compute_hasil(db, ujian)
     if not hasil:
         raise HTTPException(status_code=404, detail="Hasil Ujian not found")
-    return hasil
+    return hasil_out(db, current_user, hasil, ujian)
 
 
 @router.get("/ujian/{ujian_siswa_id}/detail", response_model=HasilUjianDetailOut)
@@ -170,12 +206,15 @@ def get_hasil_detail(
     paket = db.query(PaketUjian).filter(PaketUjian.id == ujian.paket_ujian_id).first()
     metadata = (hasil.skor_per_pelajaran_json or {}).get("_meta", {}) if hasil else {}
     sembunyikan, kunci_tersedia_at = kunci_ditahan(db, paket) if current_user.role == "siswa" else (False, None)
+    if sembunyikan:
+        # Nilai ditahan bersama kunci (bukan hanya disembunyikan di frontend).
+        metadata = (samarkan_skor_json({"_meta": metadata}) or {}).get("_meta") or {"nilai_ditahan": True}
 
     soal_detail: List[HasilSoalDetail] = []
     if not ujian.soal_urutan:
         return HasilUjianDetailOut(
             ujian_siswa_id=ujian.id,
-            skor=hasil.skor if hasil else None,
+            skor=None if sembunyikan else (hasil.skor if hasil else None),
             soal=[],
             nama_paket=paket.nama if paket else None,
             metode_penilaian=metadata.get("metode_penilaian", paket.metode_penilaian if paket else "biasa"),
@@ -183,6 +222,8 @@ def get_hasil_detail(
             skala=metadata.get("skala"),
             skor_mentah=metadata.get("skor_mentah"),
             metadata=metadata,
+            kunci_disembunyikan=sembunyikan,
+            kunci_tersedia_at=kunci_tersedia_at,
         )
 
     soal_map = {s.id: s for s in db.query(Soal).filter(Soal.id.in_(ujian.soal_urutan)).all()}
@@ -330,7 +371,7 @@ def get_hasil_detail(
 
     return HasilUjianDetailOut(
         ujian_siswa_id=ujian.id,
-        skor=hasil.skor if hasil else None,
+        skor=None if sembunyikan else (hasil.skor if hasil else None),
         soal=soal_detail,
         nama_paket=paket.nama if paket else None,
         metode_penilaian=metadata.get("metode_penilaian", paket.metode_penilaian if paket else "biasa"),
@@ -373,4 +414,4 @@ def get_hasil_ujian(hasil_id: int, db: Session = Depends(get_db), current_user=D
     if not ujian:
         raise HTTPException(status_code=404, detail="Ujian Siswa not found")
     authorize_hasil_access(ujian, current_user, db)
-    return hasil
+    return hasil_out(db, current_user, hasil, ujian)

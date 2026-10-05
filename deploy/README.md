@@ -51,4 +51,11 @@ systemctl status quantumcbt-backend quantumcbt-frontend
 journalctl -u quantumcbt-backend -f
 systemctl list-timers quantumcbt-autosubmit.timer   # auto-submit ujian yang waktunya habis, tiap menit
 journalctl -u quantumcbt-autosubmit -n 50
+
+# membuat akun admin (password ditanyakan)
+cd /opt/quantumcbt/backend && sudo -u quantumcbt bash -c 'set -a; . ./.env; venv/bin/python scripts/create_admin.py NAMA_ADMIN'
 ```
+
+Mengosongkan data uji coba (akun dan data master tetap): backup dulu, lalu jalankan
+`scripts/clear_vps_data.py`. Langkah lengkap dan daftar yang dihapus ada di
+[docs/CLIENT_REQUESTS_2026-10-04.md](../docs/CLIENT_REQUESTS_2026-10-04.md).

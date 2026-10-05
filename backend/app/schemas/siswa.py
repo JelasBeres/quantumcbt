@@ -129,6 +129,8 @@ class SiswaRiwayatUjianOut(BaseModel):
     skala: Optional[str] = None
     skor_mentah: Optional[int] = None
     metadata: Optional[Dict[str, Any]] = None
+    # True selama jadwal try out paket ini belum berakhir: skor dikosongkan.
+    nilai_ditahan: bool = False
 
 
 class SiswaRiwayatLatihanOut(BaseModel):
